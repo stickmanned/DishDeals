@@ -1,0 +1,27 @@
+{
+  "name": "restaurant-deal-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "convex dev",
+    "deploy": "convex deploy",
+    "codegen": "convex codegen --typecheck disable",
+    "codegen:offline": "tsx scripts/codegen-offline.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "demo": "tsx scripts/demo.ts",
+    "process": "tsx scripts/process.ts"
+  },
+  "dependencies": {
+    "convex": "1.46.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "convex-test": "0.0.60",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

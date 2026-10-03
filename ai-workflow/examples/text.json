@@ -1,0 +1,8 @@
+{
+  "source": {
+    "type": "text",
+    "text": "Example Ramen Richmond: 50% off selected ramen bowls every Tuesday, 5pm–9pm. Dine-in only. At 123 Example Street, Richmond, BC. Valid through October 31, 2026.",
+    "publishedAt": "2026-10-03"
+  },
+  "context": { "city": "Richmond", "region": "British Columbia", "countryCode": "ca", "timezone": "America/Vancouver" }
+}
