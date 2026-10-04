@@ -40,7 +40,7 @@
       "implementationState": "reviewed, locally integrated at 2ceb3de; coordinator full check PASS 37 Vitest/23 workflow/build",
       "nativeChecks": "pending runtime agreement/toolchain",
       "phoneAcceptance": "pending William iPhone",
-      "localChecks": "passed",
+      "localChecks": "coordinator combined full check PASS at 56f23c3: 100 Vitest/23 workflow/typecheck/lint/build",
       "blocker": "native storage, live backend/JWT setup, real iPhone auth acceptance pending"
     },
     {
@@ -48,7 +48,7 @@
       "owner": "Cinder",
       "branch": "t-04-deal-logic",
       "worktree": "logic",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-02",
         "T-00"
@@ -62,9 +62,10 @@
       "issue": "https://github.com/stickmanned/DishDeals/issues/2",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local checks only; no cloud target authorized",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed, locally integrated at 56f23c3",
       "nativeChecks": "pending runtime agreement/toolchain",
-      "phoneAcceptance": "pending William iPhone"
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "coordinator combined full check PASS at 56f23c3: 100 Vitest/23 workflow/typecheck/lint/build"
     },
     {
       "id": "T-04B",
@@ -88,14 +89,14 @@
       "implementationState": "reviewed, locally integrated at 1c5bd8d",
       "nativeChecks": "pending runtime agreement/toolchain",
       "phoneAcceptance": "pending William iPhone",
-      "localChecks": "worker full check passed; coordinator combined check pending"
+      "localChecks": "coordinator combined full check PASS at 56f23c3: 100 Vitest/23 workflow/typecheck/lint/build"
     },
     {
       "id": "T-05R",
       "owner": "Prism",
       "branch": "t-05-extraction-reconciliation",
       "worktree": "extraction",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-02",
         "T-00"
@@ -109,16 +110,17 @@
       "issue": "https://github.com/stickmanned/DishDeals/issues/3",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local checks only; no cloud target authorized",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed, locally integrated at 56f23c3",
       "nativeChecks": "pending runtime agreement/toolchain",
-      "phoneAcceptance": "pending William iPhone"
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "coordinator combined full check PASS at 56f23c3: 100 Vitest/23 workflow/typecheck/lint/build"
     },
     {
       "id": "T-07A",
       "owner": "Mica",
       "branch": "t-07-draft-state",
       "worktree": "post-core",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-02"
       ],
@@ -130,7 +132,7 @@
       "packet": "docs/tasks/T-07A.md",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "no backend writes; pure logic only",
-      "implementationState": "not started",
+      "implementationState": "review corrections requested",
       "nativeChecks": "pending integration",
       "phoneAcceptance": "pending"
     },
@@ -139,7 +141,7 @@
       "owner": "Loom",
       "branch": "t-05-extraction-core",
       "worktree": "extraction-core",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-02",
         "T-05R"
@@ -153,16 +155,17 @@
       "packet": "docs/tasks/T-05A.md",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local only; no cloud/provider calls",
-      "implementationState": "not started",
+      "implementationState": "reviewed core d66867b; queued for local integration",
       "nativeChecks": "pending integration",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "worker synthetic transport: 84 extraction/91 total Vitest, 23 workflow, typecheck/lint/build; coordinator ownership PASS"
     },
     {
       "id": "T-06A",
       "owner": "Prism",
       "branch": "t-06-real-deal-sources",
       "worktree": "deal-sources",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-02"
       ],
@@ -174,8 +177,53 @@
       "packet": "docs/tasks/T-06A.md",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local only; no cloud/provider calls",
-      "implementationState": "not started",
+      "implementationState": "dispatched",
       "nativeChecks": "pending integration",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-09A",
+      "owner": "Cinder",
+      "branch": "t-09-deal-selection",
+      "worktree": "selection",
+      "status": "prepared",
+      "dependencies": [
+        "T-04A",
+        "T-04B"
+      ],
+      "allowedPaths": [
+        "lib/dealSelection.ts",
+        "lib/dealSelection.test.ts",
+        "docs/handoffs/t-09a.md"
+      ],
+      "packet": "docs/tasks/T-09A.md",
+      "pinnedBaseSha": "56f23c31da4ba78d2883a117574a795034da9836",
+      "backendTarget": "none; pure logic",
+      "implementationState": "review corrections requested",
+      "nativeChecks": "pending UI integration",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-11A",
+      "owner": "Loom",
+      "branch": "t-11-votes-backend",
+      "worktree": "votes-core",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-03"
+      ],
+      "allowedPaths": [
+        "convex/votes.ts",
+        "tests/backend/votes.test.ts",
+        "convex/_generated/api.d.ts",
+        "docs/handoffs/t-11a.md"
+      ],
+      "packet": "docs/tasks/T-11A.md",
+      "pinnedBaseSha": "56f23c31da4ba78d2883a117574a795034da9836",
+      "backendTarget": "in-memory convex-test only; no cloud authorization",
+      "implementationState": "packet prepared; dispatch after source review",
+      "nativeChecks": "pending Harry UI bindings",
       "phoneAcceptance": "pending"
     }
   ],
