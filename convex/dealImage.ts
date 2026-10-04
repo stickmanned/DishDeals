@@ -78,7 +78,13 @@ export const upload = httpAction(async (ctx, request) => {
     if (classifyUploadImage(read.bytes) !== declared) return fail(415, "type");
 
     storageId = await ctx.storage.store(new Blob([read.bytes], { type: declared }));
-    await ctx.runMutation(internal.dealUploads.register, { ownerId, storageId });
+    const registered = await ctx.runMutation(internal.dealUploads.register, { ownerId, storageId });
+    if (!registered.registered) {
+      // Over the per-owner cap of active unpublished uploads: remove the file just stored and refuse.
+      await ctx.storage.delete(storageId);
+      storageId = undefined;
+      return fail(429, "quota");
+    }
     return json(200, { storageId }, cors);
   } catch {
     // Unexpected failure (including a registry write failure): remove the orphan, answer with CORS, log nothing.

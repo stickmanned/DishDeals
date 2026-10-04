@@ -3,7 +3,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type QueryCtx } from "./_generated/server";
 import { MAX_IMAGE_BYTES, isAllowedImageType } from "../lib/dealWrite";
-import { CLEANUP_BATCH, PUBLISHED_EXPIRY, REGISTRY_TTL_MS } from "../lib/dealImageUpload";
+import { CLEANUP_BATCH, MAX_PENDING_UPLOADS, PUBLISHED_EXPIRY, REGISTRY_TTL_MS } from "../lib/dealImageUpload";
 
 // The private upload registry. Rows are created only by the authenticated HTTP upload (convex/dealImage.ts)
 // through the internal `register` below: there is no public way to claim a storage id.
@@ -25,14 +25,23 @@ export async function requireOwnedImage(ctx: QueryCtx, userId: Id<"users">, stor
   return row;
 }
 
+// Registers a just-stored upload to its owner, unless the owner already holds MAX_PENDING_UPLOADS active
+// (unexpired, unpublished) uploads. The count is an indexed range read of at most cap+1 rows inside this
+// transaction, so concurrent registrations serialize and the cap cannot be exceeded. Expired and published
+// rows are exempt. A refused registration returns { registered: false } and the caller deletes the file.
 export const register = internalMutation({
   args: { ownerId: v.id("users"), storageId: v.id("_storage") },
-  returns: v.null(),
+  returns: v.union(v.object({ registered: v.literal(true) }), v.object({ registered: v.literal(false), reason: v.literal("quota") })),
   handler: async (ctx, { ownerId, storageId }) => {
     const existing = await ctx.db.query("dealUploads").withIndex("by_storage", q => q.eq("storageId", storageId)).take(1);
     if (existing.length > 0) throw new ConvexError("Upload already registered.");
-    await ctx.db.insert("dealUploads", { ownerId, storageId, expiresAt: Date.now() + REGISTRY_TTL_MS, published: false });
-    return null;
+    const now = Date.now();
+    const active = await ctx.db.query("dealUploads")
+      .withIndex("by_owner_pending", q => q.eq("ownerId", ownerId).eq("published", false).gt("expiresAt", now))
+      .take(MAX_PENDING_UPLOADS + 1);
+    if (active.length >= MAX_PENDING_UPLOADS) return { registered: false as const, reason: "quota" as const };
+    await ctx.db.insert("dealUploads", { ownerId, storageId, expiresAt: now + REGISTRY_TTL_MS, published: false });
+    return { registered: true as const };
   },
 });
 
@@ -50,8 +59,8 @@ export const checkOwned = internalQuery({
  * Hourly bounded cleanup. Examines at most CLEANUP_BATCH expired registry rows, oldest first:
  * - published rows (and rows a saved deal references) are never deleted; they are marked published with a
  *   non-expiring `expiresAt` so they leave the scan and the batch always makes progress;
- * - unpublished expired rows with no canonical reference are deleted, and their file too unless another
- *   registry row for the same file is published or a deal references it.
+ * - unpublished expired rows with no canonical reference are deleted, and their file too unless ANY other
+ *   registry row for the same file remains (the file goes with the last row) or a deal references it.
  * A full batch schedules one immediate continuation.
  */
 export const cleanupExpired = internalMutation({
@@ -69,7 +78,8 @@ export const cleanupExpired = internalMutation({
         continue;
       }
       const siblings = await ctx.db.query("dealUploads").withIndex("by_storage", q => q.eq("storageId", row.storageId)).take(3);
-      const sharedElsewhere = siblings.some(s => s._id !== row._id && s.published);
+      // Any other registry row for the same file (published or not, expired or live) keeps the file.
+      const sharedElsewhere = siblings.some(s => s._id !== row._id);
       await ctx.db.delete(row._id);
       if (sharedElsewhere) { kept++; continue; }
       if (await ctx.db.system.get("_storage", row.storageId)) { await ctx.storage.delete(row.storageId); deletedFiles++; }

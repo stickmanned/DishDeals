@@ -8,6 +8,7 @@ export const UPLOAD_PATH = "/deal-image";
 export const READ_DEADLINE_MS = 60_000; // server: total time allowed to receive the body
 export const REGISTRY_TTL_MS = 24 * 60 * 60 * 1000; // an unpublished upload expires after 24 hours
 export const CLEANUP_BATCH = 100;
+export const MAX_PENDING_UPLOADS = 20; // active (unexpired, unpublished) uploads one owner may hold
 export const PUBLISHED_EXPIRY = Number.MAX_SAFE_INTEGER; // published rows never expire (and leave the cleanup scan)
 export const DEFAULT_UPLOAD_TIMEOUT_MS = 90_000;
 export const MAX_UPLOAD_TIMEOUT_MS = 300_000;

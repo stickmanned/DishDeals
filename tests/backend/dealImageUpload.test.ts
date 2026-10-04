@@ -13,7 +13,7 @@ import schema from "../../convex/schema";
 import crons from "../../convex/crons";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { CLEANUP_BATCH, MAX_IMAGE_BYTES, PUBLISHED_EXPIRY, READ_DEADLINE_MS, REGISTRY_TTL_MS } from "../../lib/dealImageUpload";
+import { CLEANUP_BATCH, MAX_IMAGE_BYTES, MAX_PENDING_UPLOADS, PUBLISHED_EXPIRY, READ_DEADLINE_MS, REGISTRY_TTL_MS } from "../../lib/dealImageUpload";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 const ORIGIN = "https://app.example.test";
@@ -241,6 +241,78 @@ describe("private registry helpers have no public entry point", () => {
   });
 });
 
+describe("per-owner quota of active unpublished uploads", () => {
+  const upload = async (s: S, caller: { fetch: typeof s.t.fetch } = s.alice as never) => s.post(caller as never, file("png", 300));
+  const seedPending = (s: S, owner: Id<"users">, n: number, o: { expiresAt?: number; published?: boolean } = {}) =>
+    s.t.run(async ctx => { for (let i = 0; i < n; i++) { const storageId = await ctx.storage.store(new Blob([new Uint8Array(10).fill(i)])); await ctx.db.insert("dealUploads", { ownerId: owner, storageId, expiresAt: o.expiresAt ?? T0 + 1000 + i, published: o.published ?? false }); } });
+  const attempt = (s: S, owner: Id<"users">) => s.t.run(async ctx => { const storageId = await ctx.storage.store(new Blob(["x"])); return { storageId, result: await ctx.runMutation(internal.dealUploads.register, { ownerId: owner, storageId }) }; });
+
+  it("allows exactly 20 active uploads; the 21st gets a CORS-bearing 429 and its file is removed", async () => {
+    const s = await setup();
+    for (let i = 0; i < MAX_PENDING_UPLOADS; i++) expect((await upload(s)).status).toBe(200);
+    expect(await s.registry()).toHaveLength(MAX_PENDING_UPLOADS);
+    const r = await upload(s);
+    expect(r.status).toBe(429);
+    expect(r.headers.get("Access-Control-Allow-Origin")).toBe(ORIGIN);
+    expect(await r.json()).toEqual({ error: "quota" });
+    expect(await s.registry()).toHaveLength(MAX_PENDING_UPLOADS);
+    expect(await s.stored()).toHaveLength(MAX_PENDING_UPLOADS); // the rejected file did not stay behind
+  });
+  it("is per owner: another user is unaffected by a full quota", async () => {
+    const s = await setup();
+    await seedPending(s, s.aId, MAX_PENDING_UPLOADS);
+    expect((await upload(s)).status).toBe(429);
+    expect((await upload(s, s.bob as never)).status).toBe(200);
+    expect((await s.registry()).filter(r => r.ownerId === s.bId)).toHaveLength(1);
+  });
+  it("published and expired rows do not count, with the exact expiry boundary", async () => {
+    const s = await setup();
+    await seedPending(s, s.aId, 30, { published: true, expiresAt: PUBLISHED_EXPIRY }); // 30 published: exempt
+    await seedPending(s, s.aId, 30, { expiresAt: T0 - 1 }); // 30 long expired: exempt
+    await seedPending(s, s.aId, 1, { expiresAt: T0 }); // expiresAt == now counts as expired
+    await seedPending(s, s.aId, MAX_PENDING_UPLOADS - 1, { expiresAt: T0 + 5000 });
+    expect((await upload(s)).status).toBe(200); // 19 active -> the 20th is allowed
+    expect((await upload(s)).status).toBe(429); // 20 active -> refused
+    // one expiring just ahead of now still counts; once the clock passes it, a slot opens
+    await s.t.run(async ctx => { const rows = await ctx.db.query("dealUploads").collect(); const mine = rows.filter(r => !r.published && r.expiresAt > T0).sort((a, b) => a.expiresAt - b.expiresAt)[0]; await ctx.db.patch(mine._id, { expiresAt: T0 + 1 }); });
+    expect((await upload(s)).status).toBe(429);
+    vi.setSystemTime(T0 + 1);
+    expect((await upload(s)).status).toBe(200);
+  });
+  it("publishing an image frees a slot", async () => {
+    const s = await setup();
+    const ids: string[] = [];
+    for (let i = 0; i < MAX_PENDING_UPLOADS; i++) ids.push((await (await upload(s)).json()).storageId);
+    expect((await upload(s)).status).toBe(429);
+    await s.alice.mutation(api.deals.create, { restaurant: "Cafe", dealText: "Offer", validDays: [], conditions: [], lat: 49.25, lng: -122.95, imageId: ids[0] as Id<"_storage"> });
+    expect((await upload(s)).status).toBe(200);
+  });
+  it("the register mutation refuses the 21st, leaves no row and does not touch other owners", async () => {
+    const s = await setup();
+    await seedPending(s, s.aId, MAX_PENDING_UPLOADS - 1);
+    expect((await attempt(s, s.aId)).result).toEqual({ registered: true });
+    const twenty = await s.registry();
+    const refused = await attempt(s, s.aId);
+    expect(refused.result).toEqual({ registered: false, reason: "quota" });
+    expect(await s.registry()).toEqual(twenty);
+    expect((await attempt(s, s.bId)).result).toEqual({ registered: true });
+  });
+  it("concurrent registrations can never exceed the cap", async () => {
+    const s = await setup();
+    const stores = await s.t.run(async ctx => { const ids: Id<"_storage">[] = []; for (let i = 0; i < MAX_PENDING_UPLOADS + 6; i++) ids.push(await ctx.storage.store(new Blob([String(i)]))); return ids; });
+    const results = await Promise.all(stores.map(storageId => s.t.mutation(internal.dealUploads.register, { ownerId: s.aId, storageId })));
+    expect(results.filter(r => r.registered)).toHaveLength(MAX_PENDING_UPLOADS);
+    expect(results.filter(r => !r.registered)).toHaveLength(6);
+    expect(await s.registry()).toHaveLength(MAX_PENDING_UPLOADS);
+  });
+  it("the pending index bounds the count read to cap + 1 rows regardless of how many published or expired rows exist", async () => {
+    const s = await setup();
+    await seedPending(s, s.aId, 150, { published: true, expiresAt: PUBLISHED_EXPIRY });
+    await seedPending(s, s.aId, 150, { expiresAt: T0 - 5 });
+    expect((await attempt(s, s.aId)).result).toEqual({ registered: true });
+  });
+});
+
 describe("hourly bounded cleanup", () => {
   const seed = async (s: S, o: { owner?: Id<"users">; expiresAt: number; published?: boolean; bytes?: number }) =>
     s.t.run(async ctx => {
@@ -285,6 +357,28 @@ describe("hourly bounded cleanup", () => {
     await s.t.mutation(internal.dealUploads.cleanupExpired, {});
     expect(await exists(s, id)).toBe(true);
     expect(await rowFor(s, id)).toEqual([expect.objectContaining({ published: true })]);
+  });
+  it("keeps a file while ANY other registry row remains, including a live unpublished one; the last row takes the file", async () => {
+    const s = await setup();
+    const id = await seed(s, { expiresAt: T0 - 1 });
+    await s.t.run(ctx => ctx.db.insert("dealUploads", { ownerId: s.bId, storageId: id, expiresAt: T0 + 3600_000, published: false })); // another owner's live draft
+    expect(await s.t.mutation(internal.dealUploads.cleanupExpired, {})).toEqual({ examined: 1, deletedFiles: 0, kept: 1 });
+    expect(await exists(s, id)).toBe(true); // the live draft still needs it
+    const left = await rowFor(s, id);
+    expect(left).toHaveLength(1);
+    expect(left[0]).toMatchObject({ ownerId: s.bId, published: false });
+    vi.setSystemTime(T0 + 3600_001); // now the remaining row expires too
+    expect(await s.t.mutation(internal.dealUploads.cleanupExpired, {})).toEqual({ examined: 1, deletedFiles: 1, kept: 0 });
+    expect(await exists(s, id)).toBe(false);
+    expect(await rowFor(s, id)).toHaveLength(0);
+  });
+  it("two expired unpublished rows for one file in the same batch delete the file exactly once, with the last row", async () => {
+    const s = await setup();
+    const id = await seed(s, { expiresAt: T0 - 2 });
+    await s.t.run(ctx => ctx.db.insert("dealUploads", { ownerId: s.bId, storageId: id, expiresAt: T0 - 1, published: false }));
+    expect(await s.t.mutation(internal.dealUploads.cleanupExpired, {})).toEqual({ examined: 2, deletedFiles: 1, kept: 1 });
+    expect(await exists(s, id)).toBe(false);
+    expect(await rowFor(s, id)).toHaveLength(0);
   });
   it("tolerates a registry row whose file is already gone", async () => {
     const s = await setup();

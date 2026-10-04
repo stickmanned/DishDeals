@@ -51,7 +51,7 @@ export default defineSchema({
     storageId: v.id("_storage"),
     expiresAt: v.number(),
     published: v.boolean(),
-  }).index("by_storage", ["storageId"]).index("by_expiry", ["expiresAt"]),
+  }).index("by_storage", ["storageId"]).index("by_expiry", ["expiresAt"]).index("by_owner_pending", ["ownerId", "published", "expiresAt"]),
 
   votes: defineTable({
     dealId: v.id("deals"),
