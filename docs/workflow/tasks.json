@@ -1209,7 +1209,7 @@
       "owner": "Loom",
       "branch": "t-19-dev-backend-release",
       "worktree": "dev-backend-release",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "N-SOURCE-D",
         "N-RELEASE-A"
@@ -1231,7 +1231,7 @@
       "owner": "Cinder",
       "branch": "t-18-native-load-recovery",
       "worktree": "native-load-recovery",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "N-SIM-A"
       ],
@@ -1253,7 +1253,7 @@
       "owner": "Prism",
       "branch": "t-14-recording-frame-bindings",
       "worktree": "recording-frame-bindings",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-14A",
         "T-07C"
@@ -1280,7 +1280,7 @@
       "owner": "Mica",
       "branch": "t-15-tip-qr-receipt",
       "worktree": "tip-qr-receipt",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-15A",
         "T-10B"
