@@ -215,7 +215,9 @@
       "statedAmount": 8,
       "statedCurrency": "$8.00 displayed on menu; ISO currency unstated (pending CAD confirmation)",
       "coordinatesStatus": "omitted_pending_pinyuan_pin",
-      "adImageUrl": "https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg",
+      "adImageUrl": null,
+      "adImageVerification": "Offer menu page (/burnaby-mountain-happy-hour, 34,594 bytes HTTP 200) contains no food image assets (absent). Restaurant overview page (/restaurants/burnaby-mountain-restaurant, 38,569 bytes HTTP 200) embeds /sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg?itok=bFVqB6th (67,575 bytes HTTP 200, alt: 'Burger sliders and drinks on a patio'); because banner is absent from the offer menu page and depicts general sliders rather than Truffle Fries, adImageUrl is set to null to avoid unsupported verified claims.",
+      "addressVerification": "Address '7600 Halifax Street' verified directly in primary HTML of restaurant landing page (/restaurants/burnaby-mountain-restaurant, HTTP 200). Offer page displays corporate administrative office '9001 Bill Fox Way' in footer.",
       "missingFields": [
         "lat",
         "lng",
@@ -255,7 +257,9 @@
       "statedAmount": 15,
       "statedCurrency": "$15.00 displayed on menu; ISO currency unstated (pending CAD confirmation)",
       "coordinatesStatus": "omitted_pending_pinyuan_pin",
-      "adImageUrl": "https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg",
+      "adImageUrl": null,
+      "adImageVerification": "Offer menu page (/burnaby-mountain-happy-hour, 34,594 bytes HTTP 200) contains no food image assets (absent). Restaurant overview page (/restaurants/burnaby-mountain-restaurant, 38,569 bytes HTTP 200) embeds /sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg?itok=bFVqB6th (67,575 bytes HTTP 200, alt: 'Burger sliders and drinks on a patio'); because banner is absent from the offer menu page and depicts general sliders rather than the Classic Cheeseburger deal asset, adImageUrl is set to null to avoid unsupported verified claims.",
+      "addressVerification": "Address '7600 Halifax Street' verified directly in primary HTML of restaurant landing page (/restaurants/burnaby-mountain-restaurant, HTTP 200). Offer page displays corporate administrative office '9001 Bill Fox Way' in footer.",
       "missingFields": [
         "lat",
         "lng",
@@ -396,9 +400,7 @@
       "validEnd": null,
       "expiresOn": null,
       "conditions": [
-        "Minimum order of 6 pieces",
-        "Price conflict in PDF menu: page 0 lists $1.75/pc (min 6) vs patio page 3 lists $1.50/pc (min 6)",
-        "Located at Executive Suites Hotel Burnaby"
+        "Minimum order of 6 pieces"
       ],
       "sourceUrl": "https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf"
     },
@@ -410,6 +412,7 @@
       "statedAmount": null,
       "statedCurrency": "Conflicting stated prices: HH menu page 0 lists $1.75 each vs patio page 3 lists $1.50 each (minimum 6 pieces); ISO currency unstated (pending CAD confirmation)",
       "priceConflict": "HH menu page 0 lists $1.75 each (min 6); patio page 3 lists $1.50 each (min 6). Minimum order of 6 pieces applies to both.",
+      "reviewRequired": "Conflicting stated prices across PDF menu sections (HH menu page 0 lists $1.75/pc min 6 vs patio page 3 lists $1.50/pc min 6); human review required before confirming pricing or publishing.",
       "coordinatesStatus": "omitted_pending_pinyuan_pin",
       "adImageUrl": null,
       "fullSchedule": "Sunday-Monday 16:00-18:00; Tuesday-Saturday 16:00-18:00 and 21:00-22:00 (homepage banner also displays 'Daily from 4–6 PM')",

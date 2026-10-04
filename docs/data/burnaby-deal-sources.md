@@ -29,8 +29,8 @@ This document records publicly advertised restaurant and promoter food deals in 
    - To maintain full 10-candidate coverage with verifiable primary offers, additional explicit food offers from the current Time & Place Happy Hour menu ([menus-happyhour](https://www.timeandplaceburnaby.com/menus-happyhour)) have been incorporated: Smashed Beef Slider ($6.00) and Fraser Valley Wings ($0.89 each, min 6 pcs).
 6. **No Inferred Dine-In Conditions:**
    - Unstated "dine-in only" conditions are omitted from Burnaby Mountain Restaurant (CAND-06, CAND-07) and Argo Greek (CAND-04, CAND-05). Conditions reflect strictly explicit source statements.
-7. **Exact Primary Offer and Address URLs:** Both the exact offer page URL and the specific address URL (where the street address is explicitly evidenced) are supplied for every candidate. For Burnaby Mountain Restaurant, the offer is on `/burnaby-mountain-happy-hour`, while the address (7600 Halifax Street) is published on `/restaurants/burnaby-mountain-restaurant`.
-8. **Digital Ad Image Asset Verification:** The Burnaby Mountain banner (`https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg`) was verified reachable with HTTP 200 OK. It is documented as a digital web asset and explicitly distinguished from physical photographed flyers.
+7. **Exact Primary Offer and Address URLs:** Both the exact offer page URL and the specific address URL (where the street address is explicitly evidenced) are supplied for every candidate. For Burnaby Mountain Restaurant, the offer is on `/burnaby-mountain-happy-hour`, while the physical street address (7600 Halifax Street) is published in the primary HTML of `/restaurants/burnaby-mountain-restaurant` (verified HTTP 200, 38,569 bytes; note that the offer page footer displays corporate admin office `9001 Bill Fox Way`).
+8. **Digital Ad Image Asset Primary Verification:** Inspection of the primary offer menu page (`/burnaby-mountain-happy-hour`, 34,594 bytes) confirms that no food image assets are present. The restaurant overview page (`/restaurants/burnaby-mountain-restaurant`, 38,569 bytes) embeds `happy_hour_sliderbox.jpg?itok=bFVqB6th` (verified HTTP 200, 67,575 bytes, alt: "Burger sliders and drinks on a patio"). Because this banner is absent from the offer menu page and depicts general patio sliders rather than an offer-specific asset for Truffle Fries or Cheeseburger, `adImageUrl` is set to `null` across all candidate records to eliminate unsupported verified claims.
 9. **Coordinates & Pins:** Geocoding and map pin confirmation remain strictly owned by Pinyuan; `lat` and `lng` are omitted across all candidate proposals.
 10. **Zero Instagram Scraping:** No Instagram endpoints, GraphQL APIs, or third-party mirrors were queried.
 11. **Exclusion of Expired Promotions:** The March "Bite of Burnaby" festival remains excluded as historical and expired.
@@ -197,7 +197,9 @@ This document records publicly advertised restaurant and promoter food deals in 
   - Stated Amount: `8.0`
   - Stated Currency: `"$8.00 displayed on menu; ISO currency unstated (pending CAD confirmation)"`
   - Coordinate Status: `omitted_pending_pinyuan_pin`
-  - Ad Image URL: `https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg` *(verified reachable HTTP 200; digital ad banner, not physical flyer)*
+  - Ad Image URL: `null`
+  - Ad Image Primary Verification: The offer menu page (`/burnaby-mountain-happy-hour`, 34,594 bytes HTTP 200) contains no food image assets (absent). The restaurant overview page (`/restaurants/burnaby-mountain-restaurant`, 38,569 bytes HTTP 200) embeds `/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg?itok=bFVqB6th` (67,575 bytes HTTP 200, alt: "Burger sliders and drinks on a patio"). Because this banner is absent from the offer menu page and depicts general patio sliders rather than Truffle Fries, `adImageUrl` is set to `null` to eliminate unsupported verified claims.
+  - Address Primary Verification: Street address "7600 Halifax Street" verified directly in primary HTML of `/restaurants/burnaby-mountain-restaurant` (HTTP 200). Offer page footer displays corporate admin office "9001 Bill Fox Way".
   - Missing Fields: `["lat", "lng", "priceCad", "flyerPhoto"]`
 
 ### Candidate 07: Burnaby Mountain Restaurant — Happy Hour Classic Cheeseburger
@@ -220,7 +222,9 @@ This document records publicly advertised restaurant and promoter food deals in 
   - Stated Amount: `15.0`
   - Stated Currency: `"$15.00 displayed on menu; ISO currency unstated (pending CAD confirmation)"`
   - Coordinate Status: `omitted_pending_pinyuan_pin`
-  - Ad Image URL: `https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg`
+  - Ad Image URL: `null`
+  - Ad Image Primary Verification: The offer menu page (`/burnaby-mountain-happy-hour`, 34,594 bytes HTTP 200) contains no food image assets (absent). The restaurant overview page (`/restaurants/burnaby-mountain-restaurant`, 38,569 bytes HTTP 200) embeds `/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg?itok=bFVqB6th` (67,575 bytes HTTP 200, alt: "Burger sliders and drinks on a patio"). Because this banner is absent from the offer menu page and depicts patio sliders rather than the single Classic Cheeseburger deal asset, `adImageUrl` is set to `null` to eliminate unsupported verified claims.
+  - Address Primary Verification: Street address "7600 Halifax Street" verified directly in primary HTML of `/restaurants/burnaby-mountain-restaurant` (HTTP 200). Offer page footer displays corporate admin office "9001 Bill Fox Way".
   - Missing Fields: `["lat", "lng", "priceCad", "flyerPhoto"]`
 
 ### Candidate 08: Time & Place Burnaby — Happy Hour Mediterranean Beef Kebobs
@@ -310,9 +314,7 @@ This document records publicly advertised restaurant and promoter food deals in 
   - `validEnd`: `null`
   - `expiresOn`: `null`
   - `conditions`: [
-      `"Minimum order of 6 pieces"`,
-      `"Price conflict in PDF menu: page 0 lists $1.75/pc (min 6) vs patio page 3 lists $1.50/pc (min 6)"`,
-      `"Located at Executive Suites Hotel Burnaby"`
+      `"Minimum order of 6 pieces"`
     ]
   - `sourceUrl`: `"https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf"`
 - **Provenance & Uncertainty Metadata:**
@@ -323,6 +325,7 @@ This document records publicly advertised restaurant and promoter food deals in 
   - Stated Amount: `null` *(conflicting stated prices across PDF menu sections)*
   - Stated Currency: `"Conflicting stated prices: HH menu page 0 lists $1.75 each vs patio page 3 lists $1.50 each (minimum 6 pieces); ISO currency unstated (pending CAD confirmation)"`
   - Price Conflict: HH menu page 0 lists $1.75 each (min 6); patio page 3 lists $1.50 each (min 6). Minimum order of 6 pieces applies to both.
+  - Review Required: Conflicting stated prices across PDF menu sections (HH menu page 0 lists $1.75/pc min 6 vs patio page 3 lists $1.50/pc min 6); human review required before confirming pricing or publishing.
   - Full Stated Schedule: Sunday–Monday 16:00–18:00; Tuesday–Saturday 16:00–18:00 and 21:00–22:00 (homepage banner also displays "Daily from 4–6 PM").
   - Representational Limitation: DishDeals schema only supports a single contiguous `validStart`/`validEnd` window per record; it cannot combine afternoon 16:00–18:00 and late-night 21:00–22:00 without multiple records. Hours left pending to avoid silently discarding the late-night window.
   - Coordinate Status: `omitted_pending_pinyuan_pin`
