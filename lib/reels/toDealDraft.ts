@@ -36,7 +36,7 @@
  *   and source immutability.
  */
 
-import { addAsCondition, isCanadianDollar, isOrdinaryRestriction } from "../benignRestrictions";
+import { addAsCondition, isCanadianDollar, isOrdinaryRestriction, isYearlessEventDate } from "../benignRestrictions";
 import {
   createDraft,
   createDraftsFromOffers,
@@ -134,7 +134,9 @@ function withOrdinaryRestrictionsAsConditions(extraction: ReelExtraction): ReelE
   const drafts = extraction.drafts.map((d) => ({ ...d }));
   const kept = extraction.constraints.filter((c) => {
     const target = drafts[c.draftIndex];
-    if (c.code !== "UNSUPPORTED_CONSTRAINT" || !target || !isOrdinaryRestriction(c.detail, c.quote)) return true;
+    if (c.code !== "UNSUPPORTED_CONSTRAINT" || !target) return true;
+    if (isYearlessEventDate(c.detail, c.quote)) return false; // the model's inferred date stays in the expiry field for review
+    if (!isOrdinaryRestriction(c.detail, c.quote)) return true;
     const added = addAsCondition(target.conditions, { quote: c.quote, detail: c.detail });
     if (!added.absorbed) return true;
     target.conditions = added.conditions;

@@ -68,3 +68,16 @@ export function isCanadianDollar(currency: string | null | undefined): boolean {
 export function mentionsForeignCurrency(text: string): boolean {
   return FOREIGN_CURRENCY.test(text);
 }
+
+// "Event date does not include a four-digit year": the model could not be sure of the year. William decided (ADR 0007)
+// that for an event or end date the model's own inference stands and the reviewer checks it in the expiry field. A START
+// date is the exception: dropping it would publish an offer that has not begun, and "ambiguous" dates stay too.
+const MISSING_YEAR = /\b(?:no|not|without|missing|lacks?|lacking|omits?|absent)\b[^.]{0,40}\byear\b|\byear\b[^.]{0,25}\b(?:not (?:stated|given|shown|included|provided)|missing|absent|omitted)\b/i;
+const START_OR_AMBIGUOUS = /\b(?:start|starts|starting|started|begin|begins|beginning|launch(?:es|ing)?|open(?:s|ing)?|from|commenc\w*|kicks? off|ambiguous)\b/i;
+
+/** True for a model note that only says an event or end date lacks a year. */
+export function isYearlessEventDate(...texts: (string | null | undefined)[]): boolean {
+  const joined = texts.filter((t): t is string => typeof t === "string" && t.trim() !== "").join(" ");
+  return joined !== "" && MISSING_YEAR.test(joined) && !START_OR_AMBIGUOUS.test(joined);
+}
+

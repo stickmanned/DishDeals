@@ -2,7 +2,7 @@
 // stated currency is CAD (docs/decisions/0007). Anything not recognised still blocks. Synthetic fixtures only: the Reel
 // below mirrors the constraint wording Gemini actually returned for a real shared Reel; no network or provider call.
 import { describe, expect, it } from "vitest";
-import { addAsCondition, isCanadianDollar, isOrdinaryRestriction, mentionsForeignCurrency } from "../../lib/benignRestrictions";
+import { addAsCondition, isCanadianDollar, isOrdinaryRestriction, isYearlessEventDate, mentionsForeignCurrency } from "../../lib/benignRestrictions";
 import { reelExtractionToDealDrafts } from "../../lib/reels/toDealDraft";
 import { validateModelOutput } from "../../lib/extractCore";
 import type { ReelExtraction } from "../../lib/reels/contract";
@@ -54,6 +54,22 @@ describe("adding an ordinary restriction as a condition", () => {
   });
 });
 
+describe("a missing year on an event or end date", () => {
+  it.each([
+    ["Event date does not include a four-digit year in the source text", "Sunday, November 23"],
+    ["The sale date has no year", "Sale ends Nov 30"],
+    ["Date is missing a year", null],
+  ])("%s is left to the model's inference and the reviewer", (detail, quote) => expect(isYearlessEventDate(detail, quote)).toBe(true));
+
+  it.each([
+    ["Start date does not include a year", "Starts June 15"],
+    ["Offer begins in the spring; year not stated", "begins in the spring"],
+    ["Ambiguous numeric date 11/12 in the source", "11/12"],
+    ["Members only", "Members only"],
+    ["", null],
+  ])("%s still needs a person", (detail, quote) => expect(isYearlessEventDate(detail, quote)).toBe(false));
+});
+
 describe("currency", () => {
   it("no stated currency or CAD is Canadian dollars; another stated currency is not", () => {
     for (const c of [null, undefined, "", "CAD", "cad"]) expect(isCanadianDollar(c)).toBe(true);
@@ -64,14 +80,19 @@ describe("currency", () => {
 });
 
 describe("Reel to deal draft", () => {
-  it("a real Reel's per-person, supplies and location notes no longer block; the missing-year note still does", () => {
+  it("a real Reel's per-person, supplies, location and missing-year notes no longer block", () => {
     const [d] = reelExtractionToDealDrafts(extraction({ constraints: realConstraints })).drafts;
-    const blocking = d.reviewIssues.filter((i) => i.blocking && i.code === "UNSUPPORTED_CONSTRAINT");
-    expect(blocking.map((i) => i.detail)).toEqual(["Event date does not include a four-digit year in the source text"]);
+    expect(d.reviewIssues.filter((i) => i.blocking)).toEqual([]);
     const conditions = d.fields.conditions.suggestion?.value ?? d.fields.conditions.value ?? [];
     expect(conditions).toContain("Limit of one per person while supplies last");
     expect(conditions).toContain("Available at all locations in Burnaby, New West, and Kitsilano");
     expect(conditions.filter((c: string) => /one per person/i.test(c))).toHaveLength(1);
+    expect(conditions.join(" ")).not.toMatch(/four-digit year|Sunday, November 23/); // the date note is not turned into a condition
+  });
+
+  it("a year-less START date still blocks: dropping it would publish an offer that has not begun", () => {
+    const [d] = reelExtractionToDealDrafts(extraction({ constraints: [constraint("Start date does not include a year", "Starts June 15")] })).drafts;
+    expect(d.reviewIssues.filter((i) => i.blocking).map((i) => i.detail)).toEqual(["Start date does not include a year"]);
   });
 
   it("an unknown restriction and a future start keep blocking", () => {
@@ -109,5 +130,11 @@ describe("screenshot / flyer path", () => {
     const out = run({ unsupportedConstraints: ["Limit one per person", "While supplies last", "Members only"], conditions: ["Dine-in only"] });
     expect(out.result.deals[0].conditions).toEqual(["Dine-in only", "Limit one per person", "While supplies last"]);
     expect(out.manualReview.filter((n) => n.code === "UNSUPPORTED_CONSTRAINT").map((n) => n.detail)).toEqual(["Members only"]);
+  });
+
+  it("a missing year on an event date no longer blocks, but a year-less start date does", () => {
+    const out = run({ unsupportedConstraints: ["Event date does not include a four-digit year", "Start date does not include a year"] });
+    expect(out.manualReview.filter((n) => n.code === "UNSUPPORTED_CONSTRAINT").map((n) => n.detail)).toEqual(["Start date does not include a year"]);
+    expect(out.result.deals[0].conditions).toEqual([]);
   });
 });

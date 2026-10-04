@@ -1,4 +1,4 @@
-import { addAsCondition, isOrdinaryRestriction, mentionsForeignCurrency } from "./benignRestrictions";
+import { addAsCondition, isOrdinaryRestriction, isYearlessEventDate, mentionsForeignCurrency } from "./benignRestrictions";
 import { z } from "zod";
 import { DealResult } from "./dealSchema";
 import { buildContextText, RESPONSE_JSON_SCHEMA, SYSTEM_PROMPT } from "./prompt";
@@ -227,7 +227,7 @@ export function validateModelOutput(
     // Ordinary restrictions (per-person limits, supplies last, ...) become visible conditions; others block.
     let conditions = d.conditions.map((c) => c.trim()).filter(Boolean);
     for (const c of d.unsupportedConstraints) {
-      if (!c.trim()) continue;
+      if (!c.trim() || isYearlessEventDate(c)) continue;
       const added = isOrdinaryRestriction(c) ? addAsCondition(conditions, { detail: c }) : null;
       if (added?.absorbed) {
         conditions = added.conditions;
