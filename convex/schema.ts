@@ -13,6 +13,8 @@ export default defineSchema({
     caption: v.optional(v.string()), duration: v.optional(v.number()), publishedAt: v.optional(v.string()),
     extractionJson: v.optional(v.string()), draftJson: v.optional(v.string()),
     draftRevision: v.optional(v.number()), draftEdited: v.optional(v.boolean()), // legacy rows: 0 / false
+    // User-supplied recording (absent on legacy and link-only rows). mediaMime is the type sent to the provider; duration is browser-supplied.
+    sourceKind: v.optional(v.literal("supplied")), mediaMime: v.optional(v.union(v.literal("video/mp4"), v.literal("video/mov"))), mediaBytes: v.optional(v.number()),
     error: v.optional(v.object({ code: v.string(), message: v.string() })),
   }).index("by_owner_url", ["ownerId", "sourceUrl"]).index("by_owner", ["ownerId"]).index("by_expiry", ["expiresAt"]),
   reelLimits: defineTable({ ownerId: v.id("users"), windowStart: v.number(), count: v.number() }).index("by_owner", ["ownerId"]),

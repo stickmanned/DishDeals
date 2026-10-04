@@ -69,12 +69,18 @@ test("disabled paid usage saves a clear failure without external calls", async (
   expect(await t.action(internal.reelActions.retrieve, { itemId, generation: 1 })).toBe(false);
   expect(await alice.query(api.reels.get, { itemId })).toMatchObject({ status: "failed", error: { code: "CONFIGURATION" } });
 });
-test("durable component executes background work and records disabled-provider failure", async () => {
+test("link-only submit starts no workflow and no resolver; a supplied recording starts the durable workflow, which fails closed while the media gate is off", async () => {
   const { t, alice } = await sessions();
   vi.stubEnv("REEL_PROVIDER_USAGE_AUTHORIZED", "false");
   const { itemId } = await alice.mutation(api.reels.submit, { text });
+  for (let i = 0; i < 10; i++) { vi.advanceTimersByTime(200); await t.finishInProgressScheduledFunctions(); }
+  expect(await alice.query(api.reels.get, { itemId })).toMatchObject({ status: "queued" });
+  expect((await alice.query(api.reels.get, { itemId })).workflowId).toBeUndefined();
+  const owner = (await alice.query(api.reels.get, { itemId })).ownerId;
+  const videoId = await t.run(ctx => ctx.storage.store(new Blob(["synthetic supplied recording"], { type: "video/mp4" })));
+  await t.mutation(internal.reels.attachSupplied, { itemId, ownerId: owner, expectedGeneration: 1, videoId, mediaMime: "video/mp4", mediaBytes: 28, duration: 12, caption: null, publishedAt: null });
   for (let i = 0; i < 30; i++) { vi.advanceTimersByTime(200); await t.finishInProgressScheduledFunctions(); }
-  expect(await alice.query(api.reels.get, { itemId })).toMatchObject({ status: "failed", error: { code: "CONFIGURATION" } });
+  expect(await alice.query(api.reels.get, { itemId })).toMatchObject({ status: "failed", error: { code: "CONFIGURATION" }, sourceKind: "supplied" });
 });
 test("multimodal action sends video plus caption and validates audio/visual evidence before saving", async () => {
   const { t, alice } = await sessions(); const { itemId } = await alice.mutation(api.reels.submit, { text });

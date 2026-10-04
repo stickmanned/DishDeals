@@ -32,6 +32,8 @@ type Env = {
   readonly SCRAPECREATORS_API_KEY?: string;
   readonly GEMINI_API_KEY?: string;
   readonly GEMINI_REEL_MODEL?: string;
+  readonly REEL_MEDIA_USAGE_AUTHORIZED?: string;
+  readonly REEL_WEB_ORIGIN?: string;
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
 };

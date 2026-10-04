@@ -6,6 +6,8 @@ const app = defineApp({ env: {
   SCRAPECREATORS_API_KEY: v.optional(v.string()),
   GEMINI_API_KEY: v.optional(v.string()),
   GEMINI_REEL_MODEL: v.optional(v.string()),
+  REEL_MEDIA_USAGE_AUTHORIZED: v.optional(v.string()),
+  REEL_WEB_ORIGIN: v.optional(v.string()),
 } });
 app.use(workflow);
 export default app;

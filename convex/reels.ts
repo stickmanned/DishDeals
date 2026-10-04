@@ -31,12 +31,24 @@ async function enqueue(ctx: MutationCtx, itemId: Id<"reelItems">, generation: nu
   const workflowId = await reelWorkflow.start(ctx, internal.reelWorkflow.process, { itemId, generation });
   await ctx.db.patch(itemId, { workflowId });
 }
-async function erase(ctx: MutationCtx, item: NonNullable<Awaited<ReturnType<typeof owned>>>) {
-  if (item.workflowId) {
-    await reelWorkflow.cancel(ctx, item.workflowId as WorkflowId);
-    // Cancellation prevents future steps. Running actions still use generation/existence guards.
-    await ctx.scheduler.runAfter(60000, internal.reels.cleanupWorkflow, { workflowId: item.workflowId });
+// Only an in-progress workflow can be cancelled. A completed, failed or already-canceled workflow (a
+// failed item's workflow has finished), or one already cleaned up, is a normal state and is skipped.
+// Any other failure (a bad id, a cancel error on a running workflow) is NOT swallowed.
+async function stopWorkflow(ctx: MutationCtx, workflowId: string | undefined) {
+  if (!workflowId) return;
+  let running: boolean;
+  try {
+    running = (await reelWorkflow.status(ctx, workflowId as WorkflowId)).type === "inProgress";
+  } catch (error) {
+    if (!/^Workflow not found:/.test(error instanceof Error ? error.message : "")) throw error;
+    running = false;
   }
+  if (running) await reelWorkflow.cancel(ctx, workflowId as WorkflowId);
+  // Cancellation prevents future steps. Running actions still use generation/existence guards.
+  await ctx.scheduler.runAfter(60000, internal.reels.cleanupWorkflow, { workflowId });
+}
+async function erase(ctx: MutationCtx, item: NonNullable<Awaited<ReturnType<typeof owned>>>) {
+  await stopWorkflow(ctx, item.workflowId);
   if (item.videoId) await ctx.storage.delete(item.videoId);
   await ctx.db.delete(item._id);
 }
@@ -52,7 +64,7 @@ export const submit = mutation({ args: { text: v.string(), retentionDays: v.opti
     await rateLimit(ctx, ownerId);
     const now = Date.now(), expiresAt = now + retentionDays * day;
     const itemId = await ctx.db.insert("reelItems", { ownerId, sourceUrl, status: "queued", generation: 1, attempts: 1, updatedAt: now, expiresAt });
-    await enqueue(ctx, itemId, 1);
+    // Link-only: nothing is enqueued. The user attaches their own recording (POST /reel-source); the legacy resolver is never started here.
     await ctx.scheduler.runAt(expiresAt, internal.reels.expire, { itemId, expiresAt });
     return { itemId, duplicate: false };
   } });
@@ -69,11 +81,12 @@ export const retry = mutation({ args: { itemId: v.id("reelItems") }, returns: v.
   const generation = bump(item.generation), attempts = bump(item.attempts);
   if (generation === null || attempts === null) throw new ConvexError("This item cannot be retried again.");
   await rateLimit(ctx, item.ownerId);
-  if (item.workflowId) { await reelWorkflow.cancel(ctx, item.workflowId as WorkflowId); await ctx.scheduler.runAfter(60000, internal.reels.cleanupWorkflow, { workflowId: item.workflowId }); }
-  if (item.videoId) await ctx.storage.delete(item.videoId);
+  await stopWorkflow(ctx, item.workflowId);
+  // A supplied recording is the user's own source and is kept for the retry; resolver-fetched media is dropped.
+  if (item.videoId && item.sourceKind !== "supplied") await ctx.storage.delete(item.videoId);
   // The private draft, its revision/edited flags and the previous extraction
   // (provenance) are kept until a new extraction arrives. Only the media is dropped.
-  await ctx.db.patch(itemId, { generation, attempts, status: "queued", updatedAt: Date.now(), error: undefined, videoId: undefined });
+  await ctx.db.patch(itemId, { generation, attempts, status: "queued", updatedAt: Date.now(), error: undefined, ...(item.sourceKind === "supplied" ? {} : { videoId: undefined }) });
   await enqueue(ctx, itemId, generation);
   return null;
 } });
@@ -119,8 +132,10 @@ export const finish = internalMutation({ args: { ...jobArgs, extractionJson: v.s
 } });
 export const fail = internalMutation({ args: { ...jobArgs, code: v.string(), message: v.string() }, returns: v.null(), handler: async (ctx, args) => {
   const item = await ctx.db.get(args.itemId); if (!item || item.generation !== args.generation || item.expiresAt <= Date.now()) return null;
-  if (item.videoId) await ctx.storage.delete(item.videoId);
-  await ctx.db.patch(item._id, { videoId: undefined, status: "failed", error: { code: args.code, message: args.message }, updatedAt: Date.now() }); return null;
+  // Supplied media is retained for retries until success, no-deal, deletion, expiry or replacement.
+  const keep = item.sourceKind === "supplied";
+  if (item.videoId && !keep) await ctx.storage.delete(item.videoId);
+  await ctx.db.patch(item._id, { ...(keep ? {} : { videoId: undefined }), status: "failed", error: { code: args.code, message: args.message }, updatedAt: Date.now() }); return null;
 } });
 export const expire = internalMutation({ args: { itemId: v.id("reelItems"), expiresAt: v.number() }, returns: v.null(), handler: async (ctx, args) => {
   const item = await ctx.db.get(args.itemId); if (item && item.expiresAt === args.expiresAt && item.expiresAt <= Date.now()) await erase(ctx, item); return null;
@@ -129,3 +144,33 @@ export const cleanupWorkflow = internalMutation({ args: { workflowId: v.string()
   const done = await reelWorkflow.cleanup(ctx, args.workflowId as WorkflowId);
   if (!done) await ctx.scheduler.runAfter(60000, internal.reels.cleanupWorkflow, args); return null;
 } });
+
+// Atomic association of a server-stored recording to the CURRENT, owned,
+// unexpired item generation. The ownerId is passed only by the authenticated
+// HTTP route (internal function), never by a client. On any rejection the
+// caller deletes the orphaned upload.
+export const attachSupplied = internalMutation({
+  args: { itemId: v.id("reelItems"), ownerId: v.id("users"), expectedGeneration: v.number(), videoId: v.id("_storage"),
+    mediaMime: v.union(v.literal("video/mp4"), v.literal("video/mov")), mediaBytes: v.number(), duration: v.number(),
+    caption: v.union(v.string(), v.null()), publishedAt: v.union(v.string(), v.null()) },
+  returns: v.union(v.object({ attached: v.literal(true), generation: v.number() }), v.object({ attached: v.literal(false), reason: v.string() })),
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    if (!item || item.ownerId !== args.ownerId || item.expiresAt <= Date.now()) return { attached: false as const, reason: "not_found" };
+    if (item.generation !== args.expectedGeneration) return { attached: false as const, reason: "stale" };
+    const generation = bump(item.generation);
+    if (generation === null) return { attached: false as const, reason: "corrupt" };
+    try { await rateLimit(ctx, item.ownerId); } catch { return { attached: false as const, reason: "rate_limited" }; }
+    // Stop the old workflow and invalidate its late results by advancing the generation.
+    await stopWorkflow(ctx, item.workflowId);
+    if (item.videoId && item.videoId !== args.videoId) await ctx.storage.delete(item.videoId); // superseded owned media
+    await ctx.db.patch(item._id, { generation, status: "queued", updatedAt: Date.now(), error: undefined, sourceKind: "supplied", videoId: args.videoId,
+      mediaMime: args.mediaMime, mediaBytes: args.mediaBytes, duration: args.duration, caption: args.caption ?? undefined, publishedAt: args.publishedAt ?? undefined });
+    await enqueue(ctx, item._id, generation);
+    return { attached: true as const, generation };
+  } });
+export const sourceTarget = internalQuery({ args: { itemId: v.id("reelItems"), ownerId: v.id("users") }, returns: v.union(v.object({ generation: v.number() }), v.null()),
+  handler: async (ctx, args) => {
+    const item = await ctx.db.get(args.itemId);
+    return item && item.ownerId === args.ownerId && item.expiresAt > Date.now() ? { generation: item.generation } : null;
+  } });
