@@ -1,6 +1,6 @@
 // Published teammate /v1 server-integration routes (cc47c03 convex/http.ts), registered from the canonical
 // router. Route handlers are byte-for-byte the published ones; only this wrapper and the import block differ.
-import { httpAction } from "../../convex/_generated/server";
+import { env, httpAction } from "../../convex/_generated/server";
 import { internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { HttpRouter } from "convex/server";
@@ -14,7 +14,7 @@ const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body)
   status, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
 });
 function authorized(request: Request) {
-  const token = process.env.WORKFLOW_API_TOKEN;
+  const token = env.WORKFLOW_API_TOKEN;
   return !!token && token.length >= 32 && request.headers.get("Authorization") === `Bearer ${token}`;
 }
 async function readBody(request: Request): Promise<unknown> {

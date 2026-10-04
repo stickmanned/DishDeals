@@ -36,7 +36,7 @@ it("live providers need the separate usage authorization after the keys", () => 
   expect(() => liveDependencies(keys)).toThrow(expect.objectContaining({ code: "CONFIGURATION" }));
   expect(() => liveDependencies({ ...keys, WORKFLOW_PROVIDER_USAGE_AUTHORIZED: "yes" })).toThrow(expect.objectContaining({ code: "CONFIGURATION" }));
   expect(() => liveDependencies({})).toThrow("GEMINI_API_KEY");
-  expect(() => liveDependencies({ ...keys, WORKFLOW_PROVIDER_USAGE_AUTHORIZED: "true" })).not.toThrow();
+  expect(() => liveDependencies({ ...keys, GEMINI_MODEL: "synthetic-model", WORKFLOW_PROVIDER_USAGE_AUTHORIZED: "true" })).not.toThrow();
 });
 it("a queued job fails closed with no provider traffic when usage is not authorized", async () => {
   vi.stubEnv("GEMINI_API_KEY", "fake-gemini"); vi.stubEnv("GEOAPIFY_API_KEY", "fake-geo"); vi.stubEnv("WORKFLOW_PROVIDER_USAGE_AUTHORIZED", "");

@@ -10,7 +10,7 @@ describe("deal ingestion", () => {
       .mockResolvedValueOnce(geoResponse([{ place_id: "city-id", country_code: "ca" }]))
       .mockResolvedValueOnce(geoResponse([{ place_id: place.placeId, name: place.name, formatted: place.address,
         lat: place.latitude, lon: place.longitude, city: "Richmond", country_code: "ca", categories: place.categories }]));
-    const deps = liveDependencies({ GEMINI_API_KEY: "fake-gemini", GEOAPIFY_API_KEY: "fake-geo", WORKFLOW_PROVIDER_USAGE_AUTHORIZED: "true" }, fetcher);
+    const deps = liveDependencies({ GEMINI_API_KEY: "fake-gemini", GEOAPIFY_API_KEY: "fake-geo", GEMINI_MODEL: "synthetic-model", WORKFLOW_PROVIDER_USAGE_AUTHORIZED: "true" }, fetcher);
     const result = await processDeal(input, { ...deps, now });
     expect(result.outcomes[0].status).toBe("ready");
     expect(result.outcomes[0].restaurant?.latitude).toBe(49.1666);

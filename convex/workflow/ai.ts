@@ -1,8 +1,9 @@
 import { v } from "convex/values";
-import { internalAction, internalMutation } from "../_generated/server";
+import { env, internalAction, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { resultSchema } from "../../lib/workflow/contracts";
 import { liveDependencies, processDeal } from "../../lib/workflow/workflow";
+import { pickWorkflowEnv } from "../../lib/workflow/config";
 import { safeError } from "../../lib/workflow/errors";
 
 export const claim = internalMutation({ args: { jobId: v.id("workflowJobs") }, handler: async (ctx, args) => {
@@ -24,7 +25,9 @@ export const finish = internalMutation({ args: { jobId: v.id("workflowJobs"), at
       restaurantId = existing?._id ?? await ctx.db.insert("workflowRestaurants", { placeId: place.placeId, dataJson: JSON.stringify(place) });
     }
     await ctx.db.insert("workflowDeals", { jobId: job._id, restaurantId, dataJson: JSON.stringify(outcome),
-      status: outcome.status === "ready" ? "published" : outcome.status,
+      // N-REMOTE-B: model output never auto-publishes on global confidence or a Geoapify match. A "ready" outcome waits
+      // for the owner's explicit review (`workflow.deals.reviewDeal`); the stored outcome JSON is left exactly as produced.
+      status: outcome.status === "rejected" ? "rejected" : "needs_review",
       timezone: result.timezone, sourceUrl: result.source.url, createdAt: Date.now() });
   }
   // Transaction commits the output and all deals together, preventing partial publication.
@@ -39,7 +42,7 @@ export const run = internalAction({ args: { jobId: v.id("workflowJobs") }, handl
   const claimed = await ctx.runMutation(internal.workflow.ai.claim, args);
   if (!claimed) return;
   try {
-    const result = await processDeal(JSON.parse(claimed.inputJson), liveDependencies(process.env));
+    const result = await processDeal(JSON.parse(claimed.inputJson), liveDependencies(pickWorkflowEnv(env)));
     await ctx.runMutation(internal.workflow.ai.finish, { ...args, attempt: claimed.attempt, resultJson: JSON.stringify(result) });
   } catch (error) {
     await ctx.runMutation(internal.workflow.ai.fail, { ...args, attempt: claimed.attempt, errorJson: JSON.stringify(safeError(error)) });

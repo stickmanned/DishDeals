@@ -10,7 +10,7 @@ const token = "test-integration-token-at-least-32-characters";
 const auth = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-03T20:00:00Z"));
-  vi.stubEnv("GEMINI_API_KEY", "test-gemini"); vi.stubEnv("GEOAPIFY_API_KEY", "test-geo"); vi.stubEnv("WORKFLOW_API_TOKEN", token); vi.stubEnv("WORKFLOW_PROVIDER_USAGE_AUTHORIZED", "true");
+  vi.stubEnv("GEMINI_API_KEY", "test-gemini"); vi.stubEnv("GEOAPIFY_API_KEY", "test-geo"); vi.stubEnv("WORKFLOW_API_TOKEN", token); vi.stubEnv("WORKFLOW_PROVIDER_USAGE_AUTHORIZED", "true"); vi.stubEnv("GEMINI_MODEL", "synthetic-model");
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 function mockProviders(overrides = {}) {
@@ -27,8 +27,12 @@ it("runs HTTP submission -> scheduled action -> atomic storage -> public map", a
   await t.finishAllScheduledFunctions(vi.runAllTimers);
   const jobResponse = await t.fetch(`/v1/jobs?id=${jobId}`, { headers: auth });
   const job = await jobResponse.json();
-  expect(job.status).toBe("completed"); expect(job.deals[0].status).toBe("published");
+  // N-REMOTE-B: a high-confidence, fully matched offer still waits for the owner (no auto-publish on confidence/Geoapify).
+  expect(job.status).toBe("completed"); expect(job.deals[0].status).toBe("needs_review");
   expect(job).not.toHaveProperty("inputJson");
+  expect((await (await t.fetch("/v1/deals")).json()).deals).toHaveLength(0);
+  const reviewed = await t.fetch("/v1/deals/review", { method: "POST", headers: auth, body: JSON.stringify({ dealId: job.deals[0].dealId, decision: "approve" }) });
+  expect(reviewed.status).toBe(200);
   const map = await (await t.fetch("/v1/deals")).json();
   expect(map.deals).toHaveLength(1); expect(map.deals[0].restaurant.latitude).toBe(place.latitude);
   const duplicate = await (await t.fetch("/v1/jobs", { method: "POST", headers: auth, body: JSON.stringify(input) })).json();
@@ -86,6 +90,7 @@ it("expires published deals and limits new submissions per owner", async () => {
   const t = convexTest(schema, modules), alice = t.withIdentity({ subject: "alice", tokenIdentifier: "alice" });
   mockProviders(); const { jobId } = await alice.mutation(api.workflow.jobs.submit, { inputJson: JSON.stringify(input) });
   await t.finishAllScheduledFunctions(vi.runAllTimers);
+  await alice.mutation(api.workflow.deals.reviewDeal, { dealId: (await alice.query(api.workflow.jobs.get, { jobId }))!.deals[0].dealId, decision: "approve" });
   vi.setSystemTime(new Date("2026-11-01T20:00:00Z"));
   expect(await t.query(api.workflow.deals.listForMap, { now: Date.now() })).toHaveLength(0);
   expect(await t.mutation(internal.workflow.maintenance.expireDeals, {})).toEqual({ expired: 1 });

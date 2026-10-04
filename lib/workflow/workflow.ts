@@ -73,10 +73,13 @@ export function liveDependencies(env: Record<string, string | undefined>, fetche
   if (!env.GEMINI_API_KEY?.trim()) throw new WorkflowError("MISSING_API_KEY", "Set GEMINI_API_KEY in the backend environment.");
   if (!env.GEOAPIFY_API_KEY?.trim()) throw new WorkflowError("MISSING_API_KEY", "Set GEOAPIFY_API_KEY in the backend environment.");
   if (!providerUsageAuthorized(env)) throw new WorkflowError("CONFIGURATION", "Provider usage is not authorized for this deployment (WORKFLOW_PROVIDER_USAGE_AUTHORIZED).");
+  // No implicit model name: an unset primary model is a configuration error before any paid request.
+  const model = env.GEMINI_MODEL?.trim();
+  if (!model) throw new WorkflowError("CONFIGURATION", "Set GEMINI_MODEL to an explicit Gemini model in the backend environment.");
   const deadline = Date.now() + 240000;
   return {
-    extract: input => extractWithGemini(input, { apiKey: env.GEMINI_API_KEY!, model: env.GEMINI_MODEL || "gemini-3.8-flash",
-      fallbackModel: env.GEMINI_FALLBACK_MODEL, fetcher, deadline }),
+    extract: input => extractWithGemini(input, { apiKey: env.GEMINI_API_KEY!, model,
+      fallbackModel: env.GEMINI_FALLBACK_MODEL?.trim() || undefined, fetcher, deadline }),
     locate: (deal, input) => findRestaurant(deal, input, { apiKey: env.GEOAPIFY_API_KEY!, fetcher, deadline }),
   };
 }

@@ -44,7 +44,7 @@ it("allows direct authenticated Convex search and guards anonymous actions", asy
   expect(result.recommendations).toHaveLength(1);
 });
 it("uses the Gemini intent and evidence plan from server-only configuration", async () => {
-  const t = setup(); const id = await seed(t); vi.stubEnv("GEMINI_API_KEY", "fake-secret");
+  const t = setup(); const id = await seed(t); vi.stubEnv("GEMINI_API_KEY", "fake-secret"); vi.stubEnv("GEMINI_SEARCH_MODEL", "synthetic-search-model");
   const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(modelResponse({ keywords: ["ramen"], excludeKeywords: [], city: null,
     maxPrice: 15, currency: "CAD", maxDistanceKm: null, requiresOrigin: false, availableNow: false, sortBy: "price", unsupportedNeeds: [] }))
     .mockResolvedValueOnce(modelResponse({ selections: [{ dealId: id, hookFactId: "price", supportFactIds: ["discount"], angle: "value" }] }));
@@ -62,6 +62,7 @@ it("enforces search limits independently from ingestion limits", async () => {
 });
 it("automatically searches the web for an empty authenticated query without adding offers to the database", async () => {
   const t = setup(); vi.stubEnv("GEMINI_API_KEY", "fake-secret");
+  vi.stubEnv("GEMINI_SEARCH_MODEL", "synthetic-search-model"); vi.stubEnv("GEMINI_WEB_SEARCH_MODEL", "synthetic-web-model");
   const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(modelResponse({ keywords: ["Haidilao"], excludeKeywords: [], city: null,
     maxPrice: null, currency: null, maxDistanceKm: null, requiresOrigin: false, availableNow: false, sortBy: "relevance", unsupportedNeeds: [] }))
     .mockResolvedValueOnce(Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "No verified offer. Visit the official Haidilao website." }] },

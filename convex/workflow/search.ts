@@ -1,11 +1,11 @@
 import { v, ConvexError } from "convex/values";
-import { action, internalAction, internalMutation, internalQuery } from "../_generated/server";
+import { action, env, internalAction, internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { requireOwner } from "./auth";
 import { outcomeSchema } from "../../lib/workflow/contracts";
 import { searchInputSchema, type SearchRecord, type SearchResult } from "../../lib/workflow/search-contracts";
 import { searchDeals } from "../../lib/workflow/search";
-import { providerUsageAuthorized } from "../../lib/workflow/workflow";
+import { pickWorkflowEnv, searchProviders } from "../../lib/workflow/config";
 import { geminiSearch } from "../../lib/workflow/search-gemini";
 import { supplementEmptySearch } from "../../lib/workflow/web-discovery";
 
@@ -35,13 +35,11 @@ export const run = internalAction({ args: { inputJson: v.string(), owner: v.stri
   if (!parsed.success) throw new ConvexError("Invalid search query or filters.");
   await ctx.runMutation(internal.workflow.search.reserve, { owner: args.owner });
   const records = await ctx.runQuery(internal.workflow.search.catalog, { focusDealId: parsed.data.focusDealId });
-  const now = new Date(), key = providerUsageAuthorized(process.env) ? process.env.GEMINI_API_KEY : undefined;
-  const config = key?.trim() ? { apiKey: key, model: process.env.GEMINI_SEARCH_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash",
-    deadline: Date.now() + 90000 } : null;
-  const ai = config ? geminiSearch(config, now) : {};
+  // Explicit models only (typed env via the gated config helper); an unset model or gate means no provider request.
+  const now = new Date(), providers = searchProviders(pickWorkflowEnv(env)), deadline = Date.now() + 90000;
+  const ai = providers.understand ? geminiSearch({ ...providers.understand, deadline }, now) : {};
   const result = await searchDeals(parsed.data, { records, now: () => now, ...ai });
-  return supplementEmptySearch(result, parsed.data, config ? { ...config,
-    model: process.env.GEMINI_WEB_SEARCH_MODEL || config.model } : null, now);
+  return supplementEmptySearch(result, parsed.data, providers.web ? { ...providers.web, deadline } : null, now);
 } });
 export const find = action({ args: { inputJson: v.string() }, handler: async (ctx, args): Promise<SearchResult> => {
   const owner = await requireOwner(ctx);
