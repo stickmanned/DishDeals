@@ -67,15 +67,16 @@ export function parseNativeContext(raw: unknown, nowMs: number): NativeContextRe
 
 export const NATIVE_CONTEXT_TRUNCATED_CODE = "NATIVE_CONTEXT_TRUNCATED";
 export const NATIVE_CONTEXT_TRUNCATED_MESSAGE =
-  "The text shared with this Reel was cut off, so automatic analysis is paused. Paste the complete caption and attach your recording again, or edit the draft by hand.";
+  "The text shared with this Reel was cut off, so automatic analysis is blocked. Delete this save and share the Reel again with its complete text, or fill in the draft by hand.";
 
 /**
- * Truncated supplied text may not drive automatic extraction on its own: a model must not treat partial source text
- * as the whole caption. The user lifts the block by explicitly supplying the complete text as the editable caption
- * (or skips analysis and uses the manual flow). Old context-less items and complete contexts are never blocked.
+ * Truncated supplied text ALWAYS blocks automatic extraction: a model must not treat partial source text as the whole
+ * caption, and the optional caption box carries no assertion that its text is complete, so no caption lifts the block.
+ * The manual draft flow stays open. An explicit complete-context confirmation would need its own owned, server-side
+ * state and is a separate ticket. Complete contexts and old context-less items are never blocked.
  */
-export function extractionBlock(item: { nativeContext?: NativeContext | null; caption?: string | null }): { code: string; message: string } | null {
-  if (item.nativeContext?.truncated !== true || item.caption?.trim()) return null;
+export function extractionBlock(item: { nativeContext?: NativeContext | null }): { code: string; message: string } | null {
+  if (item.nativeContext?.truncated !== true) return null;
   return { code: NATIVE_CONTEXT_TRUNCATED_CODE, message: NATIVE_CONTEXT_TRUNCATED_MESSAGE };
 }
 

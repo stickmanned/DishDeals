@@ -150,6 +150,11 @@ describe("saveReelLink with native context (receipt only after the server stored
     expect(submit).not.toHaveBeenCalled();
     expect(post).not.toHaveBeenCalled();
   });
+  it("reports a duplicate (the server kept its first save and ignored the new context) so the UI cannot claim the new text was stored", async () => {
+    const out = await saveReelLink(REEL, 7, async () => ({ itemId: "item1", duplicate: true }), () => "sent", context());
+    expect(out).toEqual({ itemId: "item1", receipt: "sent", duplicate: true });
+    expect(await saveReelLink(REEL, 7, async () => ({ itemId: "item1", duplicate: false }), () => "sent", context())).toEqual({ itemId: "item1", receipt: "sent" });
+  });
   it("a failed or unconfirmed save never sends the receipt, even with context", async () => {
     const post = vi.fn(() => "sent" as const);
     await expect(saveReelLink(REEL, 7, async () => { throw new Error("Not signed in"); }, post, context())).rejects.toThrow("Not signed in");
@@ -166,5 +171,7 @@ describe("recovery stays explicit and in memory (source guard on the intake scre
     expect(intakeSource).toContain("requestShareContext");
     // The only submit path is the user's save handler through saveReelLink.
     expect(intakeSource.match(/submit\(/g)).toHaveLength(1);
+    // A duplicate with context sent is disclosed instead of being presented as a stored full-context save.
+    expect(intakeSource).toContain("was not stored with it");
   });
 });

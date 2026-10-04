@@ -254,7 +254,7 @@ describe("truncated supplied source", () => {
     expect(await s.t.run(async ctx => (await ctx.storage.get(videoId)) !== null)).toBe(true);
     expect((await s.alice.query(api.reels.get, { itemId })).nativeContext?.truncated).toBe(true); // visible to the owner
   });
-  it("stays blocked on retry with no complete caption, even with the model enabled", async () => {
+  it("stays blocked on retry, even with the model enabled", async () => {
     const s = await setup(); enableModel();
     const itemId = await submitWith(s, context({ truncated: true }));
     await s.attach(itemId as never, (await s.row(itemId))!.ownerId as never, 1);
@@ -264,20 +264,17 @@ describe("truncated supplied source", () => {
     expect(await s.row(itemId)).toMatchObject({ status: "failed", error: { code: NATIVE_CONTEXT_TRUNCATED_CODE } });
     expect(sdk.generateContent).not.toHaveBeenCalled();
   });
-  it("is lifted only when the user explicitly supplies the complete text as the editable caption; the partial text is sent marked incomplete", async () => {
+  it("is not lifted by any caption, however long: one word or a full paste still blocks, and the model is never called", async () => {
     const s = await setup(); enableModel();
     const itemId = await submitWith(s, context({ truncated: true }));
     const ownerId = (await s.row(itemId))!.ownerId as never;
-    await s.attach(itemId as never, ownerId, 1);
+    await s.attach(itemId as never, ownerId, 1, "word");
     await s.settle();
-    expect((await s.row(itemId))!.generation).toBe(2);
-    await s.attach(itemId as never, ownerId, 2, "Full caption: Cafe Aroma lunch special $8 bowl");
-    sdk.generateContent.mockResolvedValueOnce(modelAnswer("$8 bowl"));
+    expect(await s.row(itemId)).toMatchObject({ status: "failed", generation: 2, error: { code: NATIVE_CONTEXT_TRUNCATED_CODE } });
+    await s.attach(itemId as never, ownerId, 2, "Full caption: Cafe Aroma lunch special $8 bowl, Mon to Fri");
     await s.settle();
-    expect(await s.row(itemId)).toMatchObject({ status: "ready" });
-    const parts = sdk.generateContent.mock.calls[0][0].contents[0].parts;
-    expect(JSON.parse(parts[2].text).nativeSuppliedSource.complete).toBe(false);
-    expect(JSON.parse(parts[1].text).caption).toContain("Full caption");
+    expect(await s.row(itemId)).toMatchObject({ status: "failed", generation: 3, error: { code: NATIVE_CONTEXT_TRUNCATED_CODE } });
+    expect(sdk.generateContent).not.toHaveBeenCalled();
   });
   it("leaves the manual flow open: a blocked item still accepts a manual private draft", async () => {
     const s = await setup();

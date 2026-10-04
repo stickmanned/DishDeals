@@ -94,17 +94,18 @@ export function recoveredLink(shared: string | undefined): string | null {
  * receipt. Used for both manual saves and user-confirmed recovered links.
  *
  * `nativeContext` (optional, only from a validated native recovery) travels in
- * the SAME submit, so the server has stored it before the receipt is sent. A
+ * the SAME submit, so the server has stored it before the receipt is sent (unless
+ * the link was already saved: then the first save is kept and `duplicate` is set). A
  * context that fails the strict bounded check is never submitted. Old calls
  * without it are unchanged.
  */
 export async function saveReelLink(
   input: string,
   retentionDays: number,
-  submit: (args: { text: string; retentionDays: number; nativeContext?: NativeContext }) => Promise<{ itemId?: string } | null | undefined>,
+  submit: (args: { text: string; retentionDays: number; nativeContext?: NativeContext }) => Promise<{ itemId?: string; duplicate?: boolean } | null | undefined>,
   post: (message: NativeMessage) => NativeDelivery = postNativeMessage,
   nativeContext?: NativeContext,
-): Promise<{ itemId: string; receipt: NativeDelivery }> {
+): Promise<{ itemId: string; receipt: NativeDelivery; duplicate?: true }> {
   const sourceUrl = normalizeInstagramUrl(input);
   let context: NativeContext | undefined;
   if (nativeContext !== undefined) {
@@ -117,7 +118,9 @@ export async function saveReelLink(
   if (!result || typeof result.itemId !== "string" || !ITEM_ID_PATTERN.test(result.itemId)) {
     throw new Error("The server did not confirm the save.");
   }
-  return { itemId: result.itemId, receipt: post({ type: "received", sourceUrl }) };
+  // `duplicate` is reported only when the server says the link was already saved: the server then kept its first
+  // context and ignored any newly sent one, so callers must not tell the user the new text was stored.
+  return { itemId: result.itemId, receipt: post({ type: "received", sourceUrl }), ...(result.duplicate === true ? { duplicate: true as const } : {}) };
 }
 
 // ---- Trusted native recovery of the supplied context (explicit consent only) ----

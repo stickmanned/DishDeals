@@ -80,21 +80,21 @@ describe("parseNativeContext", () => {
 });
 
 describe("extractionBlock (truncated supplied text)", () => {
-  const item = (nativeContext: NativeContext | undefined, caption?: string | null) => ({ nativeContext, caption });
   const full = ctx() as NativeContext, cut = ctx({ truncated: true }) as NativeContext;
-  it("blocks automatic extraction for truncated context with a named code and a manual option", () => {
-    const block = extractionBlock(item(cut));
+  it("always blocks automatic extraction for truncated context, with a named code and a manual option", () => {
+    const block = extractionBlock({ nativeContext: cut });
     expect(block?.code).toBe(NATIVE_CONTEXT_TRUNCATED_CODE);
     expect(block?.message).toMatch(/cut off/);
+    expect(block?.message).toMatch(/share the Reel again/);
     expect(block?.message).toMatch(/by hand/);
   });
-  it("treats blank or whitespace-only captions as no explicit complete text", () => {
-    for (const caption of [undefined, null, "", "   \n"]) expect(extractionBlock(item(cut, caption))).not.toBeNull();
+  it("is not lifted by any caption: the optional caption box makes no completeness assertion", () => {
+    for (const caption of [undefined, null, "", "   ", "x", "one word", "A long pasted caption that is still not an assertion of completeness"])
+      expect(extractionBlock({ nativeContext: cut, caption } as never)).not.toBeNull();
   });
-  it("is lifted only by the user's own non-empty caption", () => { expect(extractionBlock(item(cut, "Complete caption pasted by the user"))).toBeNull(); });
   it("never blocks complete context or old context-less items", () => {
-    expect(extractionBlock(item(full))).toBeNull();
-    expect(extractionBlock(item(undefined))).toBeNull();
+    expect(extractionBlock({ nativeContext: full })).toBeNull();
+    expect(extractionBlock({ nativeContext: undefined })).toBeNull();
     expect(extractionBlock({})).toBeNull();
   });
 });
