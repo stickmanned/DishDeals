@@ -1,0 +1,133 @@
+{
+  "taskId": "T-06B-ASSETS",
+  "candidateId": "CAND-11",
+  "restaurant": "Acqua Restaurant & Bar",
+  "sourceUrl": "https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf",
+  "retrieval": {
+    "retrievedUtc": "2026-10-04T06:11:43Z",
+    "httpStatus": 200,
+    "contentType": "application/pdf",
+    "serverLastModified": "Tue, 08 Sep 2026 20:16:02 GMT",
+    "publicationDateStatus": "unknown_date (filename Acqua-HH-Menu-05-2026.pdf is unverified publication date)"
+  },
+  "pdfDocument": {
+    "filename": "Acqua-HH-Menu-05-2026.pdf",
+    "path": "fixtures/source-assets/Acqua-HH-Menu-05-2026.pdf",
+    "byteSize": 3225876,
+    "sha256": "92041867c10159c3ee6e2664ecb250b1f203a71c4b8c22738ad9fa4914954886",
+    "header": "%PDF-1.4%",
+    "pageCount": 4,
+    "mediaBoxPoints": {
+      "width": 396.0,
+      "height": 612.0
+    }
+  },
+  "renderer": {
+    "engine": "macOS Native PDFKit (Apple Quartz / CoreGraphics via Swift)",
+    "toolPath": "/usr/bin/swift",
+    "installation": "native_zero_install",
+    "scaleFactor": 2.0,
+    "exactCommand": "swift -e '<Swift script using PDFDocument, PDFPage.draw(with: .mediaBox, to: context), NSBitmapImageRep PNG export>'"
+  },
+  "renderedImages": [
+    {
+      "pageIndex": 0,
+      "pageNumber": 1,
+      "filename": "acqua-hh-menu-page-0.png",
+      "path": "fixtures/source-assets/acqua-hh-menu-page-0.png",
+      "mimeType": "image/png",
+      "width": 792,
+      "height": 1223,
+      "byteSize": 761535,
+      "sha256": "ffc2e17aa9857d94cb7f892aef7489653f48b736c7f8c030195a90be91009653",
+      "sectionTitle": "HAPPY HOUR SNACKS",
+      "dealEvidence": {
+        "item": "FRESH OYSTERS*",
+        "statedPrice": "$1.75 /EACH",
+        "statedConditions": [
+          "Minimum order of 6 pieces (Min. 6 pcs)",
+          "Served with Champagne Sabayon, Peach Granita, Lemon Wedges",
+          "Raw consumption warning: The consumption of RAW oysters poses an increased risk of foodborne illness"
+        ],
+        "otherItems": [
+          "Acqua Slider Mini-Organic $13",
+          "Fries' Basket $12",
+          "Brussels Sprouts $12",
+          "Nachos $15",
+          "Fire Dusted Calamari $14",
+          "Chicken Quesadilla $15",
+          "Chicken Wings $15"
+        ]
+      }
+    },
+    {
+      "pageIndex": 1,
+      "pageNumber": 2,
+      "filename": "acqua-hh-menu-page-1.png",
+      "path": "fixtures/source-assets/acqua-hh-menu-page-1.png",
+      "mimeType": "image/png",
+      "width": 792,
+      "height": 1223,
+      "byteSize": 374221,
+      "sha256": "758e00135c464453b34e7b0f761232cf24a8351adeb2c8e2224804cd788292d8",
+      "sectionTitle": "HAPPY HOUR DRINKS & HOURS",
+      "dealEvidence": {
+        "schedule": {
+          "sundayMonday": "4 - 6 PM",
+          "tuesdaySaturday": "4 - 6 PM & 9 - 10 PM"
+        },
+        "address": "4201 Lougheed HWY, Burnaby, BC",
+        "phone": "(604) 297 - 2118",
+        "website": "www.acquarestaurantandbar.com",
+        "disclaimer": "Prices Not Including Taxes & Gratuities",
+        "beveragePrices": [
+          "White or Red 5 oz $6",
+          "Prosecco 5 oz $7",
+          "Draught Beer 16 oz $6",
+          "Bottle Beer $6",
+          "Highballs 1 oz $6",
+          "Strawberry Aperol Spritz $8.5"
+        ]
+      }
+    },
+    {
+      "pageIndex": 3,
+      "pageNumber": 4,
+      "filename": "acqua-hh-menu-page-3.png",
+      "path": "fixtures/source-assets/acqua-hh-menu-page-3.png",
+      "mimeType": "image/png",
+      "width": 792,
+      "height": 1223,
+      "byteSize": 912207,
+      "sha256": "7258d6beaaec7db5520e616c0d180e180090caa11b036cd2466b5315e72c1dff",
+      "sectionTitle": "PATIO MENU",
+      "dealEvidence": {
+        "item": "FRESH OYSTERS",
+        "statedPrice": "$1.5/ EACH",
+        "statedConditions": [
+          "Minimum order of 6 pieces (Min. 6 pcs)",
+          "Served with Champagne Sabayon, Peach Granita, Lemon Wedges"
+        ],
+        "otherItems": [
+          "Shrimp Gyoza $14",
+          "Fraser Valley Pate $14",
+          "Shishito Peppers $14",
+          "Arancini $14",
+          "Acqua Flat Bread $14",
+          "Acqua Slider Mini-Organic $14",
+          "Rigatoni Bolognese $14",
+          "Appetizer Platter $38",
+          "Cheese Platter $14"
+        ]
+      }
+    }
+  ],
+  "disclosuresAndBoundaries": {
+    "priceConflict": "Page 0 lists Fresh Oysters at $1.75 each (min 6), while Page 3 (Patio Menu) lists Fresh Oysters at $1.50 each (min 6). Stated amounts require human/review confirmation before publishing.",
+    "currencyStatus": "Pending CAD confirmation; source text displays '$' without explicit ISO code.",
+    "scheduleLimitation": "Page 1 displays split schedules (Sun-Mon 16:00-18:00 vs Tue-Sat 16:00-18:00 & 21:00-22:00). DishDeals schema supports single contiguous window per deal; multi-window representations require variant records or pending human resolution.",
+    "coordinatesStatus": "Omitted; geocoding and pin placement remain strictly owned by Pinyuan.",
+    "mediaClassification": "Genuine rendered digital menu page images from primary publisher PDF. NOT physical paper flyer photos and NOT Instagram video/media.",
+    "extractionFixtures": "No simulated VLM extraction JSON fixtures produced; real model extraction tests remain pending authorized execution."
+  }
+}
