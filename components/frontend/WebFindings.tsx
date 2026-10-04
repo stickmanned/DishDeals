@@ -11,7 +11,7 @@ export function WebFindings({ findings }: { findings: WebDiscovery }) {
     const root = host.shadowRoot ?? host.attachShadow({ mode: "open" });
     // Keep the provider's branding CSS from changing app controls with the same class names.
     root.innerHTML = DOMPurify.sanitize(findings.searchSuggestionsHtml, {
-      ADD_TAGS: ["style"], ADD_ATTR: ["target"],
+      ADD_TAGS: ["style"], ADD_ATTR: ["target"], FORCE_BODY: true,
       FORBID_TAGS: ["script", "iframe", "object", "embed", "form", "input", "textarea"],
     });
     return () => { root.innerHTML = ""; };
