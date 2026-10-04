@@ -16,7 +16,7 @@ import {
   useQuery,
 } from "convex/react";
 import { parseWorkflowDeals, type DealView } from "@/lib/frontend/deals";
-import { demoDeals } from "@/lib/frontend/demoDeals";
+import { demoDeals, previewSeedPosts } from "@/lib/frontend/demoDeals";
 import { workflowApi, type WorkflowSource } from "@/lib/frontend/workflow";
 import { emptyDraft, type Draft } from "@/lib/frontend/draft";
 import { Dialog } from "./Dialog";
@@ -68,6 +68,9 @@ type FrontendState = {
   authenticated: boolean;
   profile: Profile;
   savePreviewProfile: (profile: Profile) => void;
+  /** Deal ids the visitor bookmarked from Discover. Kept for this tab only, like preview votes. */
+  savedIds: string[];
+  toggleSaved: (id: string) => void;
   votes: Record<string, "still_on" | "expired">;
   votePreview: (id: string, value: "still_on" | "expired") => void;
   previewPosts: DealView[];
@@ -122,6 +125,7 @@ function Runtime({
     walletAddress: "",
   });
   const [votes, setVotes] = useState<FrontendState["votes"]>({});
+  const [savedIds, setSavedIds] = useState<string[]>([]);
   const [previewPosts, setPreviewPosts] = useState<DealView[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft),
@@ -166,8 +170,11 @@ function Runtime({
     auth,
     previewSession,
     signInPreview: () => {
+      const name = profile.displayName || "Alex";
       setPreviewSession(true);
       setProfile((p) => ({ ...p, displayName: p.displayName || "Alex" }));
+      // A first preview sign-in starts with a few example posts so Profile isn't empty.
+      setPreviewPosts((posts) => (posts.length || previewSession ? posts : previewSeedPosts(name)));
     },
     // A real signed-in session counts in every mode, so the header and profile links follow the actual login even
     // while Discover shows the example deals (the fake preview session only applies when there is no real one).
@@ -180,6 +187,7 @@ function Runtime({
         setPreviewPosts([]);
         setVotes({});
       }
+      setSavedIds([]);
       setActiveJobId(null);
       setDraft(emptyDraft);
       setSourceImage("");
@@ -193,6 +201,11 @@ function Runtime({
     profile:
       mode === "preview" ? profile : (liveProfile ?? { displayName: "", walletAddress: "" }),
     savePreviewProfile: setProfile,
+    savedIds,
+    toggleSaved: (id) =>
+      setSavedIds((ids) =>
+        ids.includes(id) ? ids.filter((x) => x !== id) : [id, ...ids],
+      ),
     votes,
     votePreview: (id, vote) => setVotes((v) => ({ ...v, [id]: vote })),
     previewPosts,
@@ -227,7 +240,10 @@ function Runtime({
       }),
     deals:
       mode === "preview"
-        ? [...previewPosts, ...demoDeals]
+        ? [
+            ...previewPosts,
+            ...demoDeals.filter((d) => !previewPosts.some((p) => p.restaurant === d.restaurant)),
+          ]
         : (live?.deals ?? []),
     loading:
       mode === "live" && !!live && live.deals === undefined && !live.error,

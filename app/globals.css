@@ -1834,3 +1834,31 @@ img {
   color: var(--muted);
   font-size: 14px;
 }
+
+/* Discover: nearby + saved */
+.nearby-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; margin: 4px 0 16px; }
+.filter-row { flex-wrap: wrap; row-gap: 8px; }
+.view-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.view-tabs .chip { display: inline-flex; align-items: center; gap: 8px; }
+.location-control { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.location-label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-weight: 600; }
+.text-button { background: none; border: 0; padding: 0 4px; min-height: 44px; font: inherit; font-weight: 600; color: var(--char); text-decoration: underline; text-decoration-color: var(--stone); text-underline-offset: 4px; cursor: pointer; }
+.text-button:hover:not(:disabled) { text-decoration-color: var(--char); }
+.text-button:disabled { color: var(--muted); cursor: default; }
+.location-note { font-size: 13px; margin: -4px 0 12px; }
+.deal-card { position: relative; }
+.save-button { position: absolute; top: 22px; right: 22px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--stone); background: var(--plate); color: var(--char); cursor: pointer; transition: background-color 0.15s, color 0.15s; }
+.save-button:hover { background: var(--oat); }
+.save-button.is-saved { background: var(--red); border-color: var(--red); color: var(--plate); }
+.save-button.is-saved:hover { background: var(--red-hover); border-color: var(--red-hover); }
+.card-meta .distance { font: 500 12px var(--mono); background: var(--oat); border: 1px solid var(--stone); border-radius: 999px; padding: 2px 8px; margin-right: 6px; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .save-button { transition: none; } }
+.section-heading { flex-wrap: wrap; }
+.section-heading .view-tabs .chip { min-height: 44px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 6px; }
+.discover-map { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+.discover-map-frame { height: min(62vh, 520px); min-height: 320px; border-radius: 24px; overflow: hidden; border: 1px solid var(--stone); background: var(--oat); }
+@media (min-width: 1001px) { .discover-map { grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); align-items: start; } }
+/* The bookmark sits where the card's arrow icon is; keep titles clear of it. */
+.deal-card:has(.save-button) .card-heading > svg { display: none; }
+.deal-card:has(.save-button) .card-heading { padding-right: 52px; }
+.deal-card:has(.save-button) .card-heading h2 { overflow-wrap: anywhere; }
