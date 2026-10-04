@@ -2,8 +2,9 @@
  * Tests for browser image resizing and video frame extraction (T-14A).
  *
  * Covers pure dimension constraints, deterministic sample timing,
- * file validation bounds, browser environment guards, and synthetic DOM
- * decoder stubs (timeouts, abort cancellation, object URL cleanup).
+ * file validation bounds, browser environment guards, option validation,
+ * and synthetic DOM decoder stubs (hung encoder, stalled seek, late metadata,
+ * abort cancellation during encode, and object URL / listener cleanup).
  *
  * NOTE: Synthetic DOM decoder stubs are unit test fixtures, NOT actual phone
  * or live browser decoding evidence.
@@ -19,6 +20,8 @@ import {
   grabFrames,
   validateImageSource,
   validateVideoSource,
+  validateResizeOptions,
+  validateGrabFramesOptions,
   MAX_IMAGE_WIDTH,
   MAX_INPUT_BYTES,
   MAX_OUTPUT_FRAME_BYTES,
@@ -55,7 +58,7 @@ describe("T-14A image and video frame core utilities", () => {
     it("bounds very tall panoramic images safely within max pixel allocation", () => {
       // 1000 x 20000 = 20,000,000 pixels (exceeds MAX_PIXEL_ALLOCATION 4,096,000)
       const target = computeTargetDimensions(1000, 20000, MAX_IMAGE_WIDTH, MAX_PIXEL_ALLOCATION);
-      expect(target.width * target.height).toBeLessThanOrEqual(MAX_PIXEL_ALLOCATION + 100);
+      expect(target.width * target.height).toBeLessThanOrEqual(MAX_PIXEL_ALLOCATION);
       expect(target.width).toBeLessThanOrEqual(MAX_IMAGE_WIDTH);
       // Aspect ratio (1:20) preserved within rounding
       expect(target.height / target.width).toBeCloseTo(20, 0);
@@ -66,6 +69,44 @@ describe("T-14A image and video frame core utilities", () => {
       expect(() => computeTargetDimensions(100, -50)).toThrow("Invalid source dimensions");
       expect(() => computeTargetDimensions(NaN, 100)).toThrow("Invalid source dimensions");
       expect(() => computeTargetDimensions(100, Infinity)).toThrow("Invalid source dimensions");
+    });
+
+    it("throws on invalid maxWidth or maxPixels (prevents non-terminating loops)", () => {
+      expect(() => computeTargetDimensions(100, 100, 0, 1000)).toThrow("Invalid maxWidth");
+      expect(() => computeTargetDimensions(100, 100, -10, 1000)).toThrow("Invalid maxWidth");
+      expect(() => computeTargetDimensions(100, 100, NaN, 1000)).toThrow("Invalid maxWidth");
+      expect(() => computeTargetDimensions(100, 100, 1000, 0)).toThrow("Invalid maxPixels");
+      expect(() => computeTargetDimensions(100, 100, 1000, -50)).toThrow("Invalid maxPixels");
+      expect(() => computeTargetDimensions(100, 100, 1000, NaN)).toThrow("Invalid maxPixels");
+    });
+  });
+
+  describe("options validation (validateResizeOptions & validateGrabFramesOptions)", () => {
+    it("validates resizeImage options strictly before allocation", () => {
+      expect(() => validateResizeOptions({ maxWidth: -100 })).toThrow("Invalid maxWidth");
+      expect(() => validateResizeOptions({ maxWidth: 0 })).toThrow("Invalid maxWidth");
+      expect(() => validateResizeOptions({ maxPixels: 0 })).toThrow("Invalid maxPixels");
+      expect(() => validateResizeOptions({ quality: 1.5 })).toThrow("Invalid JPEG quality");
+      expect(() => validateResizeOptions({ quality: -0.1 })).toThrow("Invalid JPEG quality");
+      expect(() => validateResizeOptions({ timeoutMs: 0 })).toThrow("Invalid timeoutMs");
+      expect(() => validateResizeOptions({ timeoutMs: -500 })).toThrow("Invalid timeoutMs");
+      // Valid options pass without throwing
+      expect(() =>
+        validateResizeOptions({ maxWidth: 1280, maxPixels: 2000000, quality: 0.85, timeoutMs: 5000 })
+      ).not.toThrow();
+    });
+
+    it("validates grabFrames options strictly before allocation", () => {
+      expect(() => validateGrabFramesOptions({ quality: 1.1 })).toThrow("Invalid JPEG quality");
+      expect(() => validateGrabFramesOptions({ quality: -0.5 })).toThrow("Invalid JPEG quality");
+      expect(() => validateGrabFramesOptions({ timeoutMs: 0 })).toThrow("Invalid timeoutMs");
+      expect(() => validateGrabFramesOptions({ seekTimeoutMs: -100 })).toThrow(
+        "Invalid seekTimeoutMs"
+      );
+      // Valid options pass
+      expect(() =>
+        validateGrabFramesOptions({ quality: 0.9, timeoutMs: 10000, seekTimeoutMs: 3000 })
+      ).not.toThrow();
     });
   });
 
@@ -209,7 +250,6 @@ describe("T-14A image and video frame core utilities", () => {
 
   describe("environment guards in non-browser environment", () => {
     it("reports false for isBrowserEnvironment when document is not fully defined", () => {
-      // In edge-runtime / Node tests, document is not a browser DOM
       if (typeof document === "undefined") {
         expect(isBrowserEnvironment()).toBe(false);
       }
@@ -235,7 +275,6 @@ describe("T-14A image and video frame core utilities", () => {
         revokedUrls.push(url);
       });
 
-      // Synthetic DOM stub for Image and Canvas
       const originalWindow = globalThis.window;
       const originalDocument = globalThis.document;
 
@@ -251,7 +290,6 @@ describe("T-14A image and video frame core utilities", () => {
         set src(val: string) {
           this._src = val;
           if (val) {
-            // Trigger onload asynchronously in next tick
             setTimeout(() => {
               if (this.onload) this.onload();
             }, 10);
@@ -316,6 +354,55 @@ describe("T-14A image and video frame core utilities", () => {
       }
     });
 
+    it("cleans up abort listener and revokes URL when resizeImage times out", async () => {
+      const revokedUrls: string[] = [];
+      const originalRevoke = URL.revokeObjectURL;
+      const originalCreate = URL.createObjectURL;
+
+      URL.createObjectURL = vi.fn(() => "blob:http://localhost/synthetic-timeout-uuid");
+      URL.revokeObjectURL = vi.fn((url: string) => {
+        revokedUrls.push(url);
+      });
+
+      const originalWindow = globalThis.window;
+      const originalDocument = globalThis.document;
+
+      class HangingImage {
+        width = 100;
+        height = 100;
+        naturalWidth = 100;
+        naturalHeight = 100;
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        // Never triggers onload or onerror
+      }
+
+      globalThis.window = {} as unknown as Window & typeof globalThis;
+      globalThis.document = {
+        createElement: () => ({} as unknown as HTMLElement),
+      } as unknown as Document;
+      // @ts-expect-error Mocking Image global
+      globalThis.Image = HangingImage;
+
+      const controller = new AbortController();
+      const removeSpy = vi.spyOn(controller.signal, "removeEventListener");
+
+      try {
+        const file = new File(["bytes"], "slow.jpg", { type: "image/jpeg" });
+        await expect(
+          resizeImage(file, { timeoutMs: 20, signal: controller.signal })
+        ).rejects.toThrow("Image decode timed out after 20ms");
+
+        expect(revokedUrls).toContain("blob:http://localhost/synthetic-timeout-uuid");
+        expect(removeSpy).toHaveBeenCalledWith("abort", expect.any(Function));
+      } finally {
+        globalThis.window = originalWindow;
+        globalThis.document = originalDocument;
+        URL.revokeObjectURL = originalRevoke;
+        URL.createObjectURL = originalCreate;
+      }
+    });
+
     it("extracts ordered video frames, sequential seeks, and handles seek errors", async () => {
       const revokedUrls: string[] = [];
       const originalRevoke = URL.revokeObjectURL;
@@ -357,13 +444,6 @@ describe("T-14A image and video frame core utilities", () => {
         pause = vi.fn();
         removeAttribute = vi.fn();
         load = vi.fn();
-
-        seekTo(time: number) {
-          this.currentTime = time;
-          setTimeout(() => {
-            if (this.onseeked) this.onseeked();
-          }, 10);
-        }
       }
 
       class SyntheticCanvas {
@@ -393,7 +473,6 @@ describe("T-14A image and video frame core utilities", () => {
         createElement: (tag: string) => {
           if (tag === "video") {
             syntheticVideo = new SyntheticVideoElement();
-            // Hook currentTime setter to simulate seeked event
             let current = 0;
             Object.defineProperty(syntheticVideo, "currentTime", {
               get: () => current,
@@ -421,6 +500,7 @@ describe("T-14A image and video frame core utilities", () => {
         for (const frame of frames) {
           expect(frame).toBeInstanceOf(Blob);
           expect(frame.type).toBe("image/jpeg");
+          expect(frame.size).toBeLessThanOrEqual(MAX_OUTPUT_FRAME_BYTES);
         }
         expect(revokedUrls).toContain("blob:http://localhost/synthetic-video-uuid");
       } finally {
@@ -428,6 +508,187 @@ describe("T-14A image and video frame core utilities", () => {
         globalThis.document = originalDocument;
         URL.revokeObjectURL = originalRevoke;
         URL.createObjectURL = originalCreate;
+      }
+    });
+
+    it("settles on hung encoder in grabFrames without hanging forever", async () => {
+      const originalWindow = globalThis.window;
+      const originalDocument = globalThis.document;
+
+      class HungCanvas {
+        width = 100;
+        height = 100;
+        getContext() {
+          return {
+            fillStyle: "",
+            fillRect: vi.fn(),
+            drawImage: vi.fn(),
+          };
+        }
+        // Hung canvas encoder: toBlob never invokes its callback
+        toBlob() {}
+      }
+
+      class FastVideoElement {
+        duration = 5;
+        videoWidth = 640;
+        videoHeight = 480;
+        muted = false;
+        playsInline = false;
+        preload = "";
+        onloadedmetadata: (() => void) | null = null;
+        onseeked: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        currentTime = 0;
+
+        set src(val: string) {
+          if (val) {
+            setTimeout(() => {
+              if (this.onloadedmetadata) this.onloadedmetadata();
+            }, 5);
+          }
+        }
+
+        pause = vi.fn();
+        removeAttribute = vi.fn();
+        load = vi.fn();
+      }
+
+      globalThis.window = {} as unknown as Window & typeof globalThis;
+      globalThis.document = {
+        createElement: (tag: string) => {
+          if (tag === "video") {
+            const v = new FastVideoElement();
+            Object.defineProperty(v, "currentTime", {
+              get: () => 0,
+              set: function (this: FastVideoElement) {
+                setTimeout(() => {
+                  if (this.onseeked) this.onseeked();
+                }, 5);
+              },
+            });
+            return v as unknown as HTMLVideoElement;
+          }
+          if (tag === "canvas") {
+            return new HungCanvas() as unknown as HTMLCanvasElement;
+          }
+          return {} as unknown as HTMLElement;
+        },
+      } as unknown as Document;
+
+      try {
+        const videoFile = new File(["bytes"], "hung.mp4", { type: "video/mp4" });
+        // seekTimeoutMs: 30ms ensures the hung toBlob is timed out quickly without hanging the test suite
+        await expect(grabFrames(videoFile, 2, { seekTimeoutMs: 30 })).rejects.toThrow(
+          "timed out after 30ms"
+        );
+      } finally {
+        globalThis.window = originalWindow;
+        globalThis.document = originalDocument;
+      }
+    });
+
+    it("settles on stalled video seek without hanging forever", async () => {
+      const originalWindow = globalThis.window;
+      const originalDocument = globalThis.document;
+
+      class StalledSeekVideo {
+        duration = 5;
+        videoWidth = 640;
+        videoHeight = 480;
+        muted = false;
+        playsInline = false;
+        preload = "";
+        onloadedmetadata: (() => void) | null = null;
+        onseeked: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        currentTime = 0;
+
+        set src(val: string) {
+          if (val) {
+            setTimeout(() => {
+              if (this.onloadedmetadata) this.onloadedmetadata();
+            }, 5);
+          }
+        }
+
+        pause = vi.fn();
+        removeAttribute = vi.fn();
+        load = vi.fn();
+        // currentTime setter never fires onseeked
+      }
+
+      globalThis.window = {} as unknown as Window & typeof globalThis;
+      globalThis.document = {
+        createElement: (tag: string) => {
+          if (tag === "video") return new StalledSeekVideo() as unknown as HTMLVideoElement;
+          if (tag === "canvas") {
+            return {
+              width: 100,
+              height: 100,
+              getContext: () => ({ fillStyle: "", fillRect: vi.fn(), drawImage: vi.fn() }),
+              toBlob: (cb: (b: Blob | null) => void) => cb(new Blob(["x"], { type: "image/jpeg" })),
+            } as unknown as HTMLCanvasElement;
+          }
+          return {} as unknown as HTMLElement;
+        },
+      } as unknown as Document;
+
+      try {
+        const videoFile = new File(["bytes"], "stalled.mp4", { type: "video/mp4" });
+        await expect(grabFrames(videoFile, 2, { seekTimeoutMs: 30 })).rejects.toThrow(
+          "timed out after 30ms"
+        );
+      } finally {
+        globalThis.window = originalWindow;
+        globalThis.document = originalDocument;
+      }
+    });
+
+    it("handles late metadata gracefully after timeout with single settlement", async () => {
+      const originalWindow = globalThis.window;
+      const originalDocument = globalThis.document;
+
+      let capturedVideo: { onloadedmetadata: (() => void) | null } | null = null;
+
+      class SlowMetadataVideo {
+        duration = 10;
+        videoWidth = 640;
+        videoHeight = 480;
+        onloadedmetadata: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        pause = vi.fn();
+        removeAttribute = vi.fn();
+        load = vi.fn();
+      }
+
+      globalThis.window = {} as unknown as Window & typeof globalThis;
+      globalThis.document = {
+        createElement: (tag: string) => {
+          if (tag === "video") {
+            const v = new SlowMetadataVideo();
+            capturedVideo = v;
+            return v as unknown as HTMLVideoElement;
+          }
+          return {} as unknown as HTMLElement;
+        },
+      } as unknown as Document;
+
+      try {
+        const videoFile = new File(["bytes"], "slowmeta.mp4", { type: "video/mp4" });
+        await expect(grabFrames(videoFile, 2, { timeoutMs: 20 })).rejects.toThrow(
+          "timed out after overall deadline of 20ms"
+        );
+
+        // Trigger metadata after timeout has settled
+        expect(() => {
+          if (capturedVideo?.onloadedmetadata) {
+            capturedVideo.onloadedmetadata();
+          }
+        }).not.toThrow();
+      } finally {
+        globalThis.window = originalWindow;
+        globalThis.document = originalDocument;
       }
     });
 

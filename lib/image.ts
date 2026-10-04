@@ -68,12 +68,71 @@ export interface ResizeImageOptions {
 export interface GrabFramesOptions {
   /** Optional AbortSignal to cancel decoding and cleanup resources. */
   signal?: AbortSignal;
-  /** Overall metadata/load timeout in milliseconds (defaults to 10000). */
+  /** Overall metadata/load timeout in milliseconds (defaults to 10000 + count * seekTimeout). */
   timeoutMs?: number;
-  /** Individual frame seek timeout in milliseconds (defaults to 5000). */
+  /** Individual frame seek and encode timeout in milliseconds (defaults to 5000). */
   seekTimeoutMs?: number;
   /** JPEG compression quality for frames (0.0 to 1.0, defaults to 0.85). */
   quality?: number;
+}
+
+/**
+ * Validates optional configuration parameters for resizeImage.
+ */
+export function validateResizeOptions(options?: ResizeImageOptions): void {
+  if (!options) return;
+  if (options.maxWidth !== undefined) {
+    if (!Number.isFinite(options.maxWidth) || options.maxWidth <= 0) {
+      throw new Error(`Invalid maxWidth: ${options.maxWidth}. Must be a positive finite number.`);
+    }
+  }
+  if (options.maxPixels !== undefined) {
+    if (!Number.isFinite(options.maxPixels) || options.maxPixels < 1) {
+      throw new Error(`Invalid maxPixels: ${options.maxPixels}. Must be a finite number >= 1.`);
+    }
+  }
+  if (options.quality !== undefined) {
+    if (!Number.isFinite(options.quality) || options.quality < 0 || options.quality > 1) {
+      throw new Error(
+        `Invalid JPEG quality: ${options.quality}. Quality must be a finite number between 0 and 1.`
+      );
+    }
+  }
+  if (options.timeoutMs !== undefined) {
+    if (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0) {
+      throw new Error(
+        `Invalid timeoutMs: ${options.timeoutMs}. Timeout must be a positive finite number.`
+      );
+    }
+  }
+}
+
+/**
+ * Validates optional configuration parameters for grabFrames.
+ */
+export function validateGrabFramesOptions(options?: GrabFramesOptions): void {
+  if (!options) return;
+  if (options.quality !== undefined) {
+    if (!Number.isFinite(options.quality) || options.quality < 0 || options.quality > 1) {
+      throw new Error(
+        `Invalid JPEG quality: ${options.quality}. Quality must be a finite number between 0 and 1.`
+      );
+    }
+  }
+  if (options.timeoutMs !== undefined) {
+    if (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0) {
+      throw new Error(
+        `Invalid timeoutMs: ${options.timeoutMs}. Timeout must be a positive finite number.`
+      );
+    }
+  }
+  if (options.seekTimeoutMs !== undefined) {
+    if (!Number.isFinite(options.seekTimeoutMs) || options.seekTimeoutMs <= 0) {
+      throw new Error(
+        `Invalid seekTimeoutMs: ${options.seekTimeoutMs}. Timeout must be a positive finite number.`
+      );
+    }
+  }
 }
 
 /**
@@ -100,6 +159,7 @@ export function getFileExtension(filename: string): string {
  * Computes constrained target dimensions for resizing.
  * Maintains aspect ratio, bounds width to maxWidth, bounds total pixel area,
  * and never upscales smaller images.
+ * Validates that all dimension constraints are finite positive numbers.
  */
 export function computeTargetDimensions(
   srcWidth: number,
@@ -116,6 +176,14 @@ export function computeTargetDimensions(
     throw new Error(
       `Invalid source dimensions: ${srcWidth}x${srcHeight}. Dimensions must be positive finite numbers.`
     );
+  }
+
+  if (!Number.isFinite(maxWidth) || maxWidth <= 0) {
+    throw new Error(`Invalid maxWidth: ${maxWidth}. maxWidth must be a positive finite number.`);
+  }
+
+  if (!Number.isFinite(maxPixels) || maxPixels < 1) {
+    throw new Error(`Invalid maxPixels: ${maxPixels}. maxPixels must be a finite number >= 1.`);
   }
 
   // Never upscale: starting scale is at most 1.0
@@ -338,6 +406,8 @@ export async function resizeImage(
     throw new Error("resizeImage is only supported in a browser environment with canvas support.");
   }
 
+  validateResizeOptions(options);
+
   if (options?.signal?.aborted) {
     throw new DOMException("The operation was aborted.", "AbortError");
   }
@@ -358,11 +428,16 @@ export async function resizeImage(
   return new Promise<Blob>((resolve, reject) => {
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let abortHandler: (() => void) | null = null;
 
     function cleanup() {
       if (timer) {
         clearTimeout(timer);
         timer = null;
+      }
+      if (options?.signal && abortHandler) {
+        options.signal.removeEventListener("abort", abortHandler);
+        abortHandler = null;
       }
       img.onload = null;
       img.onerror = null;
@@ -385,11 +460,11 @@ export async function resizeImage(
     }
 
     if (options?.signal) {
-      const abortHandler = () => {
+      abortHandler = () => {
         settleReject(new DOMException("The operation was aborted.", "AbortError"));
       };
       if (options.signal.aborted) {
-        abortHandler();
+        settleReject(new DOMException("The operation was aborted.", "AbortError"));
         return;
       }
       options.signal.addEventListener("abort", abortHandler, { once: true });
@@ -400,6 +475,8 @@ export async function resizeImage(
     }, timeoutMs);
 
     img.onload = () => {
+      if (settled) return;
+
       try {
         const naturalWidth = img.naturalWidth || img.width;
         const naturalHeight = img.naturalHeight || img.height;
@@ -427,6 +504,7 @@ export async function resizeImage(
 
         canvas.toBlob(
           (blob) => {
+            if (settled) return; // Guard stale toBlob callback after cancel or timeout
             if (!blob) {
               settleReject(new Error("Canvas failed to encode image into JPEG blob."));
               return;
@@ -454,6 +532,7 @@ export async function resizeImage(
     };
 
     img.onerror = () => {
+      if (settled) return;
       settleReject(
         new Error("Failed to decode image: data is corrupted or unsupported format.")
       );
@@ -466,7 +545,8 @@ export async function resizeImage(
 /**
  * Extracts an ordered array of sampled JPEG frames from a video file in the browser.
  * Uses deterministic interior sample times (avoiding 0.0s and duration), bounds dimensions to 1280px,
- * cleans up DOM resources and object URLs, and enforces finite timeouts and cancellation.
+ * cleans up DOM resources and object URLs, and enforces finite overall/seek deadlines, single settlement,
+ * and AbortSignal cancellation.
  */
 export async function grabFrames(
   videoFile: Blob | File,
@@ -476,6 +556,8 @@ export async function grabFrames(
   if (!isBrowserEnvironment()) {
     throw new Error("grabFrames is only supported in a browser environment with canvas support.");
   }
+
+  validateGrabFramesOptions(options);
 
   if (options?.signal?.aborted) {
     throw new DOMException("The operation was aborted.", "AbortError");
@@ -487,8 +569,9 @@ export async function grabFrames(
   }
 
   const count = validation.count;
-  const timeoutMs = options?.timeoutMs ?? DEFAULT_LOAD_TIMEOUT_MS;
   const seekTimeoutMs = options?.seekTimeoutMs ?? DEFAULT_SEEK_TIMEOUT_MS;
+  const timeoutMs =
+    options?.timeoutMs ?? DEFAULT_LOAD_TIMEOUT_MS + count * seekTimeoutMs;
   const quality = options?.quality ?? DEFAULT_JPEG_QUALITY;
 
   const objectUrl = URL.createObjectURL(videoFile);
@@ -499,62 +582,77 @@ export async function grabFrames(
   video.playsInline = true;
   video.preload = "auto";
 
-  let cleanedUp = false;
-  function cleanup() {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    try {
-      video.pause();
-      video.removeAttribute("src");
-      video.load();
-    } catch {
-      // Ignore cleanup error on synthetic elements
-    }
-    URL.revokeObjectURL(objectUrl);
-  }
-
   return new Promise<Blob[]>((resolve, reject) => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    let settled = false;
+    let overallTimer: ReturnType<typeof setTimeout> | null = null;
     let seekTimer: ReturnType<typeof setTimeout> | null = null;
+    let abortHandler: (() => void) | null = null;
+
+    function cleanup() {
+      if (overallTimer) {
+        clearTimeout(overallTimer);
+        overallTimer = null;
+      }
+      if (seekTimer) {
+        clearTimeout(seekTimer);
+        seekTimer = null;
+      }
+      if (options?.signal && abortHandler) {
+        options.signal.removeEventListener("abort", abortHandler);
+        abortHandler = null;
+      }
+      video.onloadedmetadata = null;
+      video.onseeked = null;
+      video.onerror = null;
+      try {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      } catch {
+        // Ignore synthetic element errors
+      }
+      URL.revokeObjectURL(objectUrl);
+    }
 
     function finishReject(err: Error) {
-      if (timer) clearTimeout(timer);
-      if (seekTimer) clearTimeout(seekTimer);
+      if (settled) return;
+      settled = true;
       cleanup();
       reject(err);
     }
 
     function finishResolve(frames: Blob[]) {
-      if (timer) clearTimeout(timer);
-      if (seekTimer) clearTimeout(seekTimer);
+      if (settled) return;
+      settled = true;
       cleanup();
       resolve(frames);
     }
 
     if (options?.signal) {
-      const abortHandler = () => {
+      abortHandler = () => {
         finishReject(new DOMException("The operation was aborted.", "AbortError"));
       };
       if (options.signal.aborted) {
-        abortHandler();
+        finishReject(new DOMException("The operation was aborted.", "AbortError"));
         return;
       }
       options.signal.addEventListener("abort", abortHandler, { once: true });
     }
 
-    timer = setTimeout(() => {
-      finishReject(new Error(`Video metadata loading timed out after ${timeoutMs}ms.`));
+    // Overall operation deadline covering metadata load, all seeks, and all canvas encodings
+    overallTimer = setTimeout(() => {
+      finishReject(
+        new Error(`Frame extraction timed out after overall deadline of ${timeoutMs}ms.`)
+      );
     }, timeoutMs);
 
     video.onerror = () => {
+      if (settled) return;
       finishReject(new Error("Failed to load video: media file is corrupted or unsupported format."));
     };
 
     video.onloadedmetadata = async () => {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
+      if (settled) return;
 
       try {
         const duration = video.duration;
@@ -597,30 +695,29 @@ export async function grabFrames(
 
         // Sequentially seek and capture each frame
         for (let i = 0; i < sampleTimes.length; i++) {
-          if (options?.signal?.aborted) {
+          if (settled || options?.signal?.aborted) {
             finishReject(new DOMException("The operation was aborted.", "AbortError"));
             return;
           }
 
           const targetTime = sampleTimes[i];
           const frameBlob = await new Promise<Blob>((resolveSeek, rejectSeek) => {
-            let seekFinished = false;
+            let seekStepFinished = false;
 
+            // Timer covers BOTH the seeked event AND canvas.toBlob encoding (prevents hung encoder)
             seekTimer = setTimeout(() => {
-              if (seekFinished) return;
-              seekFinished = true;
+              if (seekStepFinished || settled) return;
+              seekStepFinished = true;
               video.onseeked = null;
               rejectSeek(
                 new Error(
-                  `Seek to ${targetTime.toFixed(2)}s timed out after ${seekTimeoutMs}ms.`
+                  `Seek or encode for frame ${i + 1} at ${targetTime.toFixed(2)}s timed out after ${seekTimeoutMs}ms.`
                 )
               );
             }, seekTimeoutMs);
 
             video.onseeked = () => {
-              if (seekFinished) return;
-              seekFinished = true;
-              if (seekTimer) clearTimeout(seekTimer);
+              if (seekStepFinished || settled) return;
               video.onseeked = null;
 
               try {
@@ -630,6 +727,14 @@ export async function grabFrames(
 
                 canvas.toBlob(
                   (blob) => {
+                    // Check if step or entire operation finished/timed out while encoding
+                    if (seekStepFinished || settled) return;
+                    seekStepFinished = true;
+                    if (seekTimer) {
+                      clearTimeout(seekTimer);
+                      seekTimer = null;
+                    }
+
                     if (!blob) {
                       rejectSeek(new Error(`Failed to encode frame ${i + 1} to JPEG blob.`));
                       return;
@@ -648,6 +753,12 @@ export async function grabFrames(
                   quality
                 );
               } catch (drawErr) {
+                if (seekStepFinished || settled) return;
+                seekStepFinished = true;
+                if (seekTimer) {
+                  clearTimeout(seekTimer);
+                  seekTimer = null;
+                }
                 rejectSeek(
                   drawErr instanceof Error
                     ? drawErr
@@ -659,6 +770,7 @@ export async function grabFrames(
             video.currentTime = targetTime;
           });
 
+          if (settled) return;
           capturedFrames.push(frameBlob);
         }
 
