@@ -1,9 +1,17 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { workflowTables } from "./workflowTables";
 import { authTables } from "@convex-dev/auth/server";
+import { workflowTables } from "./workflowTables";
+
+// Private native supplied-context v1 (see lib/reels/nativeContext.ts for the strict bounds the server enforces).
+// receivedAt is the device receipt clock in Unix seconds, never a publication time.
+export const nativeContextValidator = v.object({
+  version: v.literal(1), textFragments: v.array(v.string()), registeredTypes: v.array(v.string()),
+  receivedAt: v.number(), truncated: v.boolean(),
+});
 
 export default defineSchema({
+  // Published teammate workflow collections (proper-marmot-82 deployed): preserved so a later sync cannot drop them.
   ...workflowTables,
   ...authTables, // includes the users table
 
@@ -14,9 +22,26 @@ export default defineSchema({
     workflowId: v.optional(v.string()), videoId: v.optional(v.id("_storage")),
     caption: v.optional(v.string()), duration: v.optional(v.number()), publishedAt: v.optional(v.string()),
     extractionJson: v.optional(v.string()), draftJson: v.optional(v.string()),
+    draftRevision: v.optional(v.number()), draftEdited: v.optional(v.boolean()), // legacy rows: 0 / false
+    // User-supplied recording (absent on legacy and link-only rows). mediaMime is the type sent to the provider; duration is browser-supplied.
+    sourceKind: v.optional(v.literal("supplied")), mediaMime: v.optional(v.union(v.literal("video/mp4"), v.literal("video/mov"))), mediaBytes: v.optional(v.number()),
+    // Immutable first receipt from the native share extension. Private to the owner, expires with the item, never a public deal field.
+    nativeContext: v.optional(nativeContextValidator),
     error: v.optional(v.object({ code: v.string(), message: v.string() })),
   }).index("by_owner_url", ["ownerId", "sourceUrl"]).index("by_owner", ["ownerId"]).index("by_expiry", ["expiresAt"]),
   reelLimits: defineTable({ ownerId: v.id("users"), windowStart: v.number(), count: v.number() }).index("by_owner", ["ownerId"]),
+
+  // Private geocoding state (T-08G-B). Both tables are read and written only by internal functions.
+  // geocodeGate: one row (key "nominatim") holding the last time a provider request was granted, so at most
+  // one request per second is allowed for the whole application.
+  geocodeGate: defineTable({ key: v.string(), lastGrantedAt: v.number() }).index("by_key", ["key"]),
+  // geocodeCache: validated candidates per SHA-256 of the core's endpoint/bbox/limit/query cache key (the raw
+  // query text is not stored). Expired rows are ignored and replaced in place.
+  geocodeCache: defineTable({
+    cacheKey: v.string(),
+    results: v.array(v.object({ lat: v.number(), lng: v.number(), label: v.string() })),
+    expiresAt: v.number(),
+  }).index("by_key", ["cacheKey"]).index("by_expiry", ["expiresAt"]),
 
   profiles: defineTable({
     userId: v.id("users"),
@@ -41,7 +66,16 @@ export default defineSchema({
     sourceUrl: v.optional(v.string()),
     stillOnCount: v.number(),
     expiredCount: v.number(),
-  }).index("by_author", ["authorId"]),
+  }).index("by_author", ["authorId"]).index("by_image", ["imageId"]),
+
+  // Private registry of uploads the server accepted for a user. Created only by the authenticated upload path
+  // (a later slice), never by a public mutation. A deal may reference an image only if the caller owns its row here.
+  dealUploads: defineTable({
+    ownerId: v.id("users"),
+    storageId: v.id("_storage"),
+    expiresAt: v.number(),
+    published: v.boolean(),
+  }).index("by_storage", ["storageId"]).index("by_expiry", ["expiresAt"]).index("by_owner_pending", ["ownerId", "published", "expiresAt"]),
 
   votes: defineTable({
     dealId: v.id("deals"),

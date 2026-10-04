@@ -1,3 +1,4 @@
+import { formatVancouverParts } from "../vancouverTime";
 import { inputSchema, resultSchema, extractionSchema, type WorkflowInput, type Extraction, type Deal, type Place, type Outcome, type WorkflowResult } from "./contracts";
 import { WorkflowError } from "./errors";
 import { extractWithGemini } from "./gemini";
@@ -14,7 +15,10 @@ export async function fingerprint(value: unknown): Promise<string> {
   return [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, "0")).join("");
 }
 export function localDate(now: Date, timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const options = { year: "numeric", month: "2-digit", day: "2-digit" } as const;
+  const parts = timezone === "America/Vancouver"
+    ? formatVancouverParts(now, "en-CA", options)
+    : new Intl.DateTimeFormat("en-CA", { ...options, timeZone: timezone }).formatToParts(now);
   const get = (type: string) => parts.find(p => p.type === type)!.value;
   return `${get("year")}-${get("month")}-${get("day")}`;
 }
@@ -67,13 +71,19 @@ export async function processDeal(raw: unknown, dependencies: Dependencies): Pro
     publishedAt: input.source.publishedAt ?? null, contentHash: await fingerprint(input), processedAt: now.toISOString() },
     timezone: input.context.timezone, outcomes, rejectionReason: extracted.rejectionReason });
 }
+// GUARD (N-REMOTE-A correction): live Gemini/Geoapify calls need an explicit, separate usage authorization.
+export const providerUsageAuthorized = (env: Record<string, string | undefined>) => env.WORKFLOW_PROVIDER_USAGE_AUTHORIZED === "true";
 export function liveDependencies(env: Record<string, string | undefined>, fetcher?: Fetch): Dependencies {
   if (!env.GEMINI_API_KEY?.trim()) throw new WorkflowError("MISSING_API_KEY", "Set GEMINI_API_KEY in the backend environment.");
   if (!env.GEOAPIFY_API_KEY?.trim()) throw new WorkflowError("MISSING_API_KEY", "Set GEOAPIFY_API_KEY in the backend environment.");
+  if (!providerUsageAuthorized(env)) throw new WorkflowError("CONFIGURATION", "Provider usage is not authorized for this deployment (WORKFLOW_PROVIDER_USAGE_AUTHORIZED).");
+  // No implicit model name: an unset primary model is a configuration error before any paid request.
+  const model = env.GEMINI_MODEL?.trim();
+  if (!model) throw new WorkflowError("CONFIGURATION", "Set GEMINI_MODEL to an explicit Gemini model in the backend environment.");
   const deadline = Date.now() + 240000;
   return {
-    extract: input => extractWithGemini(input, { apiKey: env.GEMINI_API_KEY!, model: env.GEMINI_MODEL || "gemini-3.8-flash",
-      fallbackModel: env.GEMINI_FALLBACK_MODEL, fetcher, deadline }),
+    extract: input => extractWithGemini(input, { apiKey: env.GEMINI_API_KEY!, model,
+      fallbackModel: env.GEMINI_FALLBACK_MODEL?.trim() || undefined, fetcher, deadline }),
     locate: (deal, input) => findRestaurant(deal, input, { apiKey: env.GEOAPIFY_API_KEY!, fetcher, deadline }),
   };
 }

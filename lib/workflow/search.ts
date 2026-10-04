@@ -1,3 +1,4 @@
+import { formatVancouverParts } from "../vancouverTime";
 import { searchInputSchema, intentSchema, searchRecordSchema, type SearchInput, type SearchIntent,
   type SearchRecord, type SearchCandidate, type RecommendationPlan, type SearchResult, type Fact, type Recommendation } from "./search-contracts";
 import { localDate } from "./workflow";
@@ -49,7 +50,10 @@ function onDate(record: SearchRecord, date: string) {
 export function availableAt(record: SearchRecord, now: Date): boolean {
   const date = localDate(now, record.timezone), d = record.deal;
   if (!d.startTime || !d.endTime || d.startTime === d.endTime) return false;
-  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: record.timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const options = { hour: "2-digit", minute: "2-digit", hourCycle: "h23" } as const;
+  const parts = record.timezone === "America/Vancouver"
+    ? formatVancouverParts(now, "en-GB", options)
+    : new Intl.DateTimeFormat("en-GB", { ...options, timeZone: record.timezone }).formatToParts(now);
   const time = `${parts.find(p => p.type === "hour")!.value}:${parts.find(p => p.type === "minute")!.value}`;
   if (d.startTime < d.endTime) return onDate(record, date) && time >= d.startTime && time < d.endTime;
   return time >= d.startTime ? onDate(record, date) : time < d.endTime && onDate(record, previousDate(date));

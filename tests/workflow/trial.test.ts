@@ -19,8 +19,8 @@ it("keeps jobs across authenticated sessions while excluding other users and inp
   expect(await t.withIdentity({ subject: "bob|third-session" }).query(api.workflow.jobs.listMine, {})).toEqual([]);
   await expect(t.query(api.workflow.jobs.listMine, {})).rejects.toThrow("Sign in");
 });
-it("accepts public Instagram shares and supplied captions with Instagram attribution", () => {
+it("never retrieves Instagram links but accepts supplied captions with Instagram attribution", () => {
   for (const url of ["https://instagram.com/p/example", "https://www.instagram.com/p/example", "https://instagr.am/p/example"])
-    expect(inputSchema.safeParse({ source: { type: "url", url } }).success).toBe(true);
+    expect(inputSchema.safeParse({ source: { type: "url", url } }).success).toBe(false);
   expect(inputSchema.safeParse({ source: { type: "text", text: "A pasted restaurant caption", sourceUrl: "https://www.instagram.com/p/example" } }).success).toBe(true);
 });

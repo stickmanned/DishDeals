@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { validity, type DealView } from "@/lib/frontend/deals";
+import { formatDistance } from "@/lib/frontend/nearby";
 import { Icon } from "./Icon";
 export function Price({ deal }: { deal: DealView }) {
   return (
@@ -38,7 +39,7 @@ export function DealImage({
   const [failed, setFailed] = useState(false);
   return deal.imageUrl && !failed ? (
     <Image
-      src={deal.imageUrl.startsWith("/") ? `${process.env.NEXT_PUBLIC_BASE_PATH || ""}${deal.imageUrl}` : deal.imageUrl}
+      src={deal.imageUrl}
       alt={deal.imageAlt ?? `${deal.restaurant} deal source`}
       fill
       sizes="(max-width: 700px) 100vw, (max-width: 1000px) 50vw, 400px"
@@ -53,20 +54,48 @@ export function DealImage({
     </div>
   );
 }
+export function SaveButton({
+  deal,
+  saved,
+  onToggle,
+}: {
+  deal: DealView;
+  saved: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`save-button ${saved ? "is-saved" : ""}`}
+      aria-pressed={saved}
+      aria-label={`${saved ? "Remove" : "Save"} ${deal.restaurant} ${saved ? "from" : "to"} saved deals`}
+      onClick={onToggle}
+    >
+      <Icon name="bookmark" size={20} filled={saved} />
+    </button>
+  );
+}
 export function DealCard({
   deal,
   now,
   featured = false,
+  distanceKm,
+  saved,
+  onToggleSave,
 }: {
   deal: DealView;
   now: Date;
   featured?: boolean;
+  /** Distance from the Discover anchor; omitted when the deal has no coordinates. */
+  distanceKm?: number;
+  saved?: boolean;
+  onToggleSave?: () => void;
 }) {
   return (
     <article className={`deal-card ${featured ? "featured" : ""}`}>
       <Link
         className="card-image"
-        href={`/deal?id=${encodeURIComponent(deal.id)}`}
+        href={`/deal/${encodeURIComponent(deal.id)}`}
         tabIndex={-1}
         aria-hidden="true"
       >
@@ -75,11 +104,14 @@ export function DealCard({
           {deal.isDemo ? "Example deal" : "Community find"}
         </span>
       </Link>
+      {onToggleSave && (
+        <SaveButton deal={deal} saved={!!saved} onToggle={onToggleSave} />
+      )}
       <div className="card-body">
         <TimeBadge deal={deal} now={now} />
         <div className="card-heading">
           <h2>
-            <Link href={`/deal?id=${encodeURIComponent(deal.id)}`}>
+            <Link href={`/deal/${encodeURIComponent(deal.id)}`}>
               {deal.restaurant}
             </Link>
           </h2>
@@ -97,6 +129,9 @@ export function DealCard({
         <div className="card-meta">
           <span>
             <Icon name="pin" size={15} />
+            {distanceKm !== undefined && (
+              <strong className="distance">{formatDistance(distanceKm)}</strong>
+            )}
             {deal.address ?? "Location not listed"}
           </span>
           {deal.authorName && (

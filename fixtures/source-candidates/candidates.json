@@ -1,0 +1,431 @@
+[
+  {
+    "candidateId": "CAND-01",
+    "canonicalProposal": {
+      "restaurant": "Tenen Restaurant",
+      "address": "7569 Royal Oak Ave, Burnaby, BC V5J 4J8",
+      "dealText": "Lunch Special: Spaghetti Bolognese (pasta cooked with homemade meat sauce)",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Lunch special menu item"
+      ],
+      "sourceUrl": "https://www.tenenrestaurant.com/lunchspecials"
+    },
+    "provenance": {
+      "offerUrl": "https://www.tenenrestaurant.com/lunchspecials",
+      "addressUrl": "https://www.tenenrestaurant.com/contact",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 7.95,
+      "statedCurrency": "7.95 $ displayed on website; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "hoursAndDaysPending": "Footer displays general restaurant business hours 10:30am-10:30pm daily, not verified lunch special offer validity. Specific lunch validity days and start/end hours are unstated on the page and remain pending.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "validStart",
+        "validEnd",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-02",
+    "canonicalProposal": {
+      "restaurant": "Tenen Restaurant",
+      "address": "7569 Royal Oak Ave, Burnaby, BC V5J 4J8",
+      "dealText": "Lunch Special: Soup of the Day (cup of choice daily soup)",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Lunch special menu item"
+      ],
+      "sourceUrl": "https://www.tenenrestaurant.com/lunchspecials"
+    },
+    "provenance": {
+      "offerUrl": "https://www.tenenrestaurant.com/lunchspecials",
+      "addressUrl": "https://www.tenenrestaurant.com/contact",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 7.95,
+      "statedCurrency": "7.95 $ displayed on website; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "hoursAndDaysPending": "Footer displays general restaurant business hours 10:30am-10:30pm daily, not verified lunch special offer validity. Specific lunch validity days and start/end hours are unstated on the page and remain pending.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "validStart",
+        "validEnd",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-03",
+    "canonicalProposal": {
+      "restaurant": "Tentatsu Japanese Restaurant",
+      "address": "4266 Hastings St, Burnaby, BC",
+      "dealText": "10% off all Take Out orders of $30 & up (before taxes) - phone call orders only",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Take Out orders of $30 & up before taxes",
+        "Phone call orders only",
+        "Excludes lunch specials, combos, and other special items"
+      ],
+      "sourceUrl": "https://www.tentatsusushi.com/"
+    },
+    "provenance": {
+      "offerUrl": "https://www.tentatsusushi.com/",
+      "addressUrl": "https://www.tentatsusushi.com/tentatsuburnaby.html",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": null,
+      "statedCurrency": "10% off take-out orders of $30 & up before taxes; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "hoursAndDaysPending": "Store business hours 11:00am-9:30pm daily are general operating hours; specific promotion offer hours and valid days are not independently confirmed and remain pending.",
+      "exclusions": "Excludes lunch specials, combos, and other special items",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "validStart",
+        "validEnd",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-04",
+    "canonicalProposal": {
+      "restaurant": "Argo Greek",
+      "address": "Unit 108 – 3790 Canada Way, Burnaby, BC V5G 1G4",
+      "dealText": "Lunch Special: Chicken Souvlaki Platter (served with Greek salad, rice, roasted potato, tzatziki & pita)",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": "11:30",
+      "validEnd": "14:30",
+      "expiresOn": null,
+      "conditions": [
+        "Available from 11:30am - 2:30pm",
+        "Smaller portion served during lunch hours only"
+      ],
+      "sourceUrl": "https://www.argogreek.ca/menu/"
+    },
+    "provenance": {
+      "offerUrl": "https://www.argogreek.ca/menu/",
+      "addressUrl": "https://www.argogreek.ca/contact/",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 22,
+      "statedCurrency": "$22 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "daysPending": "Lunch hours 11:30am-2:30pm explicitly stated on menu; all 7 days availability was inferred from general store operating hours and remains pending.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-05",
+    "canonicalProposal": {
+      "restaurant": "Argo Greek",
+      "address": "Unit 108 – 3790 Canada Way, Burnaby, BC V5G 1G4",
+      "dealText": "Lunch Special: 6 oz Lunch Skewer (Chicken or Lamb)",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": "11:30",
+      "validEnd": "14:30",
+      "expiresOn": null,
+      "conditions": [
+        "Available from 11:30am - 2:30pm",
+        "Smaller portion served during lunch hours only"
+      ],
+      "sourceUrl": "https://www.argogreek.ca/menu/"
+    },
+    "provenance": {
+      "offerUrl": "https://www.argogreek.ca/menu/",
+      "addressUrl": "https://www.argogreek.ca/contact/",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 12,
+      "statedCurrency": "$12 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "daysPending": "Lunch hours 11:30am-2:30pm explicitly stated on menu; all 7 days availability was inferred from general store operating hours and remains pending.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-06",
+    "canonicalProposal": {
+      "restaurant": "Burnaby Mountain Restaurant",
+      "address": "7600 Halifax St, Burnaby, BC V5A 4M8",
+      "dealText": "Happy Hour: Truffle Fries (truffle oil, Grana Padano, parsley)",
+      "priceCad": null,
+      "validDays": [
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun"
+      ],
+      "validStart": "14:30",
+      "validEnd": "16:30",
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour menu item (Wednesday to Sunday 2:30pm - 4:30pm)"
+      ],
+      "sourceUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour"
+    },
+    "provenance": {
+      "offerUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour",
+      "addressUrl": "https://burnabyhospitality.ca/restaurants/burnaby-mountain-restaurant",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 8,
+      "statedCurrency": "$8.00 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "adImageVerification": "Offer menu page (/burnaby-mountain-happy-hour, 34,594 bytes HTTP 200) contains no food image assets (absent). Restaurant overview page (/restaurants/burnaby-mountain-restaurant, 38,569 bytes HTTP 200) embeds /sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg?itok=bFVqB6th (67,575 bytes HTTP 200, alt: 'Burger sliders and drinks on a patio'); because banner is absent from the offer menu page and depicts general sliders rather than Truffle Fries, adImageUrl is set to null to avoid unsupported verified claims.",
+      "addressVerification": "Address '7600 Halifax Street' verified directly in primary HTML of restaurant landing page (/restaurants/burnaby-mountain-restaurant, HTTP 200). Offer page displays corporate administrative office '9001 Bill Fox Way' in footer.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-07",
+    "canonicalProposal": {
+      "restaurant": "Burnaby Mountain Restaurant",
+      "address": "7600 Halifax St, Burnaby, BC V5A 4M8",
+      "dealText": "Happy Hour: Classic Cheeseburger (all-beef patty, brioche bun, cheddar, lettuce, tomato, pickles, BMC sauce)",
+      "priceCad": null,
+      "validDays": [
+        "wed",
+        "thu",
+        "fri",
+        "sat",
+        "sun"
+      ],
+      "validStart": "14:30",
+      "validEnd": "16:30",
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour menu item (Wednesday to Sunday 2:30pm - 4:30pm)",
+        "Optional add-ons (bacon +$2, mushroom medley +$2)"
+      ],
+      "sourceUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour"
+    },
+    "provenance": {
+      "offerUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour",
+      "addressUrl": "https://burnabyhospitality.ca/restaurants/burnaby-mountain-restaurant",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 15,
+      "statedCurrency": "$15.00 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "adImageVerification": "Offer menu page (/burnaby-mountain-happy-hour, 34,594 bytes HTTP 200) contains no food image assets (absent). Restaurant overview page (/restaurants/burnaby-mountain-restaurant, 38,569 bytes HTTP 200) embeds /sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg?itok=bFVqB6th (67,575 bytes HTTP 200, alt: 'Burger sliders and drinks on a patio'); because banner is absent from the offer menu page and depicts general sliders rather than the Classic Cheeseburger deal asset, adImageUrl is set to null to avoid unsupported verified claims.",
+      "addressVerification": "Address '7600 Halifax Street' verified directly in primary HTML of restaurant landing page (/restaurants/burnaby-mountain-restaurant, HTTP 200). Offer page displays corporate administrative office '9001 Bill Fox Way' in footer.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-08",
+    "canonicalProposal": {
+      "restaurant": "Time & Place Burnaby",
+      "address": "6083 McKay Ave, Burnaby, BC V5H 2W7",
+      "dealText": "Happy Hour: Mediterranean Beef Kebobs",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour menu item (Mon-Fri 4pm-6pm, Sat-Sun 5pm-6pm)",
+        "Located in Hilton Vancouver Metrotown"
+      ],
+      "sourceUrl": "https://www.timeandplaceburnaby.com/menus-happyhour"
+    },
+    "provenance": {
+      "offerUrl": "https://www.timeandplaceburnaby.com/menus-happyhour",
+      "addressUrl": "https://www.timeandplaceburnaby.com/",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 5,
+      "statedCurrency": "$5 displayed on Happy Hour food menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "fullSchedule": "Monday-Friday 16:00-18:00, Saturday-Sunday 17:00-18:00",
+      "representationalLimitation": "DishDeals schema only supports a single contiguous validStart/validEnd window per record; cannot represent different weekday vs weekend hours without splitting into separate candidate variants. Canonical hours/days left pending to prevent false all-day window.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "validStart",
+        "validEnd",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-09",
+    "canonicalProposal": {
+      "restaurant": "Time & Place Burnaby",
+      "address": "6083 McKay Ave, Burnaby, BC V5H 2W7",
+      "dealText": "Happy Hour: Smashed Beef Slider (1 pc)",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour menu item (Mon-Fri 4pm-6pm, Sat-Sun 5pm-6pm)",
+        "Single slider portion",
+        "Located in Hilton Vancouver Metrotown"
+      ],
+      "sourceUrl": "https://www.timeandplaceburnaby.com/menus-happyhour"
+    },
+    "provenance": {
+      "offerUrl": "https://www.timeandplaceburnaby.com/menus-happyhour",
+      "addressUrl": "https://www.timeandplaceburnaby.com/",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 6,
+      "statedCurrency": "$6 displayed on Happy Hour food menu (Smashed Beef Slider 1pc); ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "fullSchedule": "Monday-Friday 16:00-18:00, Saturday-Sunday 17:00-18:00",
+      "representationalLimitation": "DishDeals schema only supports a single contiguous validStart/validEnd window per record; cannot represent different weekday vs weekend hours without splitting into separate candidate variants. Canonical hours/days left pending to prevent false all-day window.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "validStart",
+        "validEnd",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-10",
+    "canonicalProposal": {
+      "restaurant": "Time & Place Burnaby",
+      "address": "6083 McKay Ave, Burnaby, BC V5H 2W7",
+      "dealText": "Happy Hour: Fraser Valley Wings ($0.89 each, min 6 pcs)",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour menu item (Mon-Fri 4pm-6pm, Sat-Sun 5pm-6pm)",
+        "Minimum order of 6 pieces",
+        "Located in Hilton Vancouver Metrotown"
+      ],
+      "sourceUrl": "https://www.timeandplaceburnaby.com/menus-happyhour"
+    },
+    "provenance": {
+      "offerUrl": "https://www.timeandplaceburnaby.com/menus-happyhour",
+      "addressUrl": "https://www.timeandplaceburnaby.com/",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 0.89,
+      "statedCurrency": "$0.89 each (min. 6 pcs) displayed on Happy Hour food menu; ISO currency unstated (pending CAD confirmation)",
+      "minimumQuantity": 6,
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "fullSchedule": "Monday-Friday 16:00-18:00, Saturday-Sunday 17:00-18:00",
+      "representationalLimitation": "DishDeals schema only supports a single contiguous validStart/validEnd window per record; cannot represent different weekday vs weekend hours without splitting into separate candidate variants. Canonical hours/days left pending to prevent false all-day window.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "validStart",
+        "validEnd",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-11",
+    "canonicalProposal": {
+      "restaurant": "Acqua Restaurant & Bar",
+      "address": "4201 Lougheed Hwy, Burnaby, BC V5C 3Y6",
+      "dealText": "Happy Hour: Fresh Oysters (minimum order of 6)",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Minimum order of 6 pieces"
+      ],
+      "sourceUrl": "https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf"
+    },
+    "provenance": {
+      "offerUrl": "https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf",
+      "addressUrl": "https://acquarestaurantandbar.com/",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": null,
+      "statedCurrency": "Conflicting stated prices: HH menu page 0 lists $1.75 each vs patio page 3 lists $1.50 each (minimum 6 pieces); ISO currency unstated (pending CAD confirmation)",
+      "priceConflict": "HH menu page 0 lists $1.75 each (min 6); patio page 3 lists $1.50 each (min 6). Minimum order of 6 pieces applies to both.",
+      "reviewRequired": "Conflicting stated prices across PDF menu sections (HH menu page 0 lists $1.75/pc min 6 vs patio page 3 lists $1.50/pc min 6); human review required before confirming pricing or publishing.",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "fullSchedule": "Sunday-Monday 16:00-18:00; Tuesday-Saturday 16:00-18:00 and 21:00-22:00 (homepage banner also displays 'Daily from 4–6 PM')",
+      "representationalLimitation": "DishDeals schema only supports a single contiguous validStart/validEnd window per record; cannot combine afternoon 16:00-18:00 and late-night 21:00-22:00 without multiple records. Hours left pending to avoid silently discarding late-night window.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "validStart",
+        "validEnd",
+        "flyerPhoto"
+      ]
+    }
+  }
+]

@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ConvexClientProvider } from "@/components/ConvexClientProvider";
+import { PwaShareRegistration } from "@/components/PwaShareRegistration";
 import { FrontendProvider } from "@/components/frontend/FrontendProvider";
 import { Shell } from "@/components/frontend/Shell";
 import { FrontendBoundary } from "@/components/frontend/FrontendBoundary";
 import "./globals.css";
-import "@restaurant-deals/map/styles.css";
 
 export const metadata: Metadata = {
   title: {
@@ -14,13 +14,15 @@ export const metadata: Metadata = {
   },
   description:
     "Food deals around Vancouver, shared by the people who find them.",
-  icons: { icon: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/icon.svg` },
+  icons: { icon: "/icon.svg" },
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
+        <PwaShareRegistration />
         <ConvexClientProvider>
           <FrontendBoundary>
             <FrontendProvider>

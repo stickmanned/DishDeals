@@ -18,7 +18,7 @@ async function seed(t: ReturnType<typeof setup>, name: string, status: "publishe
       status, timezone: "America/Vancouver", sourceUrl: "https://example.com/deals", createdAt: Date.now() });
   });
 }
-beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-03T20:00:00Z")); vi.stubEnv("WORKFLOW_API_TOKEN", token); vi.stubEnv("GEMINI_API_KEY", ""); });
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-03T20:00:00Z")); vi.stubEnv("WORKFLOW_API_TOKEN", token); vi.stubEnv("GEMINI_API_KEY", ""); vi.stubEnv("WORKFLOW_PROVIDER_USAGE_AUTHORIZED", "true"); });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 const request = (t: ReturnType<typeof setup>, input: unknown) => t.fetch("/v1/deals/compare", { method: "POST", headers, body: JSON.stringify(input) });
 
@@ -64,4 +64,16 @@ it("makes taste-first Gemini calls with server-only credentials and cited review
   expect(result.mode).toBe("gemini"); expect(result.recommendation.dealId).toBe(b);
   expect(fetcher.mock.calls[0][0]).toContain("test-comparison-model:generateContent");
   expect(JSON.stringify(result)).not.toContain("fake-server-key");
+});
+
+it("falls back to evidence-only comparison without any Gemini call when provider usage is not authorized (N-REMOTE-A guard)", async () => {
+  const t = setup(), a = await seed(t, "a"), b = await seed(t, "b");
+  vi.stubEnv("GEMINI_API_KEY", "fake-server-key"); vi.stubEnv("WORKFLOW_PROVIDER_USAGE_AUTHORIZED", "");
+  const fetcher = vi.fn<typeof fetch>(); vi.stubGlobal("fetch", fetcher);
+  const result = await (await request(t, { dealIds: [a, b], priority: "taste", tasteEvidence: [
+    { dealId: a, quote: "The ramen broth was rather salty.", sourceUrl: "https://example.com/review-a" },
+    { dealId: b, quote: "The broth was balanced and the noodles had excellent texture.", sourceUrl: "https://example.com/review-b" },
+  ] })).json();
+  expect(result.mode).toBe("evidence_only");
+  expect(fetcher).not.toHaveBeenCalled();
 });

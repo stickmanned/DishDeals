@@ -17,7 +17,7 @@ async function seed(t: ReturnType<typeof setup>, status: "published" | "needs_re
       status, timezone: "America/Vancouver", sourceUrl: "https://example.com/deals", createdAt: Date.now() });
   });
 }
-beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-03T20:00:00Z")); vi.stubEnv("WORKFLOW_API_TOKEN", token); vi.stubEnv("GEMINI_API_KEY", ""); });
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-03T20:00:00Z")); vi.stubEnv("WORKFLOW_API_TOKEN", token); vi.stubEnv("GEMINI_API_KEY", ""); vi.stubEnv("WORKFLOW_PROVIDER_USAGE_AUTHORIZED", "true"); });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 it("serves authenticated search without a key and excludes review/expired data", async () => {
   const t = setup(); const published = await seed(t); await seed(t, "needs_review"); await seed(t, "published", true);
@@ -44,7 +44,7 @@ it("allows direct authenticated Convex search and guards anonymous actions", asy
   expect(result.recommendations).toHaveLength(1);
 });
 it("uses the Gemini intent and evidence plan from server-only configuration", async () => {
-  const t = setup(); const id = await seed(t); vi.stubEnv("GEMINI_API_KEY", "fake-secret");
+  const t = setup(); const id = await seed(t); vi.stubEnv("GEMINI_API_KEY", "fake-secret"); vi.stubEnv("GEMINI_SEARCH_MODEL", "synthetic-search-model");
   const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(modelResponse({ keywords: ["ramen"], excludeKeywords: [], city: null,
     maxPrice: 15, currency: "CAD", maxDistanceKm: null, requiresOrigin: false, availableNow: false, sortBy: "price", unsupportedNeeds: [] }))
     .mockResolvedValueOnce(modelResponse({ selections: [{ dealId: id, hookFactId: "price", supportFactIds: ["discount"], angle: "value" }] }));
@@ -62,6 +62,7 @@ it("enforces search limits independently from ingestion limits", async () => {
 });
 it("automatically searches the web for an empty authenticated query without adding offers to the database", async () => {
   const t = setup(); vi.stubEnv("GEMINI_API_KEY", "fake-secret");
+  vi.stubEnv("GEMINI_SEARCH_MODEL", "synthetic-search-model"); vi.stubEnv("GEMINI_WEB_SEARCH_MODEL", "synthetic-web-model");
   const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(modelResponse({ keywords: ["Haidilao"], excludeKeywords: [], city: null,
     maxPrice: null, currency: null, maxDistanceKm: null, requiresOrigin: false, availableNow: false, sortBy: "relevance", unsupportedNeeds: [] }))
     .mockResolvedValueOnce(Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "No verified offer. Visit the official Haidilao website." }] },

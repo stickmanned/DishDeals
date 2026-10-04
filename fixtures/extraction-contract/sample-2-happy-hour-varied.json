@@ -1,0 +1,25 @@
+{
+  "isDeal": true,
+  "deals": [
+    {
+      "restaurant": "Tacofino Oasis",
+      "address": "1050 W Pender St, Vancouver, BC",
+      "dealText": "Afternoon Happy Hour: Half-price draft beers and select tacos",
+      "priceCad": null,
+      "validDays": ["mon", "tue", "wed", "thu", "fri", "sat"],
+      "validStart": "15:00",
+      "validEnd": "18:00",
+      "expiresOn": null,
+      "conditions": [
+        "Bar seating only",
+        "Beverage purchase required for taco discount"
+      ],
+      "confidence": {
+        "restaurant": 0.96,
+        "priceCad": 0.0,
+        "hours": 0.94,
+        "expiresOn": 0.10
+      }
+    }
+  ]
+}

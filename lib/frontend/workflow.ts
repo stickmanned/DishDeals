@@ -1,37 +1,35 @@
 import { makeFunctionReference } from "convex/server";
 import type { GenericId } from "convex/values";
 import { z } from "zod";
-import type { SearchResult } from "../workflow/search-contracts";
 
 // These names and payloads were verified against the independent ai-workflow
 // module at e3a39cc. They must never target main's canonical deployment.
 export const workflowApi = {
-  search: makeFunctionReference<"action", { inputJson: string }, SearchResult>("workflow/search:find"),
-  list: makeFunctionReference<"query", { limit: number; now: number }, unknown>(
-    "workflow/deals:listForMap",
+  list: makeFunctionReference<"query", { limit: number }, unknown>(
+    "deals:listForMap",
   ),
   submit: makeFunctionReference<
     "mutation",
     { inputJson: string },
-    { jobId: GenericId<"workflowJobs">; duplicate: boolean }
-  >("workflow/jobs:submit"),
-  get: makeFunctionReference<"query", { jobId: GenericId<"workflowJobs"> }, unknown>(
-    "workflow/jobs:get",
+    { jobId: GenericId<"jobs">; duplicate: boolean }
+  >("jobs:submit"),
+  get: makeFunctionReference<"query", { jobId: GenericId<"jobs"> }, unknown>(
+    "jobs:get",
   ),
   retry: makeFunctionReference<
     "mutation",
-    { jobId: GenericId<"workflowJobs"> },
-    { jobId: GenericId<"workflowJobs"> }
-  >("workflow/jobs:retryJob"),
+    { jobId: GenericId<"jobs"> },
+    { jobId: GenericId<"jobs"> }
+  >("jobs:retryJob"),
   review: makeFunctionReference<
     "mutation",
     {
-      dealId: GenericId<"workflowDeals">;
+      dealId: GenericId<"deals">;
       decision: "approve" | "reject";
       placeId?: string;
     },
-    { dealId: GenericId<"workflowDeals">; status: string }
-  >("workflow/deals:reviewDeal"),
+    { dealId: GenericId<"deals">; status: string }
+  >("deals:reviewDeal"),
 };
 
 const place = z.object({
@@ -82,13 +80,6 @@ export const jobSchema = z.object({
 });
 export type JobData = z.infer<typeof jobSchema>;
 export type WorkflowSource =
-  | {
-      type: "url";
-      url: string;
-      caption?: string;
-      sourceUrl?: string;
-      publishedAt?: string;
-    }
   | { type: "text"; text: string; sourceUrl?: string; publishedAt?: string }
   | {
       type: "image";
@@ -100,7 +91,6 @@ export type WorkflowSource =
     };
 
 export function retryAllowed(job: JobData, now = Date.now()) {
-  if (job.error && typeof job.error === "object" && "code" in job.error && job.error.code === "SOURCE_UNREADABLE") return false;
   if (
     job.deals.some((d) => d.status === "published" || d.status === "rejected")
   )

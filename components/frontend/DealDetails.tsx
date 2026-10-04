@@ -9,7 +9,6 @@ import { Icon } from "./Icon";
 import { Dialog } from "./Dialog";
 import { PreviewNote } from "./Shell";
 import { useClock } from "./useClock";
-import { OfferMap } from "@/components/OfferMap";
 export function DealDetails({ id }: { id: string }) {
   const app = useFrontend();
   const router = useRouter();
@@ -50,7 +49,7 @@ export function DealDetails({ id }: { id: string }) {
   const selected = app.votes[id];
   function vote(value: "still_on" | "expired") {
     if (!app.authenticated) {
-      router.push(`/signin?next=${encodeURIComponent(`/deal?id=${id}`)}`);
+      router.push(`/signin?next=${encodeURIComponent(`/deal/${id}`)}`);
       return;
     }
     app.votePreview(id, value);
@@ -218,16 +217,10 @@ export function DealDetails({ id }: { id: string }) {
       {deal.lat !== undefined && deal.lng !== undefined && (
         <section className="location-panel panel">
           <h2 className="detail-subheading">The place behind the offer</h2>
-          <OfferMap
-            key={deal.id}
-            deals={[{ id: deal.id, restaurantName: deal.restaurant, title: deal.dealText,
-              latitude: deal.lat, longitude: deal.lng, address: deal.address }]}
-            initialCenter={[deal.lng, deal.lat]}
-            initialZoom={14}
-            showLocateControl={false}
-            showDealCard={false}
-            ariaLabel={`${deal.restaurant} verified location`}
-            style={{ height: 320 }}
+          <iframe
+            loading="lazy"
+            title={`${deal.restaurant} verified location`}
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=${deal.lng - 0.005}%2C${deal.lat - 0.003}%2C${deal.lng + 0.005}%2C${deal.lat + 0.003}&layer=mapnik&marker=${deal.lat}%2C${deal.lng}`}
           />
           <p className="quiet-note">
             Map data © OpenStreetMap contributors. Location supplied by the

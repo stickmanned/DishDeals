@@ -122,6 +122,14 @@ const paths = {
       <path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16" />
     </>
   ),
+  bookmark: <path d="M6 3h12v18l-6-4-6 4Z" />,
+  locate: (
+    <>
+      <circle cx="12" cy="12" r="7" />
+      <circle cx="12" cy="12" r="2" />
+      <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof paths;
@@ -129,17 +137,19 @@ export function Icon({
   name,
   size = 24,
   style,
+  filled = false,
 }: {
   name: IconName;
   size?: number;
   style?: CSSProperties;
+  filled?: boolean;
 }) {
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"

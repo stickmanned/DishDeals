@@ -3,33 +3,46 @@
 import {
   createContext,
   useContext,
-  useEffect,
-  useRef,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 import {
+  ConvexProviderWithAuth,
+  ConvexReactClient,
   useConvexAuth,
   useConvexConnectionState,
   useMutation,
-  useAction,
   useQuery,
 } from "convex/react";
 import { parseWorkflowDeals, type DealView } from "@/lib/frontend/deals";
-import { demoDeals } from "@/lib/frontend/demoDeals";
+import { demoDeals, previewSeedPosts } from "@/lib/frontend/demoDeals";
 import { workflowApi, type WorkflowSource } from "@/lib/frontend/workflow";
 import { emptyDraft, type Draft } from "@/lib/frontend/draft";
 import { Dialog } from "./Dialog";
-import { useAuthActions } from "@convex-dev/auth/react";
-import { useClock } from "./useClock";
 import { useRouter } from "next/navigation";
+import { useAuthActions, useConvexAuth as useCanonicalSession } from "@convex-dev/auth/react";
+import { api } from "@/convex/_generated/api";
+import { frontendConnection } from "@/lib/frontendConnection";
 
+type AuthState = {
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  fetchAccessToken: (args: {
+    forceRefreshToken: boolean;
+  }) => Promise<string | null>;
+};
 export type AuthAdapter = {
+  useAuth: () => AuthState;
   signIn?: (email: string, password: string, create: boolean) => Promise<void>;
   signOut?: () => Promise<void>;
-  signInGuest?: () => Promise<void>;
 };
+const unconfiguredAuth = () => ({
+  isLoading: false,
+  isAuthenticated: false,
+  fetchAccessToken: async () => null,
+});
+
 type LiveApi = {
   deals: DealView[] | undefined;
   error: boolean;
@@ -39,7 +52,6 @@ type LiveApi = {
   submit: (
     source: WorkflowSource,
   ) => ReturnType<ReturnType<typeof useMutation<typeof workflowApi.submit>>>;
-  search: ReturnType<typeof useAction<typeof workflowApi.search>>;
 };
 type Profile = { displayName: string; walletAddress: string };
 type FrontendState = {
@@ -56,6 +68,9 @@ type FrontendState = {
   authenticated: boolean;
   profile: Profile;
   savePreviewProfile: (profile: Profile) => void;
+  /** Deal ids the visitor bookmarked from Discover. Kept for this tab only, like preview votes. */
+  savedIds: string[];
+  toggleSaved: (id: string) => void;
   votes: Record<string, "still_on" | "expired">;
   votePreview: (id: string, value: "still_on" | "expired") => void;
   previewPosts: DealView[];
@@ -94,8 +109,10 @@ function Runtime({
   setMode,
   live,
   auth,
+  liveProfile,
 }: {
   children: ReactNode;
+  liveProfile?: Profile;
   mode: "preview" | "live";
   setMode: FrontendState["setMode"];
   live: LiveApi | null;
@@ -108,12 +125,13 @@ function Runtime({
     walletAddress: "",
   });
   const [votes, setVotes] = useState<FrontendState["votes"]>({});
+  const [savedIds, setSavedIds] = useState<string[]>([]);
   const [previewPosts, setPreviewPosts] = useState<DealView[]>([]);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft),
     [sourceText, setSourceText] = useState(""),
     [sourceImage, setSourceImage] = useState("");
-  const [sourceMode, setSourceMode] = useState<"image" | "text">("text"),
+  const [sourceMode, setSourceMode] = useState<"image" | "text">("image"),
     [sourceUrl, setSourceUrl] = useState(""),
     [publishedAt, setPublishedAt] = useState(""),
     [sourceFilename, setSourceFilename] = useState("");
@@ -132,7 +150,7 @@ function Runtime({
     setDraft(emptyDraft);
     setSourceImage("");
     setSourceText("");
-    setSourceMode("text");
+    setSourceMode("image");
     setSourceUrl("");
     setPublishedAt("");
     setSourceFilename("");
@@ -152,18 +170,24 @@ function Runtime({
     auth,
     previewSession,
     signInPreview: () => {
+      const name = profile.displayName || "Alex";
       setPreviewSession(true);
       setProfile((p) => ({ ...p, displayName: p.displayName || "Alex" }));
+      // A first preview sign-in starts with a few example posts so Profile isn't empty.
+      setPreviewPosts((posts) => (posts.length || previewSession ? posts : previewSeedPosts(name)));
     },
-    authenticated: mode === "preview" ? previewSession : !!live?.authenticated,
+    // A real signed-in session counts in every mode, so the header and profile links follow the actual login even
+    // while Discover shows the example deals (the fake preview session only applies when there is no real one).
+    authenticated: !!live?.authenticated || (mode === "preview" && previewSession),
     signOut: async () => {
-      if (mode === "live") await auth?.signOut?.();
-      else {
+      if (mode === "live" || live?.authenticated) await auth?.signOut?.();
+      if (mode !== "live") {
         setPreviewSession(false);
         setProfile({ displayName: "", walletAddress: "" });
         setPreviewPosts([]);
         setVotes({});
       }
+      setSavedIds([]);
       setActiveJobId(null);
       setDraft(emptyDraft);
       setSourceImage("");
@@ -175,8 +199,13 @@ function Runtime({
       setEditDrafts({});
     },
     profile:
-      mode === "preview" ? profile : { displayName: "", walletAddress: "" },
+      mode === "preview" ? profile : (liveProfile ?? { displayName: "", walletAddress: "" }),
     savePreviewProfile: setProfile,
+    savedIds,
+    toggleSaved: (id) =>
+      setSavedIds((ids) =>
+        ids.includes(id) ? ids.filter((x) => x !== id) : [id, ...ids],
+      ),
     votes,
     votePreview: (id, vote) => setVotes((v) => ({ ...v, [id]: vote })),
     previewPosts,
@@ -211,7 +240,10 @@ function Runtime({
       }),
     deals:
       mode === "preview"
-        ? [...previewPosts, ...demoDeals]
+        ? [
+            ...previewPosts,
+            ...demoDeals.filter((d) => !previewPosts.some((p) => p.restaurant === d.restaurant)),
+          ]
         : (live?.deals ?? []),
     loading:
       mode === "live" && !!live && live.deals === undefined && !live.error,
@@ -248,15 +280,13 @@ function Runtime({
 }
 
 function LiveRuntime(props: Omit<Parameters<typeof Runtime>[0], "live">) {
-  const { now, ready } = useClock();
   const raw = useQuery(
     workflowApi.list,
-    props.mode === "live" && ready ? { limit: 100, now: now.getTime() } : "skip",
+    props.mode === "live" ? { limit: 100 } : "skip",
   );
   const session = useConvexAuth();
   const connection = useConvexConnectionState();
   const submit = useMutation(workflowApi.submit);
-  const search = useAction(workflowApi.search);
   const parsed = useMemo(() => {
     if (raw === undefined) return { deals: undefined, error: false };
     try {
@@ -267,7 +297,6 @@ function LiveRuntime(props: Omit<Parameters<typeof Runtime>[0], "live">) {
   }, [raw]);
   const live: LiveApi = {
     ...parsed,
-    search,
     authenticated: session.isAuthenticated,
     authLoading: session.isLoading,
     connection: connection.isWebSocketConnected
@@ -275,40 +304,81 @@ function LiveRuntime(props: Omit<Parameters<typeof Runtime>[0], "live">) {
       : connection.hasEverConnected
         ? "reconnecting"
         : "connecting",
-    submit: (source) => submit({ inputJson: JSON.stringify({ source, context: { city: "Vancouver", region: "British Columbia", countryCode: "ca", timezone: "America/Vancouver" } }) }),
+    submit: (source) => submit({ inputJson: JSON.stringify({ source }) }),
   };
   return <Runtime {...props} live={live} />;
 }
 
-function AuthenticatedFrontend({ children, mode, setMode }: { children: ReactNode; mode: "preview" | "live"; setMode: FrontendState["setMode"] }) {
-  const actions = useAuthActions();
+/** Canonical routes and the legacy feed share the ROOT client; no nested provider shadows it. */
+function CanonicalRuntime({ children, mode, setMode, conflict }: {
+  children: ReactNode;
+  mode: "preview" | "live";
+  setMode: FrontendState["setMode"];
+  conflict: boolean;
+}) {
+  const { signIn, signOut } = useAuthActions();
   const session = useConvexAuth();
-  const confirmed = useRef(false);
-  const waiting = useRef(new Set<() => void>());
-  useEffect(() => {
-    confirmed.current = session.isAuthenticated;
-    if (session.isAuthenticated) for (const ready of waiting.current) ready();
-  }, [session.isAuthenticated]);
+  const me = useQuery(api.users.me, session.isAuthenticated ? {} : "skip");
   const auth: AuthAdapter = {
-    signIn: async (email, password, create) => { const data = new FormData(); data.set("email", email); data.set("password", password); data.set("flow", create ? "signUp" : "signIn"); await actions.signIn("password", data); },
-    signOut: actions.signOut,
-    signInGuest: async () => {
-      if (confirmed.current) return;
-      await actions.signIn("anonymous");
-      if (confirmed.current) return;
-      // signIn resolves when tokens are saved; protected requests must wait for server confirmation.
-      await new Promise<void>((resolve, reject) => {
-        const ready = () => { clearTimeout(timeout); waiting.current.delete(ready); resolve(); };
-        const timeout = setTimeout(() => { waiting.current.delete(ready); reject(new Error("Guest sign-in could not finish. Please try again.")); }, 15000);
-        waiting.current.add(ready);
-        if (confirmed.current) ready();
-      });
+    useAuth: useCanonicalSession,
+    signOut,
+    async signIn(email, password, create) {
+      const data = new FormData();
+      data.set("email", email);
+      data.set("password", password);
+      data.set("flow", create ? "signUp" : "signIn");
+      await signIn("password", data);
     },
   };
-  return <LiveRuntime mode={mode} setMode={setMode} auth={auth}>{children}</LiveRuntime>;
+  const props = {
+    children,
+    mode,
+    setMode,
+    auth,
+    liveProfile: { displayName: me?.displayName ?? "", walletAddress: me?.walletAddress ?? "" },
+  };
+  if (conflict) {
+    // Keep canonical route children on their original authenticated client. Never try the foreign target.
+    const unavailable: LiveApi = {
+      deals: [], error: true, authenticated: session.isAuthenticated, authLoading: session.isLoading,
+      connection: null,
+      submit: async () => { throw new Error("The legacy feed target differs from the signed-in app target."); },
+    };
+    return <Runtime {...props} live={unavailable}>
+      <p role="alert">The Discover feed is not configured for this app. Your account, saved Reels and deal map use the signed-in app connection.</p>
+      {children}
+    </Runtime>;
+  }
+  return <LiveRuntime {...props} />;
 }
-export function FrontendProvider({ children }: { children: ReactNode }) {
-  const configured = !!process.env.NEXT_PUBLIC_CONVEX_URL;
-  const [mode, setMode] = useState<"preview" | "live">(configured ? "live" : "preview");
-  return configured ? <AuthenticatedFrontend mode={mode} setMode={setMode}>{children}</AuthenticatedFrontend> : <Runtime mode={mode} setMode={setMode} live={null}>{children}</Runtime>;
+
+export function FrontendProvider({
+  children,
+  auth,
+}: {
+  children: ReactNode;
+  auth?: AuthAdapter;
+}) {
+  const url = process.env.NEXT_PUBLIC_WORKFLOW_CONVEX_URL;
+  const plan = frontendConnection(process.env.NEXT_PUBLIC_CONVEX_URL, url);
+  const client = useMemo(
+    () => (plan === "standalone" && url ? new ConvexReactClient(url) : null),
+    [plan, url],
+  );
+  // The legacy live feed targets its own deployment, so with only the canonical backend configured Discover opens on
+  // the example deals instead of a feed error; real sign-in state still comes from the canonical session.
+  const [mode, setMode] = useState<"preview" | "live">(plan === "preview" || plan === "canonical" ? "preview" : "live");
+  if (plan === "canonical" || plan === "canonical_conflict") {
+    return <CanonicalRuntime mode={mode} setMode={setMode} conflict={plan === "canonical_conflict"}>
+      {children}
+    </CanonicalRuntime>;
+  }
+  // Harry's standalone preview/runtime remains usable when no canonical provider is configured.
+  return client ? (
+    <ConvexProviderWithAuth client={client} useAuth={auth?.useAuth ?? unconfiguredAuth}>
+      <LiveRuntime mode={mode} setMode={setMode} auth={auth}>{children}</LiveRuntime>
+    </ConvexProviderWithAuth>
+  ) : (
+    <Runtime mode={mode} setMode={setMode} auth={auth} live={null}>{children}</Runtime>
+  );
 }

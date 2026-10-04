@@ -7,8 +7,8 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     DEVELOPMENT_TEAM: ""
-    WEBSITE_URL: "https://replace-with-your-web-host.example"
-    BACKEND_URL: "https://replace-with-your-deployment.convex.cloud"
+    WEBSITE_URL: "https://dishdeals-demo.vercel.app"
+    BACKEND_URL: "https://proper-marmot-82.ca-central-1.convex.cloud"
     APP_GROUP: group.dev.dishdeals
     KEYCHAIN_GROUP: "$(AppIdentifierPrefix)dev.dishdeals.shared"
 targets:
@@ -28,7 +28,14 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Dinedeals
+        NSCameraUsageDescription: Dinedeals uses the camera so you can take a photo of a deal to post.
+        NSPhotoLibraryUsageDescription: Dinedeals needs access to your photos so you can choose a deal image to post.
         UILaunchScreen: {}
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         WebsiteURL: "$(WEBSITE_URL)"
         BackendURL: "$(BACKEND_URL)"
         AppGroup: "$(APP_GROUP)"

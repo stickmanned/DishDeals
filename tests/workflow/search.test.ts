@@ -121,3 +121,14 @@ it("adapts recommendations to the existing map component with stable IDs and ver
   expect(mapped.longitude).toBe(place.longitude); expect(mapped.price).toBe(12);
   expect(mapped).not.toHaveProperty("pitch");
 });
+
+it("uses Vancouver permanent-UTC7 for November availability and overnight days", () => {
+  const timed = { ...records[0], deal: { ...records[0].deal, startDate: null, endDate: null, days: ["Monday" as const], startTime: "00:00", endTime: "01:00" } };
+  const instant = new Date("2026-11-02T07:30:00Z");
+  expect(availableAt(timed, instant)).toBe(true); // Monday00:30 Vancouver
+  expect(availableAt({ ...timed, timezone: "America/Los_Angeles" }, instant)).toBe(false); // Sunday23:30 LosAngeles
+  expect(availableAt(timed, new Date("2026-11-02T08:00:00Z"))).toBe(false);
+  const overnight = { ...timed, deal: { ...timed.deal, days: ["Sunday" as const], startTime: "22:00", endTime: "01:00" } };
+  expect(availableAt(overnight, instant)).toBe(true);
+  expect(availableAt(overnight, new Date("2026-11-02T08:00:00Z"))).toBe(false);
+});

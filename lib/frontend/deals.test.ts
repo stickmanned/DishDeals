@@ -431,16 +431,13 @@ describe("workflow public feed adapter", () => {
     );
   });
 
-  it("never supplies guessed live coordinates or comparison prices from demo records", () => {
-    expect(demoDeals).toHaveLength(6);
+  it("keeps demo records separate from live data, with Burnaby placeholders and example images", () => {
+    expect(demoDeals.length).toBeGreaterThanOrEqual(60);
     expect(
-      demoDeals.every(
-        (row) =>
-          row.isDemo && row.id.startsWith("demo-") && !row.lat && !row.lng,
-      ),
+      demoDeals.every((row) => row.isDemo && row.id.startsWith("demo-")),
     ).toBe(true);
-    expect(new Set(demoDeals.map((row) => row.id)).size).toBe(6);
-    expect(demoDeals.map((row) => row.imageUrl)).toEqual([
+    expect(new Set(demoDeals.map((row) => row.id)).size).toBe(demoDeals.length);
+    const photos = new Set([
       "/images/ramen.jpg",
       "/images/pizza.jpg",
       "/images/sushi.jpg",
@@ -448,5 +445,20 @@ describe("workflow public feed adapter", () => {
       "/images/tacos.jpg",
       "/images/burger.jpg",
     ]);
+    for (const row of demoDeals) {
+      if (row.imageUrl) {
+        expect(photos.has(row.imageUrl) || row.imageUrl.startsWith("/images/restaurants/")).toBe(true);
+      }
+    }
+    expect(new Set(demoDeals.map((row) => row.imageUrl)).size).toBeGreaterThan(5);
+  });
+
+  it("gives every placeholder a schedule that the validity rules can read", () => {
+    for (const row of demoDeals) {
+      expect(validity(row, noon).status).not.toBe("unknown");
+    }
+    const statuses = new Set(demoDeals.map((row) => validity(row, noon).status));
+    expect(statuses.has("valid")).toBe(true);
+    expect(statuses.has("expired")).toBe(true);
   });
 });

@@ -1,0 +1,9 @@
+# Canonical frontend session integration
+
+N-AUTH-C reviewed root5990210 found legacy FrontendProvider always nested an unauthenticated second Convex client when NEXT_PUBLIC_WORKFLOW_CONVEX_URL was configured. That shadowed the canonical authenticated client on protected child routes. Configuration mitigation for frozen401603c hosting: omit the workflow variable. Do not change the active detached release checkout silently.
+
+Production FrontendProvider now reuses the canonical ROOT client/session when canonical URL is present, including when optional workflow URL is absent. Existing public workflow feed and canonical private routes share the actual verified authenticated connection on matching target, Shell sign-out/profile reads use real root actions/users.me. No credentials are exported/copied. Legacy-only standalone Harry preview/custom auth behavior remains when canonical configuration is absent. A different or malformed workflow target shows an unavailable Discover message; canonical children stay on original root, no token sent to different target. No schema/API/backend/native/signing change.
+
+Read installed Next client/server guide and installed Convex Auth source, verified [current Convex custom integration docs](https://docs.convex.dev/auth/advanced/custom-auth). Their provider supplies the session hook to its client. This patch avoids another provider entirely around canonical children.
+
+Actual checks: 13 targeted tests pass, including React SSR of the production FrontendProvider nested under installed ConvexAuthProvider, asserting identity of the original root ConvexReactClient below normal/missing/conflicting workflow configurations. Next router mocked only for SSR; aliases resolve actual production modules; no live auth/backend request. Typecheck and touched-file ESLint exit0. Full integrated gate follows reviewed other changes. Browser authentication, real sign-in/token persistence/native bridge and phone acceptance pending.

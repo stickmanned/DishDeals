@@ -10,7 +10,7 @@ describe("deal ingestion", () => {
       .mockResolvedValueOnce(geoResponse([{ place_id: "city-id", country_code: "ca" }]))
       .mockResolvedValueOnce(geoResponse([{ place_id: place.placeId, name: place.name, formatted: place.address,
         lat: place.latitude, lon: place.longitude, city: "Richmond", country_code: "ca", categories: place.categories }]));
-    const deps = liveDependencies({ GEMINI_API_KEY: "fake-gemini", GEOAPIFY_API_KEY: "fake-geo" }, fetcher);
+    const deps = liveDependencies({ GEMINI_API_KEY: "fake-gemini", GEOAPIFY_API_KEY: "fake-geo", GEMINI_MODEL: "synthetic-model", WORKFLOW_PROVIDER_USAGE_AUTHORIZED: "true" }, fetcher);
     const result = await processDeal(input, { ...deps, now });
     expect(result.outcomes[0].status).toBe("ready");
     expect(result.outcomes[0].restaurant?.latitude).toBe(49.1666);
@@ -72,4 +72,16 @@ describe("deal ingestion", () => {
     expect(result.outcomes[0].status).toBe("needs_review");
     expect(result.outcomes[0].reviewReasons.join(" ")).toContain("address does not match");
   });
+});
+
+// Synthetic boundary tests: old tzdb may still fall back in November2026. Shared canonical Vancouver
+// policy must apply to preserved workflow expiry too; historical/non-Vancouver inputs keep IANA rules.
+it("keeps Vancouver November expiry on its actual permanent-UTC7 calendar date", async () => {
+  const instant = new Date("2026-11-02T07:30:00Z"); // November2 00:30, not November1 23:30
+  expect(localDate(instant, "America/Vancouver")).toBe("2026-11-02");
+  expect(localDate(instant, "America/Los_Angeles")).toBe("2026-11-01");
+  expect(localDate(new Date("2026-01-02T07:30:00Z"), "America/Vancouver")).toBe("2026-01-01");
+  const result = await processDeal(input, { extract: async () => ({ deals: [{ ...deal, endDate: "2026-11-01" }], rejectionReason: null }), locate: async () => [place], now: () => instant });
+  expect(result.outcomes[0].status).toBe("rejected");
+  expect(result.outcomes[0].reviewReasons).toContain("The offer has expired.");
 });

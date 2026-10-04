@@ -140,7 +140,6 @@ export function SignIn() {
             </p>
           )}
         </form>
-        {app.mode === "live" && app.auth?.signInGuest && <button className="button secondary full" disabled={busy} onClick={async () => { setBusy(true); setError(""); try { await app.auth?.signInGuest?.(); router.push(destination()); } catch { setError("Guest sign-in failed. Please try again."); } finally { setBusy(false); } }}>Continue as guest</button>}
         {app.mode === "preview" && (
           <div className="preview-account">
             <p className="quiet-note">

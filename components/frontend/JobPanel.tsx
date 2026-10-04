@@ -11,7 +11,6 @@ import {
 } from "@/lib/frontend/workflow";
 import { Icon } from "./Icon";
 import { useClock } from "./useClock";
-import { OfferMap } from "@/components/OfferMap";
 
 export function JobPanel({
   jobId,
@@ -22,7 +21,7 @@ export function JobPanel({
   duplicate: boolean;
   onNew: () => void;
 }) {
-  const raw = useQuery(workflowApi.get, { jobId: jobId as GenericId<"workflowJobs"> });
+  const raw = useQuery(workflowApi.get, { jobId: jobId as GenericId<"jobs"> });
   const retry = useMutation(workflowApi.retry);
   const { now } = useClock();
   const [busy, setBusy] = useState(false),
@@ -81,8 +80,7 @@ export function JobPanel({
           {processing
             ? "Checking the offer and its restaurant. It can take a few minutes. There’s no need to submit it again."
             : job.status === "failed"
-              ? (job.error && typeof job.error === "object" && "message" in job.error && typeof job.error.message === "string"
-                ? job.error.message : "Add the post text or an optional image, then try again.")
+              ? "Check the source, your connection, and the submission limit before trying again."
               : job.deals.length
                 ? "Each offer has its own status. Review the details before approving."
                 : (job.result?.rejectionReason ??
@@ -116,7 +114,7 @@ export function JobPanel({
               setBusy(true);
               setError("");
               try {
-                await retry({ jobId: jobId as GenericId<"workflowJobs"> });
+                await retry({ jobId: jobId as GenericId<"jobs"> });
               } catch {
                 setError(
                   "This submission couldn’t be retried. It may already be running or reviewed, or the hourly limit may have been reached.",
@@ -130,7 +128,7 @@ export function JobPanel({
           </button>
         )}
         <button className="button outline" onClick={onNew}>
-          Add details or try another source
+          Use a clearer source
         </button>
       </div>
       <Link href="/" className="text-link" style={{ marginTop: 20 }}>
@@ -173,7 +171,7 @@ function ReviewCard({
     setError("");
     try {
       const result = await review({
-        dealId: offer.dealId as GenericId<"workflowDeals">,
+        dealId: offer.dealId as GenericId<"deals">,
         decision,
         ...(offer.candidates.some((c) => c.placeId === selected)
           ? { placeId: selected }
@@ -283,16 +281,10 @@ function ReviewCard({
           )}
           {p && (
             <div className="location-panel">
-              <OfferMap
-                key={p.placeId}
-                deals={[{ id: p.placeId, restaurantName: p.name, title: "Restaurant candidate",
-                  latitude: p.latitude, longitude: p.longitude, address: p.address }]}
-                initialCenter={[p.longitude, p.latitude]}
-                initialZoom={14}
-                showLocateControl={false}
-                showDealCard={false}
-                ariaLabel={`${p.name} candidate location`}
-                style={{ height: 320 }}
+              <iframe
+                loading="lazy"
+                title={`${p.name} candidate location`}
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${p.longitude - 0.005}%2C${p.latitude - 0.003}%2C${p.longitude + 0.005}%2C${p.latitude + 0.003}&layer=mapnik&marker=${p.latitude}%2C${p.longitude}`}
               />
               <p className="quiet-note">
                 © OpenStreetMap contributors · Restaurant candidate from this
@@ -347,7 +339,7 @@ function ReviewCard({
       {offer.status === "published" && (
         <Link
           className="button secondary"
-          href={`/deal?id=${encodeURIComponent(offer.dealId)}`}
+          href={`/deal/${encodeURIComponent(offer.dealId)}`}
         >
           View published offer <Icon name="arrow" size={18} />
         </Link>

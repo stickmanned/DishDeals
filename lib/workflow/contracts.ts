@@ -11,10 +11,15 @@ export const publicUrl = z.string().max(2048).refine((value) => {
       u.hostname.includes(".") && !/\.(local|internal|localhost)$/.test(u.hostname);
   } catch { return false; }
 }, "Use a public HTTPS URL without credentials, IP addresses or custom ports");
+// GUARD (N-REMOTE-A correction): Instagram/Meta pages are never retrieved for a source. Submit the copied caption
+// as text (or an optional image) and keep the link only as attribution via `sourceUrl`.
+export const isBlockedSourceHost = (hostname: string) => /(^|\.)(instagram\.com|cdninstagram\.com|fbcdn\.net)$/i.test(hostname) || /^(instagr\.am|ig\.me)$/i.test(hostname);
+const retrievableUrl = publicUrl.refine(value => !isBlockedSourceHost(new URL(value).hostname),
+  "Instagram links cannot be retrieved. Paste the caption as text and keep the link only as attribution");
 const provenance = { sourceUrl: publicUrl.optional(), publishedAt: z.iso.date().optional() };
 export const sourceSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string().trim().min(10).max(30000), ...provenance }).strict(),
-  z.object({ type: z.literal("url"), url: publicUrl, caption: z.string().max(10000).optional(), ...provenance }).strict(),
+  z.object({ type: z.literal("url"), url: retrievableUrl, caption: z.string().max(10000).optional(), ...provenance }).strict(),
   z.object({ type: z.literal("image"), data: z.string().min(4).max(450000)
     .regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/, "Invalid base64 image"),
     mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),

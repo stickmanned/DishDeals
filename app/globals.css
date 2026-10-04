@@ -1041,8 +1041,9 @@ img {
 .location-panel {
   margin-top: 32px;
 }
-.location-panel .bitemap {
+.location-panel iframe {
   width: 100%;
+  height: 250px;
   border: 0;
   border-radius: 16px;
 }
@@ -1834,35 +1835,30 @@ img {
   font-size: 14px;
 }
 
-.search-field { min-width: 0; }
-.search-hint { font-size: 13px; margin-top: 10px; }
-.search-summary { margin-block: 16px; }
-.web-findings { padding: 24px; margin-block: 20px; min-width: 0; }
-.web-findings h2 { font-size: 26px; margin-block: 8px 12px; }
-.web-answer { white-space: pre-wrap; overflow-wrap: anywhere; margin-block: 20px; line-height: 1.7; }
-.web-sources ul { padding-left: 22px; margin-block: 12px; }
-.web-sources li { margin-block: 8px; overflow-wrap: anywhere; }
-.web-sources a { text-decoration: underline; }
-.web-suggestions { margin-top: 18px; overflow-x: auto; }
-@media (max-width: 700px) {
-  .search-row { flex-wrap: wrap; }
-  .search-row .search-field { flex-basis: 100%; }
-  .search-row > .button { flex: 1; }
-  .web-findings { padding: 20px 16px; }
-}
-
-.workflow-tools main { max-width: 1100px; margin: auto; }
-.workflow-tools section { margin: 24px 0; padding: 24px; background: var(--surface, #fff); border: 1px solid var(--border, #dedbd7); border-radius: 16px; }
-.workflow-tools header, .workflow-tools .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
-.workflow-tools label { display: grid; gap: 6px; margin: 12px 0; flex: 1; }
-.workflow-tools input, .workflow-tools select, .workflow-tools textarea { width: 100%; padding: 10px; border: 1px solid var(--border, #dedbd7); border-radius: 8px; }
-.workflow-tools button { padding: 10px 14px; border: 1px solid var(--border, #dedbd7); border-radius: 8px; margin: 4px; cursor: pointer; }
-.workflow-tools button.primary { background: var(--red, #c94234); color: white; }
-.workflow-tools button:disabled { opacity: .5; cursor: default; }
-.workflow-tools .check { display: flex; align-items: center; gap: 8px; }
-.workflow-tools .check input { width: auto; }
-.workflow-tools .cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(280px,100%),1fr)); gap: 16px; }
-.workflow-tools article, .workflow-tools .results { padding: 16px; border: 1px solid var(--border, #dedbd7); border-radius: 12px; margin-top: 16px; }
-.workflow-tools a { margin: 8px; text-decoration: underline; }
-.workflow-tools .chosen { outline: 2px solid var(--red, #c94234); }
-.workflow-tools [role=alert] { color: #a12424; }
+/* Discover: nearby + saved */
+.nearby-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; margin: 4px 0 16px; }
+.filter-row { flex-wrap: wrap; row-gap: 8px; }
+.view-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.view-tabs .chip { display: inline-flex; align-items: center; gap: 8px; }
+.location-control { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 14px; }
+.location-label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-weight: 600; }
+.text-button { background: none; border: 0; padding: 0 4px; min-height: 44px; font: inherit; font-weight: 600; color: var(--char); text-decoration: underline; text-decoration-color: var(--stone); text-underline-offset: 4px; cursor: pointer; }
+.text-button:hover:not(:disabled) { text-decoration-color: var(--char); }
+.text-button:disabled { color: var(--muted); cursor: default; }
+.location-note { font-size: 13px; margin: -4px 0 12px; }
+.deal-card { position: relative; }
+.save-button { position: absolute; top: 22px; right: 22px; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--stone); background: var(--plate); color: var(--char); cursor: pointer; transition: background-color 0.15s, color 0.15s; }
+.save-button:hover { background: var(--oat); }
+.save-button.is-saved { background: var(--red); border-color: var(--red); color: var(--plate); }
+.save-button.is-saved:hover { background: var(--red-hover); border-color: var(--red-hover); }
+.card-meta .distance { font: 500 12px var(--mono); background: var(--oat); border: 1px solid var(--stone); border-radius: 999px; padding: 2px 8px; margin-right: 6px; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .save-button { transition: none; } }
+.section-heading { flex-wrap: wrap; }
+.section-heading .view-tabs .chip { min-height: 44px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 6px; }
+.discover-map { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+.discover-map-frame { height: min(62vh, 520px); min-height: 320px; border-radius: 24px; overflow: hidden; border: 1px solid var(--stone); background: var(--oat); }
+@media (min-width: 1001px) { .discover-map { grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); align-items: start; } }
+/* The bookmark sits where the card's arrow icon is; keep titles clear of it. */
+.deal-card:has(.save-button) .card-heading > svg { display: none; }
+.deal-card:has(.save-button) .card-heading { padding-right: 52px; }
+.deal-card:has(.save-button) .card-heading h2 { overflow-wrap: anywhere; }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formatVancouverParts } from "../vancouverTime";
 
 export type DealView = {
   id: string;
@@ -52,15 +53,14 @@ const dayMap: Record<string, string> = {
 };
 const timezone = "America/Vancouver";
 const clockPattern = /^([01]\d|2[0-3]):[0-5]\d$/;
-const localFormatter = new Intl.DateTimeFormat("en-CA", {
-  timeZone: timezone,
+const localFormatOptions: Intl.DateTimeFormatOptions = {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
   hourCycle: "h23",
-});
+};
 
 function dateIsValid(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -72,7 +72,7 @@ function dateIsValid(value: string): boolean {
 }
 
 function localParts(value: Date) {
-  const parts = localFormatter.formatToParts(value);
+  const parts = formatVancouverParts(value, "en-CA", localFormatOptions);
   const get = (name: string) => parts.find((part) => part.type === name)!.value;
   const date = `${get("year")}-${get("month")}-${get("day")}`;
   const minute = Number(get("hour")) * 60 + Number(get("minute"));

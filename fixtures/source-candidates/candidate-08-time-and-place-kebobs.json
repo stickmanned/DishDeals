@@ -1,0 +1,39 @@
+{
+  "candidateId": "CAND-08",
+  "canonicalProposal": {
+    "restaurant": "Time & Place Burnaby",
+    "address": "6083 McKay Ave, Burnaby, BC V5H 2W7",
+    "dealText": "Happy Hour: Mediterranean Beef Kebobs",
+    "priceCad": null,
+    "validDays": [],
+    "validStart": null,
+    "validEnd": null,
+    "expiresOn": null,
+    "conditions": [
+      "Happy Hour menu item (Mon-Fri 4pm-6pm, Sat-Sun 5pm-6pm)",
+      "Located in Hilton Vancouver Metrotown"
+    ],
+    "sourceUrl": "https://www.timeandplaceburnaby.com/menus-happyhour"
+  },
+  "provenance": {
+    "offerUrl": "https://www.timeandplaceburnaby.com/menus-happyhour",
+    "addressUrl": "https://www.timeandplaceburnaby.com/",
+    "accessDate": "2026-10-03",
+    "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+    "statedAmount": 5.0,
+    "statedCurrency": "$5 displayed on Happy Hour food menu; ISO currency unstated (pending CAD confirmation)",
+    "coordinatesStatus": "omitted_pending_pinyuan_pin",
+    "adImageUrl": null,
+    "fullSchedule": "Monday-Friday 16:00-18:00, Saturday-Sunday 17:00-18:00",
+    "representationalLimitation": "DishDeals schema only supports a single contiguous validStart/validEnd window per record; cannot represent different weekday vs weekend hours without splitting into separate candidate variants. Canonical hours/days left pending to prevent false all-day window.",
+    "missingFields": [
+      "lat",
+      "lng",
+      "priceCad",
+      "validDays",
+      "validStart",
+      "validEnd",
+      "flyerPhoto"
+    ]
+  }
+}
