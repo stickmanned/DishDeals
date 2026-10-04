@@ -1,3 +1,5 @@
+> Active October 3 assignment supersedes historical dispatch limits and remote Git loop below. T-01/T-02 are DONE. Northstar may release successive bounded batches T-03–T-21 plus native integration. Local commits and reviewed local integration only; do not push, publish PRs or sync cloud. Workers read current packets from the workflow checkout; preserve the root human checkout. Coverage/evidence: docs/workflow/coverage.md.
+
 # DishDeals parallel development
 
 GitHub `main` is the shared integration branch. Each implementation task has one agent, one branch, one worktree, a reviewed contract and a bounded handoff. Fetching exposes published teammate commits; it cannot expose changes still only on their laptops. Human teammates should push small branches and PRs regularly.

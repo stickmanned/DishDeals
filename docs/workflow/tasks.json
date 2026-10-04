@@ -8,7 +8,7 @@
       "owner": "Loom",
       "branch": "t-03-auth",
       "worktree": "auth",
-      "status": "prepared",
+      "status": "ready",
       "dependencies": [
         "T-01",
         "T-02",
@@ -25,17 +25,26 @@
         "components/ConvexClientProvider.tsx",
         "app/layout.tsx",
         "tests/auth/",
-        "docs/handoffs/t-03.md"
+        "docs/handoffs/t-03.md",
+        "convex/auth.config.ts",
+        "convex/_generated/api.d.ts",
+        "lib/profile.ts",
+        "tests/profile/"
       ],
       "packet": "docs/tasks/T-03.md",
-      "issue": "https://github.com/stickmanned/DishDeals/issues/1"
+      "issue": "https://github.com/stickmanned/DishDeals/issues/1",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local checks only; no cloud target authorized",
+      "implementationState": "dispatched",
+      "nativeChecks": "pending runtime agreement/toolchain",
+      "phoneAcceptance": "pending William iPhone"
     },
     {
       "id": "T-04A",
       "owner": "Cinder",
       "branch": "t-04-deal-logic",
       "worktree": "logic",
-      "status": "prepared",
+      "status": "ready",
       "dependencies": [
         "T-02",
         "T-00"
@@ -46,14 +55,19 @@
         "docs/handoffs/t-04a.md"
       ],
       "packet": "docs/tasks/T-04A.md",
-      "issue": "https://github.com/stickmanned/DishDeals/issues/2"
+      "issue": "https://github.com/stickmanned/DishDeals/issues/2",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local checks only; no cloud target authorized",
+      "implementationState": "dispatched",
+      "nativeChecks": "pending runtime agreement/toolchain",
+      "phoneAcceptance": "pending William iPhone"
     },
     {
       "id": "T-04B",
       "owner": "Mica",
       "branch": "t-04-distance",
       "worktree": "distance",
-      "status": "prepared",
+      "status": "ready",
       "dependencies": [
         "T-02",
         "T-00"
@@ -64,14 +78,19 @@
         "docs/handoffs/t-04b.md"
       ],
       "packet": "docs/tasks/T-04B.md",
-      "issue": "https://github.com/stickmanned/DishDeals/issues/2"
+      "issue": "https://github.com/stickmanned/DishDeals/issues/2",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local checks only; no cloud target authorized",
+      "implementationState": "dispatched",
+      "nativeChecks": "pending runtime agreement/toolchain",
+      "phoneAcceptance": "pending William iPhone"
     },
     {
       "id": "T-05R",
       "owner": "Prism",
       "branch": "t-05-extraction-reconciliation",
       "worktree": "extraction",
-      "status": "prepared",
+      "status": "ready",
       "dependencies": [
         "T-02",
         "T-00"
@@ -82,7 +101,19 @@
         "docs/handoffs/t-05r.md"
       ],
       "packet": "docs/tasks/T-05R.md",
-      "issue": "https://github.com/stickmanned/DishDeals/issues/3"
+      "issue": "https://github.com/stickmanned/DishDeals/issues/3",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local checks only; no cloud target authorized",
+      "implementationState": "dispatched",
+      "nativeChecks": "pending runtime agreement/toolchain",
+      "phoneAcceptance": "pending William iPhone"
     }
-  ]
+  ],
+  "completedDependencies": {
+    "T-00": "integrated",
+    "T-01": "DONE \u2014 William confirmation",
+    "T-02": "DONE \u2014 William confirmation"
+  },
+  "localIntegrationBase": "83035c1eeed1c17915764ae0321594315fd5a81b",
+  "authority": "local implementation/tests/commits/reviewed integration; no remote or cloud writes"
 }
