@@ -91,7 +91,7 @@ function makeDeps(over: Partial<FlowDeps> = {}) {
     }),
     ...over,
   };
-  return { deps: deps as unknown as { [K in keyof FlowDeps]: Mock<FlowDeps[K]> }, calls };
+  return { deps: deps as unknown as { [K in keyof FlowDeps]-?: Mock<NonNullable<FlowDeps[K]>> }, calls };
 }
 
 function reviewAll(flow: ImageDraftFlow, key: string) {

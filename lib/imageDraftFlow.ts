@@ -16,6 +16,10 @@
 //   success or failure, is ignored (the SDK action itself cannot be aborted).
 // - Manual forms are never gated on analysis. The model is a suggestion; all four confidence values are
 //   the model's own, absent values are not invented, and every sidecar review note is carried.
+// - T-14B: a screen recording is an alternative SOURCE of the same flow. The injected `prepareFrames` decodes it
+//   into exactly four JPEG frames; all four are uploaded (each needs its own real receipt) and analyzed in one
+//   extract call. Everything after that (offers, edits, publish, cancel, generations) is unchanged. A recording
+//   never attaches a frame as the deal photo, and nothing is inferred about audio.
 // - Publishing runs the canonical buildPublishFields gate, calls deals.create once per form (a second
 //   click shares the in-flight call), and a form is "saved" only after a real id receipt comes back.
 
@@ -33,6 +37,7 @@ import {
 import { checkImageChoice, MAX_IMAGE_BYTES, type ImageChoice, type ImageUploadOutcome } from "./dealImageUpload";
 import type { ExtractOutcome } from "./extractCore";
 import { extractOutcomeToDrafts, validateExtractOutcome } from "./extractionDraft";
+import { checkRecordingFile, RECORDING_COPY, RECORDING_FRAME_COUNT } from "./recordingFrameFlow";
 
 // ------------------------------------------------------------------ limits
 
@@ -108,6 +113,8 @@ export type CreateDealArgs = Omit<PublishFields, "imageId"> & { imageId?: OwnedS
 export interface FlowDeps {
   /** Browser adapter: resizeImage(file) then boundedJpegUpload. Must reject if the image cannot be decoded. */
   prepareImage(file: File, signal: AbortSignal): Promise<Blob & ImageChoice>;
+  /** Optional (T-14B). Browser adapter: grabFrames then the exact-four check. Absent = recordings unsupported. */
+  prepareFrames?(file: File, signal: AbortSignal): Promise<(Blob & ImageChoice)[]>;
   getToken(): Promise<string | null>;
   generateUploadUrl(): Promise<string>;
   upload(args: { uploadUrl: string; token: string; file: Blob & ImageChoice; signal: AbortSignal }): Promise<ImageUploadOutcome>;
@@ -127,6 +134,10 @@ export interface FlowError {
 
 export interface SourceState {
   file: File | null;
+  /** A selected screen recording (T-14B). At most one of `file` and `recording` is set. */
+  recording: File | null;
+  /** Why the last recording pick was rejected; the previously selected source is kept. */
+  recordingError: string | null;
   /** Why the last pick was rejected; the previously selected file is kept. */
   fileError: string | null;
   caption: string;
@@ -139,7 +150,11 @@ export interface Offer {
   id: string;
   runId: number;
   model: string;
-  imageId: OwnedStorageId;
+  /** The image attached to the offered drafts. Null for a recording (its frames are never attached). */
+  imageId: OwnedStorageId | null;
+  /** Every owned upload that was analyzed together: one for an image, exactly four for a recording. */
+  imageIds: OwnedStorageId[];
+  source: "image" | "recording";
   imageName: string;
   /** The model found no deal; nothing to apply. */
   noDeal: boolean;
@@ -165,6 +180,8 @@ export interface FlowSnapshot {
   error: FlowError | null;
   /** True when the current file already has an owned upload, so a retry only re-runs analysis. */
   uploaded: boolean;
+  /** Frame upload progress while a recording is being sent; null otherwise. */
+  progress: { done: number; total: number } | null;
   offers: Offer[];
   forms: FormEntry[];
   activeFormKey: string;
@@ -284,17 +301,18 @@ export class ImageDraftFlow {
   private idSeq = 1;
   private abort: AbortController | null = null;
   private attached = true;
-  private receipt: { fileSeq: number; storageId: OwnedStorageId; fileName: string } | null = null;
+  private receipt: { fileSeq: number; storageIds: OwnedStorageId[]; fileName: string; kind: "image" | "recording" } | null = null;
   /** Every storage id a real upload receipt produced; the only ids a publish may reference. */
   private readonly owned = new Set<string>();
   private readonly inflight = new Map<string, Promise<PublishResult>>();
 
   constructor(private deps: FlowDeps) {
     this.snap = {
-      source: { file: null, fileError: null, caption: "", text: "", provenanceUrl: "", publishedAt: "" },
+      source: { file: null, recording: null, recordingError: null, fileError: null, caption: "", text: "", provenanceUrl: "", publishedAt: "" },
       phase: "idle",
       error: null,
       uploaded: false,
+      progress: null,
       offers: [],
       forms: [blankForm("form-1")],
       activeFormKey: "form-1",
@@ -328,7 +346,9 @@ export class ImageDraftFlow {
   }
 
   private set(patch: Partial<FlowSnapshot>): void {
-    this.snap = { ...this.snap, ...patch };
+    // Progress only means something while a run is in flight.
+    const idle = patch.phase !== undefined && !isRunning(patch.phase) && !("progress" in patch);
+    this.snap = { ...this.snap, ...patch, ...(idle ? { progress: null } : {}) };
     for (const listener of [...this.listeners]) listener();
   }
 
@@ -349,7 +369,7 @@ export class ImageDraftFlow {
       this.cancelRun();
       this.fileSeq += 1;
       this.receipt = null;
-      this.set({ source: { ...this.snap.source, file: null, fileError: null }, phase: "idle", error: null, uploaded: false });
+      this.set({ source: { ...this.snap.source, file: null, recording: null, fileError: null, recordingError: null }, phase: "idle", error: null, uploaded: false });
       return;
     }
     const check = checkSourceFile(file);
@@ -360,7 +380,24 @@ export class ImageDraftFlow {
     this.cancelRun();
     this.fileSeq += 1;
     this.receipt = null;
-    this.set({ source: { ...this.snap.source, file, fileError: null }, phase: "idle", error: null, uploaded: false });
+    this.set({ source: { ...this.snap.source, file, recording: null, fileError: null, recordingError: null }, phase: "idle", error: null, uploaded: false });
+  }
+
+  /**
+   * Pick (or clear, with null) a screen recording instead of an image. An invalid pick keeps the previous
+   * selection. Picking replaces any selected image (the source is one or the other), never form edits.
+   */
+  selectRecording(file: File | null): void {
+    if (file === null) return this.selectFile(null);
+    const check = checkRecordingFile(file);
+    if (!check.ok) {
+      this.set({ source: { ...this.snap.source, recordingError: check.message } });
+      return;
+    }
+    this.cancelRun();
+    this.fileSeq += 1;
+    this.receipt = null;
+    this.set({ source: { ...this.snap.source, file: null, recording: file, fileError: null, recordingError: null }, phase: "idle", error: null, uploaded: false });
   }
 
   setContext(patch: Partial<Pick<SourceState, "caption" | "text" | "provenanceUrl" | "publishedAt">>): void {
@@ -407,9 +444,10 @@ export class ImageDraftFlow {
    */
   async analyze(): Promise<void> {
     if (isRunning(this.snap.phase)) return;
-    const file = this.snap.source.file;
+    const recording = this.snap.source.recording;
+    const file = recording ?? this.snap.source.file;
     if (!file) {
-      this.set({ phase: "failed", error: { code: "NO_IMAGE", message: "Choose a screenshot or flyer to analyze, or fill in the form by hand.", retryable: false } });
+      this.set({ phase: "failed", error: { code: "NO_IMAGE", message: "Choose a screenshot, flyer or screen recording to analyze, or fill in the form by hand.", retryable: false } });
       return;
     }
     const context = this.validateContext();
@@ -428,9 +466,14 @@ export class ImageDraftFlow {
     };
 
     let receipt = this.receipt && this.receipt.fileSeq === myFile ? this.receipt : null;
-    this.set({ phase: receipt ? "extracting" : "preparing", error: null });
+    this.set({ phase: receipt ? "extracting" : "preparing", error: null, progress: null });
     try {
-      if (!receipt) {
+      if (!receipt && recording) {
+        const outcome = await this.uploadRecording(recording, myFile, controller, stale);
+        if (outcome === "stale") return;
+        if ("error" in outcome) return fail(outcome.error);
+        receipt = outcome.receipt;
+      } else if (!receipt) {
         let prepared: Blob & ImageChoice;
         try {
           prepared = await this.deps.prepareImage(file, controller.signal);
@@ -471,7 +514,7 @@ export class ImageDraftFlow {
           this.owned.add(storageId);
           // The upload is real even if the run was canceled meanwhile; keep it for a retry of the same file.
           if (this.fileSeq === myFile) {
-            this.receipt = { fileSeq: myFile, storageId, fileName: file.name };
+            this.receipt = { fileSeq: myFile, storageIds: [storageId], fileName: file.name, kind: "image" };
             receipt = this.receipt;
             this.set({ uploaded: true });
           }
@@ -484,7 +527,7 @@ export class ImageDraftFlow {
 
       let raw: unknown;
       try {
-        raw = await this.deps.extract({ imageIds: [receipt.storageId], ...context.args });
+        raw = await this.deps.extract({ imageIds: [...receipt.storageIds], ...context.args });
       } catch (error) {
         if (stale()) return;
         const failure = classifyExtractError(error);
@@ -504,7 +547,7 @@ export class ImageDraftFlow {
         const outcome = raw as ExtractOutcome;
         model = outcome.model;
         noDeal = !outcome.result.isDeal || outcome.result.deals.length === 0;
-        drafts = noDeal ? [] : extractOutcomeToDrafts(outcome, { sourceUrl: context.args.provenanceUrl ?? null, imageId: receipt.storageId });
+        drafts = noDeal ? [] : extractOutcomeToDrafts(outcome, { sourceUrl: context.args.provenanceUrl ?? null, imageId: receipt.kind === "image" ? receipt.storageIds[0] : null });
       } catch {
         return fail({ code: "UNUSABLE_RESULT", message: "The analysis result was not usable. Try again, or fill in the form by hand.", retryable: true });
       }
@@ -513,7 +556,9 @@ export class ImageDraftFlow {
         id: this.nextId("offer"),
         runId: myRun,
         model,
-        imageId: receipt.storageId,
+        imageId: receipt.kind === "image" ? receipt.storageIds[0] : null,
+        imageIds: [...receipt.storageIds],
+        source: receipt.kind,
         imageName: receipt.fileName,
         noDeal,
         drafts,
@@ -525,6 +570,76 @@ export class ImageDraftFlow {
     } finally {
       if (this.runId === myRun) this.abort = null;
     }
+  }
+
+  /**
+   * Decode the recording into exactly four frames and upload each, one at a time. All four must come back
+   * with distinct real receipts or the run fails and keeps no partial receipt (a retry decodes again). Late
+   * completions of a canceled or superseded run still count as owned uploads but never touch the draft state.
+   */
+  private async uploadRecording(
+    recording: File,
+    myFile: number,
+    controller: AbortController,
+    stale: () => boolean,
+  ): Promise<"stale" | { error: FlowError } | { receipt: NonNullable<ImageDraftFlow["receipt"]> }> {
+    const failure = (code: string, message: string, retryable: boolean) => ({ error: { code, message, retryable } });
+    if (!this.deps.prepareFrames) return failure("RECORDING_UNSUPPORTED", RECORDING_COPY.unsupportedHere, false);
+
+    let frames: (Blob & ImageChoice)[];
+    try {
+      frames = await this.deps.prepareFrames(recording, controller.signal);
+    } catch {
+      return stale() ? "stale" : failure("RECORDING_UNREADABLE", RECORDING_COPY.unreadable, false);
+    }
+    if (stale()) return "stale";
+    if (
+      !Array.isArray(frames) ||
+      frames.length !== RECORDING_FRAME_COUNT ||
+      frames.some((f) => f.type !== "image/jpeg" || checkImageChoice(f) !== null)
+    ) {
+      return failure("RECORDING_UNREADABLE", RECORDING_COPY.unreadable, false);
+    }
+
+    this.set({ phase: "uploading", progress: { done: 0, total: frames.length } });
+    let token: string | null;
+    try {
+      token = await this.deps.getToken();
+    } catch {
+      token = null;
+    }
+    if (stale()) return "stale";
+    if (!token) return { error: UPLOAD_FAILURES.auth };
+
+    const ids: OwnedStorageId[] = [];
+    for (const frame of frames) {
+      let uploadUrl: string;
+      try {
+        uploadUrl = await this.deps.generateUploadUrl();
+      } catch {
+        return stale() ? "stale" : failure("UPLOAD_UNAVAILABLE", "Image upload is not available right now. You can fill in the form by hand.", true);
+      }
+      if (stale()) return "stale";
+      let outcome: ImageUploadOutcome;
+      try {
+        outcome = await this.deps.upload({ uploadUrl, token, file: frame, signal: controller.signal });
+      } catch {
+        outcome = { ok: false, reason: "network" };
+      }
+      if (outcome.ok && typeof outcome.storageId === "string" && STORAGE_ID_PATTERN.test(outcome.storageId)) {
+        this.owned.add(outcome.storageId); // a real receipt, even if this run was canceled meanwhile
+        if (!ids.includes(outcome.storageId as OwnedStorageId)) ids.push(outcome.storageId as OwnedStorageId);
+      }
+      if (stale()) return "stale";
+      if (!outcome.ok) return { error: UPLOAD_FAILURES[outcome.reason] ?? UPLOAD_FAILURES.unexpected };
+      if (ids.length === 0 || !STORAGE_ID_PATTERN.test(outcome.storageId)) return { error: UPLOAD_FAILURES.unexpected };
+      this.set({ progress: { done: ids.length, total: frames.length } });
+    }
+    if (ids.length !== RECORDING_FRAME_COUNT || this.fileSeq !== myFile) return { error: UPLOAD_FAILURES.unexpected };
+
+    this.receipt = { fileSeq: myFile, storageIds: ids, fileName: recording.name, kind: "recording" };
+    this.set({ uploaded: true, phase: "extracting" });
+    return { receipt: this.receipt };
   }
 
   dismissOffer(offerId: string): void {
