@@ -1301,6 +1301,38 @@
       "implementationState": "dependency-ready assigned packet",
       "nativeChecks": "pending relevant native build",
       "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-13B",
+      "owner": "Prism",
+      "branch": "t-13-android-share-target",
+      "worktree": "android-share-target",
+      "status": "ready",
+      "dependencies": [
+        "T-07C",
+        "T-14B"
+      ],
+      "allowedPaths": [
+        "public/manifest.webmanifest",
+        "public/sw.js",
+        "public/share-icon-192.png",
+        "public/share-icon-512.png",
+        "components/PwaShareRegistration.tsx",
+        "components/deals/AndroidShareImport.tsx",
+        "components/deals/CanonicalPost.tsx",
+        "app/layout.tsx",
+        "lib/androidShareInbox.ts",
+        "tests/import/androidShareInbox.test.ts",
+        "tests/setup/androidShareTarget.test.ts",
+        "docs/integration/android-share-target.md",
+        "docs/handoffs/t-13b.md"
+      ],
+      "packet": "docs/tasks/T-13B.md",
+      "pinnedBaseSha": "24700edfe84c9d6a4be6281c8b4ef6df30af91ce",
+      "backendTarget": "NONE; local source and synthetic tests only",
+      "implementationState": "secondary original Android share target assigned",
+      "nativeChecks": "Android installed PWA unrun; iOS primary separate",
+      "phoneAcceptance": "pending actual Android share"
     }
   ],
   "completedDependencies": {
