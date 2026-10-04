@@ -1217,7 +1217,8 @@
       "allowedPaths": [
         "docs/release/backend/",
         "docs/handoffs/n-release-b.md",
-        "convex/_generated/"
+        "convex/_generated/",
+        "lib/profile.ts"
       ],
       "packet": "docs/tasks/N-RELEASE-B.md",
       "pinnedBaseSha": "5f3b23e942a25758f9cebe837ab7ccbfe71aff8d",
@@ -1307,7 +1308,7 @@
       "owner": "Prism",
       "branch": "t-13-android-share-target",
       "worktree": "android-share-target",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-07C",
         "T-14B"
@@ -1328,7 +1329,7 @@
         "docs/handoffs/t-13b.md"
       ],
       "packet": "docs/tasks/T-13B.md",
-      "pinnedBaseSha": "24700edfe84c9d6a4be6281c8b4ef6df30af91ce",
+      "pinnedBaseSha": "33471604da6a7a926631f79c25aa1a6fe375022d",
       "backendTarget": "NONE; local source and synthetic tests only",
       "implementationState": "secondary original Android share target assigned",
       "nativeChecks": "Android installed PWA unrun; iOS primary separate",
