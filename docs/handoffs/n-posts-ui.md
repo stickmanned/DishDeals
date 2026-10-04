@@ -49,8 +49,9 @@
      - Missing or empty expiry: displays `"No expiration date (retained indefinitely)"`.
      - Zero duplicated date arithmetic in UI: authoritative date/retention logic is owned by Loom in `lib/dealRetention.ts`.
 
-4. **Post Page Integration (`app/post/page.tsx`):**
-   - Imported `MyPublishedDeals` and rendered it alongside `<CanonicalPost />` in `Page`.
+4. **Post Page Integration & Jump Link Navigation (`app/post/page.tsx`):**
+   - Added a visible "Your posts" jump link (`<a href="#your-posts" className="button secondary">Your posts</a>`) near the top of the canonical `/post` page.
+   - Added `id="your-posts"` to the root `<section>` of `MyPublishedDeals`, allowing immediate navigation to published posts without scrolling past the creation form.
    - Preserves canonical creation flow, URL source prefill (`/post?source=...`), preview mode (`?preview=1`), and legacy notices (`?edit=`, `?job=`).
    - Loading or error states in "Your published deals" never clear or block the creation form.
 

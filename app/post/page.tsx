@@ -25,6 +25,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
   const initialSourceUrl = parsePostSourceParam(params.source);
   return (
     <>
+      <div className="narrow-page" style={{ paddingTop: "0.75rem", marginBottom: "-0.5rem" }}>
+        <a href="#your-posts" className="button secondary">
+          Your posts
+        </a>
+      </div>
       <CanonicalPost initialSourceUrl={initialSourceUrl ?? undefined} />
       <MyPublishedDeals />
     </>

@@ -235,6 +235,9 @@ describe("MyPublishedDeals component rendering (read-only list, no delete UI)", 
 
     const html = renderToStaticMarkup(createElement(MyPublishedDeals));
 
+    // Anchored section id for jump link navigation
+    expect(html).toContain('id="your-posts"');
+
     // Restaurant names
     expect(html).toContain("Phở Hòa");
     expect(html).toContain("Saku Pork Cutlet");

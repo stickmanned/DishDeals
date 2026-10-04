@@ -111,7 +111,7 @@ export function MyPublishedDeals() {
   const deals = useQuery(listMineRef, isAuthenticated ? { limit: 50 } : "skip");
 
   return (
-    <section className="narrow-page my-published-deals" aria-label="Your published deals">
+    <section id="your-posts" className="narrow-page my-published-deals" aria-label="Your published deals">
       <div className="panel form-stack">
         <div className="page-heading" style={{ marginBottom: "0.5rem" }}>
           <h2>Your published deals</h2>
