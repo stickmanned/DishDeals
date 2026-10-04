@@ -17,6 +17,7 @@ import type * as extract from "../extract.js";
 import type * as geocode from "../geocode.js";
 import type * as geocodeState from "../geocodeState.js";
 import type * as http from "../http.js";
+import type * as instagramPageProbe from "../instagramPageProbe.js";
 import type * as reelActions from "../reelActions.js";
 import type * as reelSource from "../reelSource.js";
 import type * as reelWorkflow from "../reelWorkflow.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   geocode: typeof geocode;
   geocodeState: typeof geocodeState;
   http: typeof http;
+  instagramPageProbe: typeof instagramPageProbe;
   reelActions: typeof reelActions;
   reelSource: typeof reelSource;
   reelWorkflow: typeof reelWorkflow;
