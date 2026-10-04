@@ -4,11 +4,11 @@
  * Implements the core geocoding contract for DishDeals with strict compliance
  * to OpenStreetMap / Nominatim usage policies:
  * - Application-wide maximum 1 request per second via injected global slot reservation.
- * - Explicit identifying User-Agent with contact information.
+ * - Genuine identifying User-Agent; contact configuration enforced as DishDeals operational rule.
  * - Prominent OpenStreetMap copyright attribution.
- * - Aggressive caching of normalized queries.
+ * - Aggressive caching of normalized queries scoped to endpoint, bounds, and result limits.
  * - Strict prohibition of autocomplete / search-as-you-type and bulk scraping.
- * - Bounded Metro Vancouver geographic envelope (viewbox) with double-validation of coordinates.
+ * - Chosen Metro Vancouver search envelope (viewbox) with double-validation of coordinates.
  * - Injected transport and storage abstractions (zero assumptions of distributed memory).
  *
  * @see https://operations.osmfoundation.org/policies/nominatim/
@@ -34,13 +34,14 @@ export interface BoundingBox {
 }
 
 /**
- * Calibrated geographic bounding box encompassing Metro Vancouver:
- * - West: -123.35 (Bowen Island / Point Grey waters)
- * - South: 49.00 (US/Canada international border / Tsawwassen / White Rock)
- * - East: -122.55 (Langley / Maple Ridge regional boundaries)
- * - North: 49.45 (North Shore mountains / Belcarra / Lions Bay)
+ * Chosen search envelope encompassing Metro Vancouver for deal discovery:
+ * - West: -123.35 (coastal waters / Point Grey)
+ * - South: 49.00 (southern regional approaches / US border vicinity)
+ * - East: -122.55 (eastern regional perimeter)
+ * - North: 49.45 (North Shore slopes)
  *
- * Center covers Vancouver, Burnaby, Richmond, Surrey, Tri-Cities, and SFU Burnaby Mountain.
+ * Note: This is an operational application search envelope, not an independently
+ * surveyed or legally confirmed regional boundary definition.
  */
 export const METRO_VANCOUVER_BBOX: BoundingBox = {
   minLng: -123.35,
@@ -61,9 +62,15 @@ export const NOMINATIM_DEFAULTS = {
   limit: 5,
   bounded: "1",
   timeoutMs: 8000,
+  minTimeoutMs: 100,
+  maxTimeoutMs: 60000,
   cacheTtlMs: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
+  maxCacheTtlMs: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
   minQueryLength: 2,
   maxQueryLength: 120,
+  maxResponseBytes: 256 * 1024, // 256 KB response body limit
+  maxProviderRecords: 50, // Capped upstream array processing
+  maxLabelLength: 300, // Bounded label string length
 } as const;
 
 export interface SlotReservationGranted {
@@ -93,7 +100,7 @@ export interface GeocodePolicyConfig {
    */
   endpoint?: string;
   /**
-   * Identifying User-Agent header with contact info (required by Nominatim policy).
+   * Genuine identifying User-Agent header with contact info.
    * Example: "DishDeals-StormHacks/1.0 (contact@dishdeals.app)"
    */
   userAgent: string;
@@ -106,7 +113,7 @@ export interface GeocodePolicyConfig {
    */
   maxResults?: number;
   /**
-   * Geographic envelope constraint. Default: METRO_VANCOUVER_BBOX.
+   * Geographic search envelope constraint. Default: METRO_VANCOUVER_BBOX.
    */
   bbox?: BoundingBox;
   /**
@@ -168,7 +175,7 @@ export class GeocodeError extends Error {
  * - Trims external whitespace.
  * - Collapses repeated internal whitespace to a single space.
  * - Rejects empty queries and lengths outside [minQueryLength, maxQueryLength].
- * - Rejects control characters, ASCII 0x00-0x1F, 0x7F, and null bytes.
+ * - Rejects control characters, ASCII 0x00-0x1F, 0x7F-0x9F, and null bytes.
  * - Rejects URL schemes and HTML/script injection tags.
  * - Requires at least one alphanumeric character.
  */
@@ -217,10 +224,51 @@ export function validateAndNormalizeQuery(query: unknown): string {
 }
 
 /**
+ * Validates bounding box coordinates:
+ * - Must be finite numbers.
+ * - Longitudes must be in [-180, 180].
+ * - Latitudes must be in [-90, 90].
+ * - Geographically ordered: minLng < maxLng and minLat < maxLat.
+ */
+export function validateBoundingBox(bbox: BoundingBox): void {
+  if (!bbox || typeof bbox !== "object") {
+    throw new GeocodeError("CONFIGURATION_ERROR", "Bounding box object is required");
+  }
+
+  const { minLng, minLat, maxLng, maxLat } = bbox;
+
+  if (
+    !Number.isFinite(minLng) ||
+    !Number.isFinite(minLat) ||
+    !Number.isFinite(maxLng) ||
+    !Number.isFinite(maxLat)
+  ) {
+    throw new GeocodeError("CONFIGURATION_ERROR", "Bounding box coordinates must be finite numbers");
+  }
+
+  if (minLng < -180 || minLng > 180 || maxLng < -180 || maxLng > 180) {
+    throw new GeocodeError("CONFIGURATION_ERROR", "Bounding box longitudes must be between -180 and 180");
+  }
+
+  if (minLat < -90 || minLat > 90 || maxLat < -90 || maxLat > 90) {
+    throw new GeocodeError("CONFIGURATION_ERROR", "Bounding box latitudes must be between -90 and 90");
+  }
+
+  if (minLng >= maxLng) {
+    throw new GeocodeError("CONFIGURATION_ERROR", "Bounding box minLng must be strictly less than maxLng");
+  }
+
+  if (minLat >= maxLat) {
+    throw new GeocodeError("CONFIGURATION_ERROR", "Bounding box minLat must be strictly less than maxLat");
+  }
+}
+
+/**
  * Validates runtime policy configuration:
- * - Requires non-empty identifying User-Agent containing contact info.
- * - Enforces HTTPS endpoint for public networks (unless explicitly localhost/test).
- * - Enforces positive finite timeout.
+ * - Requires genuine identifying User-Agent with contact info per DishDeals operational policy.
+ * - Enforces HTTPS or explicit http://localhost only (rejects ftp localhost, credentials, fragments).
+ * - Enforces positive finite bounded timeout and cache TTL.
+ * - Validates bounding box if specified.
  */
 export function validateConfig(config: GeocodePolicyConfig): void {
   if (!config || typeof config !== "object") {
@@ -235,8 +283,8 @@ export function validateConfig(config: GeocodePolicyConfig): void {
   }
 
   const ua = config.userAgent.trim();
-  // Nominatim policy explicitly requires:
-  // "Provide a valid HTTP User-Agent identifying the application... A valid contact email or link to a contact page is required."
+  // Nominatim policy requires a genuine identifying User-Agent (forbids curl, wget, python, etc.).
+  // Including contact information is DishDeals' operational rule for upstream responsibility.
   const hasContact = ua.includes("@") || ua.includes("http://") || ua.includes("https://");
   if (
     ua.length < 5 ||
@@ -248,43 +296,122 @@ export function validateConfig(config: GeocodePolicyConfig): void {
   ) {
     throw new GeocodeError(
       "CONFIGURATION_ERROR",
-      "User-Agent must identify the application and include a contact email or domain per Nominatim policy"
+      "User-Agent must identify the application and include contact info per DishDeals operational policy"
     );
   }
 
   const endpoint = config.endpoint ?? NOMINATIM_DEFAULTS.endpoint;
+  let parsed: URL;
   try {
-    const parsed = new URL(endpoint);
-    if (parsed.protocol !== "https:" && parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1") {
+    parsed = new URL(endpoint);
+  } catch {
+    throw new GeocodeError("CONFIGURATION_ERROR", "Invalid endpoint URL");
+  }
+
+  // Reject URLs containing credentials
+  if (parsed.username || parsed.password) {
+    throw new GeocodeError("CONFIGURATION_ERROR", "Endpoint URL must not contain credentials");
+  }
+
+  // Reject URL fragments
+  if (parsed.hash) {
+    throw new GeocodeError("CONFIGURATION_ERROR", "Endpoint URL must not contain a URL fragment/hash");
+  }
+
+  // Reject non-http(s) schemes (e.g. ftp://localhost)
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new GeocodeError("CONFIGURATION_ERROR", "Endpoint must use HTTPS or HTTP on localhost");
+  }
+
+  // If HTTP, only localhost or loopback is permitted
+  if (parsed.protocol === "http:") {
+    const isLocalhost =
+      parsed.hostname === "localhost" ||
+      parsed.hostname === "127.0.0.1" ||
+      parsed.hostname === "[::1]";
+    if (!isLocalhost) {
       throw new GeocodeError(
         "CONFIGURATION_ERROR",
-        `Endpoint must use HTTPS protocol; received ${parsed.protocol}`
+        "Non-HTTPS endpoint is only permitted for localhost or loopback"
       );
     }
-  } catch (err) {
-    if (err instanceof GeocodeError) throw err;
-    throw new GeocodeError("CONFIGURATION_ERROR", `Invalid endpoint URL: ${endpoint}`);
   }
 
   if (config.timeoutMs !== undefined) {
-    if (typeof config.timeoutMs !== "number" || !Number.isFinite(config.timeoutMs) || config.timeoutMs <= 0) {
-      throw new GeocodeError("CONFIGURATION_ERROR", "timeoutMs must be a positive finite number");
+    if (
+      typeof config.timeoutMs !== "number" ||
+      !Number.isFinite(config.timeoutMs) ||
+      config.timeoutMs < NOMINATIM_DEFAULTS.minTimeoutMs ||
+      config.timeoutMs > NOMINATIM_DEFAULTS.maxTimeoutMs
+    ) {
+      throw new GeocodeError(
+        "CONFIGURATION_ERROR",
+        `timeoutMs must be a finite number between ${NOMINATIM_DEFAULTS.minTimeoutMs} and ${NOMINATIM_DEFAULTS.maxTimeoutMs}`
+      );
+    }
+  }
+
+  if (config.cacheTtlMs !== undefined) {
+    if (
+      typeof config.cacheTtlMs !== "number" ||
+      !Number.isFinite(config.cacheTtlMs) ||
+      config.cacheTtlMs <= 0 ||
+      config.cacheTtlMs > NOMINATIM_DEFAULTS.maxCacheTtlMs
+    ) {
+      throw new GeocodeError(
+        "CONFIGURATION_ERROR",
+        `cacheTtlMs must be a positive finite number not exceeding ${NOMINATIM_DEFAULTS.maxCacheTtlMs}ms`
+      );
     }
   }
 
   if (config.maxResults !== undefined) {
-    if (typeof config.maxResults !== "number" || !Number.isInteger(config.maxResults) || config.maxResults < 1 || config.maxResults > 5) {
+    if (
+      typeof config.maxResults !== "number" ||
+      !Number.isInteger(config.maxResults) ||
+      config.maxResults < 1 ||
+      config.maxResults > 5
+    ) {
       throw new GeocodeError("CONFIGURATION_ERROR", "maxResults must be an integer between 1 and 5");
     }
+  }
+
+  if (config.bbox !== undefined) {
+    validateBoundingBox(config.bbox);
   }
 }
 
 /**
- * Generates deterministic cache key for normalized query and endpoint.
+ * Generates deterministic cache key distinguishing full provider endpoint (path, port, query),
+ * geographic search envelope, and maxResults.
+ *
+ * Provides safe default arguments for backwards caller compatibility.
  */
-export function getGeocodeCacheKey(normalizedQuery: string, endpoint: string): string {
-  const url = new URL(endpoint);
-  return `geocode:v1:${url.hostname.toLowerCase()}:${normalizedQuery.toLowerCase()}`;
+export function getGeocodeCacheKey(
+  normalizedQuery: string,
+  endpoint: string = NOMINATIM_DEFAULTS.endpoint,
+  bbox: BoundingBox = METRO_VANCOUVER_BBOX,
+  maxResults: number = NOMINATIM_DEFAULTS.limit
+): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    parsed = new URL(NOMINATIM_DEFAULTS.endpoint);
+  }
+
+  // Sort search query params to produce a canonical representation
+  const searchKeys = Array.from(parsed.searchParams.keys()).sort();
+  const sortedSearch = searchKeys
+    .map((k) => `${encodeURIComponent(k)}=${encodeURIComponent(parsed.searchParams.get(k) ?? "")}`)
+    .join("&");
+
+  const endpointKey = `${parsed.protocol}//${parsed.host}${parsed.pathname}${
+    sortedSearch ? `?${sortedSearch}` : ""
+  }`.toLowerCase();
+
+  const bboxSegment = `${bbox.minLng},${bbox.minLat},${bbox.maxLng},${bbox.maxLat}`;
+  return `geocode:v2:${endpointKey}:${bboxSegment}:${maxResults}:${normalizedQuery.toLowerCase()}`;
 }
 
 /**
@@ -297,6 +424,48 @@ export function isInsideBoundingBox(coord: LatLng, bbox: BoundingBox): boolean {
     coord.lng >= bbox.minLng &&
     coord.lng <= bbox.maxLng
   );
+}
+
+/**
+ * Strict numeric parser for coordinate values.
+ *
+ * Explicitly rejects booleans, null, undefined, blank strings, and objects
+ * so that Number(null) or Number(false) cannot fabricate 0 coordinates.
+ */
+export function parseNumericCoordinate(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return null;
+    // Strict numeric string match (optional sign, digits, optional decimal)
+    if (!/^-?\d+(?:\.\d+)?$/.test(trimmed)) {
+      return null;
+    }
+    const num = Number(trimmed);
+    return Number.isFinite(num) ? num : null;
+  }
+  return null;
+}
+
+/**
+ * Sanitizes and bounds a candidate label:
+ * - Strips control characters (ASCII 0x00-0x1F, 0x7F-0x9F) and null bytes.
+ * - Collapses internal whitespace.
+ * - Caps label length to maxLength.
+ */
+export function sanitizeLabel(
+  candidate: unknown,
+  maxLength: number = NOMINATIM_DEFAULTS.maxLabelLength
+): string | null {
+  if (typeof candidate !== "string") return null;
+  const stripped = candidate
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (stripped.length === 0) return null;
+  return stripped.length > maxLength ? stripped.slice(0, maxLength).trim() : stripped;
 }
 
 /**
@@ -329,10 +498,12 @@ export function buildNominatimUrl(
 
 /**
  * Parses and validates raw provider response against the canonical GeocodeResult contract:
- * - Ensures lat and lon are valid finite numbers.
+ * - Enforces strict numeric coordinates (no boolean/null/blank fabrication).
  * - Re-validates that coordinates are within the specified bounding box.
  * - Discards malformed or out-of-bounds results.
+ * - Sanitizes, cleans control characters, and bounds labels.
  * - Caps results to maxResults.
+ * - Bounded upstream array processing.
  */
 export function parseAndValidateProviderResponse(
   data: unknown,
@@ -344,38 +515,39 @@ export function parseAndValidateProviderResponse(
   }
 
   const results: GeocodeResult[] = [];
+  const boundedRecords = data.slice(0, NOMINATIM_DEFAULTS.maxProviderRecords);
 
-  for (const item of data) {
+  for (const item of boundedRecords) {
     if (!item || typeof item !== "object") continue;
 
     const raw = item as Record<string, unknown>;
-    const rawLat = Number(raw.lat);
-    const rawLng = Number(raw.lng ?? raw.lon);
+    const rawLat = parseNumericCoordinate(raw.lat);
+    const rawLng = parseNumericCoordinate(raw.lng ?? raw.lon);
 
-    if (!Number.isFinite(rawLat) || rawLat < -90 || rawLat > 90) continue;
-    if (!Number.isFinite(rawLng) || rawLng < -180 || rawLng > 180) continue;
+    if (rawLat === null || rawLat < -90 || rawLat > 90) continue;
+    if (rawLng === null || rawLng < -180 || rawLng > 180) continue;
 
     const coord: LatLng = { lat: rawLat, lng: rawLng };
     if (!isInsideBoundingBox(coord, bbox)) {
-      // Discard results outside Metro Vancouver
       continue;
     }
 
-    const rawLabel =
-      typeof raw.label === "string" && raw.label.trim().length > 0
-        ? raw.label.trim()
-        : typeof raw.display_name === "string" && raw.display_name.trim().length > 0
-          ? raw.display_name.trim()
-          : typeof raw.name === "string" && raw.name.trim().length > 0
-            ? raw.name.trim()
+    const candidateLabel =
+      typeof raw.label === "string"
+        ? raw.label
+        : typeof raw.display_name === "string"
+          ? raw.display_name
+          : typeof raw.name === "string"
+            ? raw.name
             : null;
 
-    if (!rawLabel) continue;
+    const label = sanitizeLabel(candidateLabel, NOMINATIM_DEFAULTS.maxLabelLength);
+    if (!label) continue;
 
     results.push({
       lat: coord.lat,
       lng: coord.lng,
-      label: rawLabel,
+      label,
     });
 
     if (results.length >= maxResults) {
@@ -387,6 +559,126 @@ export function parseAndValidateProviderResponse(
 }
 
 /**
+ * Reads response body with strict byte-capping and active cancellation.
+ */
+async function readCappedResponseBody(
+  response: Response,
+  controller: AbortController,
+  maxBytes: number
+): Promise<string> {
+  const contentLength = response.headers.get("content-length");
+  if (contentLength) {
+    const len = parseInt(contentLength, 10);
+    if (Number.isFinite(len) && len > maxBytes) {
+      try {
+        if (response.body && typeof response.body.cancel === "function") {
+          await response.body.cancel();
+        }
+      } catch {
+        // ignore
+      }
+      throw new GeocodeError(
+        "INVALID_RESPONSE",
+        `Response exceeded maximum size limit of ${maxBytes} bytes`
+      );
+    }
+  }
+
+  if (response.body && typeof response.body.getReader === "function") {
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let receivedBytes = 0;
+
+    const onAbort = () => {
+      try {
+        reader.cancel(new Error("The operation was aborted"));
+      } catch {
+        // ignore
+      }
+    };
+
+    if (controller.signal.aborted) {
+      onAbort();
+    } else {
+      controller.signal.addEventListener("abort", onAbort, { once: true });
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          receivedBytes += value.byteLength;
+          if (receivedBytes > maxBytes) {
+            try {
+              await reader.cancel();
+            } catch {
+              // Reader cancellation best effort
+            }
+            throw new GeocodeError(
+              "INVALID_RESPONSE",
+              `Response exceeded maximum size limit of ${maxBytes} bytes`
+            );
+          }
+          chunks.push(value);
+        }
+      }
+    } catch (readErr) {
+      if (readErr instanceof GeocodeError) {
+        throw readErr;
+      }
+      if (controller.signal.aborted) {
+        const timeoutErr = new Error("The operation was aborted");
+        timeoutErr.name = "AbortError";
+        throw timeoutErr;
+      }
+      throw readErr;
+    } finally {
+      controller.signal.removeEventListener("abort", onAbort);
+    }
+
+    if (controller.signal.aborted) {
+      const timeoutErr = new Error("The operation was aborted");
+      timeoutErr.name = "AbortError";
+      throw timeoutErr;
+    }
+
+    const decoder = new TextDecoder("utf-8");
+    let text = "";
+    for (const chunk of chunks) {
+      text += decoder.decode(chunk, { stream: true });
+    }
+    text += decoder.decode();
+    return text;
+  }
+
+  if (typeof response.text === "function") {
+    const text = await response.text();
+    if (text.length > maxBytes) {
+      throw new GeocodeError(
+        "INVALID_RESPONSE",
+        `Response exceeded maximum size limit of ${maxBytes} bytes`
+      );
+    }
+    return text;
+  }
+
+  if (typeof response.json === "function") {
+    const json = await response.json();
+    const text = JSON.stringify(json);
+    if (text.length > maxBytes) {
+      throw new GeocodeError(
+        "INVALID_RESPONSE",
+        `Response exceeded maximum size limit of ${maxBytes} bytes`
+      );
+    }
+    return text;
+  }
+
+  throw new GeocodeError("INVALID_RESPONSE", "Response body is not readable");
+}
+
+/**
  * Core geocoding implementation adhering to OpenStreetMap Nominatim usage policies.
  *
  * Sequence:
@@ -395,8 +687,9 @@ export function parseAndValidateProviderResponse(
  *    touching the global rate-limit slot or making network requests.
  * 3. On cache miss, attempts to reserve an application-wide slot via injected `reserveGlobalSlot`.
  *    If denied, throws an actionable GeocodeError("RATE_LIMITED", ..., retryAfterMs).
- * 4. Executes HTTP fetch with bounded timeout and policy-compliant headers.
- * 5. Parses and double-validates coordinates against the Metro Vancouver envelope.
+ * 4. Executes HTTP fetch with bounded timeout and policy-compliant headers, maintaining
+ *    the finite deadline through full capped response read and parsing.
+ * 5. Parses and double-validates coordinates against the search envelope.
  * 6. Stores valid results in the injected cache (if available).
  * 7. Returns 0..5 verified GeocodeResults.
  */
@@ -419,20 +712,17 @@ export async function geocodeCore(
   const bbox = config.bbox ?? METRO_VANCOUVER_BBOX;
   const maxResults = config.maxResults ?? NOMINATIM_DEFAULTS.limit;
   const timeoutMs = config.timeoutMs ?? NOMINATIM_DEFAULTS.timeoutMs;
-  const cacheKey = getGeocodeCacheKey(normalizedQuery, endpoint);
+  const cacheKey = getGeocodeCacheKey(normalizedQuery, endpoint, bbox, maxResults);
 
   // 1. Injected Cache Lookup (bypasses slot reservation on hit)
   if (typeof deps.cacheGet === "function") {
     try {
       const cached = await deps.cacheGet(cacheKey);
       if (cached !== null && Array.isArray(cached)) {
-        // Validate cached records
-        const validCached = parseAndValidateProviderResponse(cached, bbox, maxResults);
-        return validCached;
+        return parseAndValidateProviderResponse(cached, bbox, maxResults);
       }
-    } catch (cacheErr) {
-      // Non-fatal cache read error; fall through to live geocode
-      console.warn("Geocode cache read error, proceeding to live slot reservation:", cacheErr);
+    } catch {
+      // Safe no-content handling: do not log raw exception or cacheKey containing user address
     }
   }
 
@@ -446,7 +736,7 @@ export async function geocodeCore(
     );
   }
 
-  // 3. Network Transport Execution
+  // 3. Network Transport Execution & Capped Body Reading with Single Timeout Deadline
   const transport = deps.transport ?? globalThis.fetch;
   const targetUrl = buildNominatimUrl(normalizedQuery, endpoint, bbox, maxResults);
 
@@ -454,6 +744,9 @@ export async function geocodeCore(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   let response: Response;
+  let rawBodyText: string;
+  let rawJson: unknown;
+
   try {
     response = await transport(targetUrl.toString(), {
       method: "GET",
@@ -464,74 +757,84 @@ export async function geocodeCore(
       },
       signal: controller.signal,
     });
-  } catch (err: unknown) {
-    clearTimeout(timer);
-    if (err instanceof Error && err.name === "AbortError") {
+
+    // 4. HTTP Status Validation
+    if (response.status === 429) {
+      controller.abort();
+      const retryHeader = response.headers.get("Retry-After");
+      const retryAfterSec = retryHeader ? parseInt(retryHeader, 10) : 2;
+      const retryAfterMs =
+        Number.isFinite(retryAfterSec) && retryAfterSec > 0 ? retryAfterSec * 1000 : 2000;
       throw new GeocodeError(
-        "PROVIDER_TIMEOUT",
-        `Geocoding request timed out after ${timeoutMs}ms`,
-        undefined,
-        err
+        "RATE_LIMITED",
+        "Upstream geocoding provider returned HTTP 429 Too Many Requests",
+        retryAfterMs
       );
     }
+
+    if (response.status >= 500) {
+      controller.abort();
+      throw new GeocodeError(
+        "PROVIDER_UNAVAILABLE",
+        `Upstream geocoding service unavailable (HTTP ${response.status})`
+      );
+    }
+
+    if (response.status !== 200) {
+      controller.abort();
+      throw new GeocodeError(
+        "PROVIDER_ERROR",
+        `Upstream geocoding provider returned HTTP ${response.status}`
+      );
+    }
+
+    // Read capped body with timeout STILL ACTIVE
+    rawBodyText = await readCappedResponseBody(
+      response,
+      controller,
+      NOMINATIM_DEFAULTS.maxResponseBytes
+    );
+
+    // Parse JSON with timeout STILL ACTIVE
+    try {
+      rawJson = JSON.parse(rawBodyText);
+    } catch {
+      throw new GeocodeError(
+        "INVALID_RESPONSE",
+        "Failed to parse JSON response from geocoding provider"
+      );
+    }
+  } catch (err: unknown) {
+    if (err instanceof GeocodeError) {
+      throw err;
+    }
+    if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
+      throw new GeocodeError(
+        "PROVIDER_TIMEOUT",
+        `Geocoding request timed out after ${timeoutMs}ms`
+      );
+    }
+    // Safe generic error: do not expose raw error or targetUrl which can contain user address
     throw new GeocodeError(
       "PROVIDER_UNAVAILABLE",
-      `Network error communicating with geocoding provider: ${err instanceof Error ? err.message : String(err)}`,
-      undefined,
-      err
+      "Network error communicating with geocoding provider"
     );
   } finally {
     clearTimeout(timer);
   }
 
-  // 4. HTTP Status Validation
-  if (response.status === 429) {
-    const retryHeader = response.headers.get("Retry-After");
-    const retryAfterSec = retryHeader ? parseInt(retryHeader, 10) : 2;
-    const retryAfterMs = Number.isFinite(retryAfterSec) && retryAfterSec > 0 ? retryAfterSec * 1000 : 2000;
-    throw new GeocodeError(
-      "RATE_LIMITED",
-      "Upstream geocoding provider returned HTTP 429 Too Many Requests",
-      retryAfterMs
-    );
-  }
+  const results = parseAndValidateProviderResponse(rawJson, bbox, maxResults);
 
-  if (response.status >= 500) {
-    throw new GeocodeError(
-      "PROVIDER_UNAVAILABLE",
-      `Upstream geocoding service unavailable (HTTP ${response.status})`
-    );
-  }
-
-  if (response.status !== 200) {
-    throw new GeocodeError(
-      "PROVIDER_ERROR",
-      `Upstream geocoding provider returned HTTP ${response.status}`
-    );
-  }
-
-  // 5. Parse and Validate Body
-  let rawBody: unknown;
-  try {
-    rawBody = await response.json();
-  } catch (jsonErr) {
-    throw new GeocodeError(
-      "INVALID_RESPONSE",
-      "Failed to parse JSON response from geocoding provider",
-      undefined,
-      jsonErr
-    );
-  }
-
-  const results = parseAndValidateProviderResponse(rawBody, bbox, maxResults);
-
-  // 6. Injected Cache Write
+  // 5. Injected Cache Write
   if (typeof deps.cachePut === "function") {
     try {
-      await deps.cachePut(cacheKey, results, config.cacheTtlMs ?? NOMINATIM_DEFAULTS.cacheTtlMs);
-    } catch (cacheWriteErr) {
-      // Non-fatal cache write error
-      console.warn("Geocode cache write error:", cacheWriteErr);
+      await deps.cachePut(
+        cacheKey,
+        results,
+        config.cacheTtlMs ?? NOMINATIM_DEFAULTS.cacheTtlMs
+      );
+    } catch {
+      // Safe no-content handling: do not log raw exception or cacheKey containing user address
     }
   }
 
