@@ -178,7 +178,8 @@ describe("model request and transport (labeled synthetic SDK transport)", () => 
     expect(JSON.parse((text as { text: string }).text)).toEqual({ caption: CAPTION, publishedAt: "2026-06-01T17:00:00.000Z", timezone: "America/Vancouver" });
     const schema = request.config.responseJsonSchema as { required: string[]; properties: Record<string, { maxItems?: number; items?: { properties: Record<string, unknown>; required: string[]; additionalProperties: boolean } }> };
     expect(schema.required).toContain("constraints");
-    expect(schema.properties.constraints.maxItems).toBe(20);
+    // No array maxItems is sent: Gemini answers 400 INVALID_ARGUMENT for them. The 20 cap is enforced by validateExtraction.
+    expect(schema.properties.constraints.maxItems).toBeUndefined();
     expect(Object.keys(schema.properties.constraints.items!.properties).sort()).toEqual(["channel", "code", "detail", "draftIndex", "quote", "startsOn", "timestampSeconds"]);
     expect(schema.properties.constraints.items!.additionalProperties).toBe(false);
     expect(request.config).toMatchObject({ temperature: 0, responseMimeType: "application/json" });

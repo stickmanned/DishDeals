@@ -131,3 +131,27 @@ test("extraction validates evidence against every supplied fragment, and rejects
   expect((await runReelExtraction(transport(captionOutput("Cafe Aroma")), input, 12)).drafts).toHaveLength(1);
   await expect(runReelExtraction(transport(captionOutput("Cafe Aroma lunch special $8 bowl")), input, 12)).rejects.toThrow("not in the source");
 });
+// Gemini answered every Reel request with 400 INVALID_ARGUMENT because the response schema carried array maxItems
+// (drafts 10, evidence 90): verified live that removing only maxItems makes the same request succeed. The caps are
+// still enforced here, after the call, by validateExtraction.
+test("the response schema sent to Gemini has no maxItems anywhere, but keeps its structure", () => {
+  const request = buildReelExtractionRequest({ model: "m", mimeType: "video/mp4", videoBase64: "AAAA", caption: "c", publishedAt: null, duration: 12, nativeContext: null });
+  const schema = request.config.responseJsonSchema as { required: string[]; properties: Record<string, { items?: { properties?: Record<string, unknown> } }> };
+  expect(JSON.stringify(schema)).not.toContain("maxItems");
+  expect(schema.required).toEqual(["isDeal", "drafts", "evidence", "transcript", "warnings", "constraints"]);
+  expect(Object.keys(schema.properties.drafts.items!.properties!)).toContain("restaurant");
+  expect(Object.keys(schema.properties.evidence.items!.properties!)).toEqual(["draftIndex", "field", "channel", "quote", "timestampSeconds"]);
+});
+test("the draft and evidence caps are still enforced after the model answers", () => {
+  const draft = { restaurant: "Cafe", address: null, dealText: "Meal", price: null, currency: null, validDays: null, validStart: null, validEnd: null, expiresOn: null, conditions: null };
+  const tooMany = { isDeal: true, drafts: Array.from({ length: 11 }, () => draft), evidence: [], transcript: "", warnings: [], constraints: [] };
+  expect(() => validateExtraction(tooMany, "", 12, [])).toThrow();
+});
+test("more than 20 constraints are still rejected after the model answers", () => {
+  const draft = { restaurant: null, address: null, dealText: "members only", price: null, currency: null, validDays: null, validStart: null, validEnd: null, expiresOn: null, conditions: null };
+  const evidence = [{ draftIndex: 0, field: "dealText", channel: "caption", quote: "members only", timestampSeconds: null }];
+  const constraint = { draftIndex: 0, code: "UNSUPPORTED_CONSTRAINT", detail: "members only", startsOn: null, channel: "caption", quote: "members only", timestampSeconds: null };
+  const answer = (count: number) => ({ isDeal: true, drafts: [draft], evidence, transcript: "", warnings: [], constraints: Array.from({ length: count }, () => constraint) });
+  expect(() => validateExtraction(answer(20), "members only", 12, [])).not.toThrow();
+  expect(() => validateExtraction(answer(21), "members only", 12, [])).toThrow();
+});

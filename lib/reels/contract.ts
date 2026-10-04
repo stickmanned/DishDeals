@@ -175,6 +175,18 @@ export interface ReelExtractionInput {
   nativeContext?: NativeContext | null;
 }
 
+/**
+ * Gemini rejects the response schema with 400 INVALID_ARGUMENT while it carries array `maxItems` (drafts 10, evidence 90):
+ * verified live that dropping only `maxItems` makes the same request succeed. The model gets the structure, enums and
+ * required keys; the caps are enforced after the answer by validateExtraction, which is the real gate.
+ */
+function withoutMaxItems(schema: unknown): unknown {
+  if (Array.isArray(schema)) return schema.map(withoutMaxItems);
+  if (schema && typeof schema === "object") {
+    return Object.fromEntries(Object.entries(schema).filter(([key]) => key !== "maxItems").map(([key, value]) => [key, withoutMaxItems(value)]));
+  }
+  return schema;
+}
 export function buildReelExtractionRequest(input: ReelExtractionInput) {
   const context = {
     caption: input.caption, publishedAt: input.publishedAt, timezone: "America/Vancouver",
@@ -188,7 +200,7 @@ export function buildReelExtractionRequest(input: ReelExtractionInput) {
       ...(source ? [{ text: JSON.stringify(source) }] : []),
     ] }],
     config: { temperature: 0, maxOutputTokens: 14000, responseMimeType: "application/json",
-      responseJsonSchema: z.toJSONSchema(reelExtractionResponse), systemInstruction: REEL_SYSTEM_INSTRUCTION } };
+      responseJsonSchema: withoutMaxItems(z.toJSONSchema(reelExtractionResponse)), systemInstruction: REEL_SYSTEM_INSTRUCTION } };
 }
 export type ReelExtractionRequest = ReturnType<typeof buildReelExtractionRequest>;
 
