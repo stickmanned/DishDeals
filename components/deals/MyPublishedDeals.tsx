@@ -1,12 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { makeFunctionReference } from "convex/server";
-import { api } from "../../convex/_generated/api";
-import type { Doc, Id } from "../../convex/_generated/dataModel";
-import { formatVancouverParts } from "../../lib/vancouverTime";
+import type { Doc } from "../../convex/_generated/dataModel";
 
 export type MyPublishedDeal = Doc<"deals"> & {
   imageUrl: string | null;
@@ -29,8 +26,10 @@ export type SourceClassification =
 
 /**
  * Classifies the source of a deal from its sourceUrl.
- * Accurately identifies Instagram Reels (/reel/, /reels/) and Instagram Posts (/p/)
- * without guessing original kinds on old rewritten or unidentifiable links.
+ * Strictly accepts only credential-free HTTPS URLs.
+ * Recognizes exact instagram.com, www.instagram.com, and m.instagram.com hosts
+ * with anchored /p|reel|reels/shortcode paths.
+ * Invalid or non-HTTPS URLs never become clickable hrefs.
  */
 export function classifyDealSource(sourceUrl?: string | null): SourceClassification {
   if (!sourceUrl || typeof sourceUrl !== "string") {
@@ -40,139 +39,76 @@ export function classifyDealSource(sourceUrl?: string | null): SourceClassificat
   if (!trimmed) {
     return { kind: "direct_post", label: "Direct post" };
   }
+
+  let parsed: URL;
   try {
-    const parsed = new URL(trimmed);
-    const host = parsed.hostname.toLowerCase();
-    const isInstagram = host === "instagram.com" || host.endsWith(".instagram.com");
-    if (isInstagram) {
-      const pathname = parsed.pathname.toLowerCase();
-      if (pathname.includes("/reel/") || pathname.includes("/reels/")) {
-        return { kind: "instagram_reel", label: "Instagram Reel", url: trimmed };
-      }
-      if (pathname.includes("/p/")) {
-        return { kind: "instagram_post", label: "Instagram Post", url: trimmed };
-      }
-      return { kind: "instagram_generic", label: "Instagram source", url: trimmed };
-    }
-    return { kind: "external_link", label: "External link", url: trimmed };
+    parsed = new URL(trimmed);
   } catch {
-    return { kind: "external_link", label: "External link", url: trimmed };
+    // Malformed URLs never become clickable hrefs
+    return { kind: "direct_post", label: "Direct post" };
   }
+
+  // Enforce credential-free HTTPS; no javascript:, data:, http:, credentials, or port tricks
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.port) {
+    return { kind: "direct_post", label: "Direct post" };
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  const isInstagramHost =
+    host === "instagram.com" ||
+    host === "www.instagram.com" ||
+    host === "m.instagram.com";
+
+  if (isInstagramHost) {
+    // Anchored pathname checks for shortcode
+    const reelMatch = /^\/(?:reel|reels)\/([a-zA-Z0-9_-]+)(?:\/|$)/.exec(parsed.pathname);
+    if (reelMatch) {
+      return { kind: "instagram_reel", label: "Instagram Reel", url: parsed.href };
+    }
+    const postMatch = /^\/p\/([a-zA-Z0-9_-]+)(?:\/|$)/.exec(parsed.pathname);
+    if (postMatch) {
+      return { kind: "instagram_post", label: "Instagram Post", url: parsed.href };
+    }
+    return { kind: "instagram_generic", label: "Instagram source", url: parsed.href };
+  }
+
+  // Safe external HTTPS link
+  return { kind: "external_link", label: "External link", url: parsed.href };
 }
 
-/**
- * Returns the current calendar date in America/Vancouver as YYYY-MM-DD.
- */
-export function getVancouverIsoDate(date: Date): string {
-  const parts = formatVancouverParts(date, "en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const map: Record<string, string> = {};
-  for (const p of parts) map[p.type] = p.value;
-  return `${map.year}-${map.month}-${map.day}`;
-}
-
-/**
- * Adds an integer number of calendar days in UTC to an ISO YYYY-MM-DD string.
- */
-function addCalendarDays(isoDate: string, days: number): string {
-  const [y, m, d] = isoDate.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d + days, 12, 0, 0));
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-export type DealRetentionInfo = {
+export type DealExpiryDisplay = {
   hasExpiry: boolean;
-  isExpired: boolean;
-  isEligibleForDeletion: boolean;
-  deletionDateVancouver: string | null;
-  statusLabel: string;
-  retentionNote: string;
+  expiresOnVerbatim?: string;
+  policyText: string;
 };
 
 /**
- * Computes deal retention and expiry semantics based on Vancouver local time:
- * - Expiry is inclusive through the end of expiresOn in America/Vancouver.
- * - Auto-deletion / deletion eligibility is SEVEN full calendar days after the end of expiresOn.
- * - Missing or malformed expiresOn -> unknown expiry, retained indefinitely (never auto-deleted).
+ * Formats deal expiry and confirmed 7-calendar-day auto-deletion policy:
+ * - Shows expiresOn verbatim when present.
+ * - Confirms published deal auto-deletion occurs 7 calendar days after expiry in America/Vancouver.
+ * - Missing or empty expiry is retained indefinitely.
+ * Authoritative date math is owned by Loom in lib/dealRetention.ts, not duplicated here.
  */
-export function getDealRetentionInfo(
-  expiresOn?: string | null,
-  now = new Date(),
-): DealRetentionInfo {
-  if (!expiresOn || typeof expiresOn !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(expiresOn)) {
+export function formatDealExpiryPolicy(expiresOn?: string | null): DealExpiryDisplay {
+  if (!expiresOn || typeof expiresOn !== "string" || !expiresOn.trim()) {
     return {
       hasExpiry: false,
-      isExpired: false,
-      isEligibleForDeletion: false,
-      deletionDateVancouver: null,
-      statusLabel: "No expiration date (retained)",
-      retentionNote:
-        "Deals without an expiration date are retained indefinitely and cannot be automatically deleted.",
+      policyText: "No expiration date (retained indefinitely)",
     };
   }
-
-  const vancouverToday = getVancouverIsoDate(now);
-  const isExpired = vancouverToday > expiresOn;
-
-  // Deletion is eligible 7 calendar days after the END of expiresOn, which is
-  // 8 calendar days after the start of expiresOn date at 00:00 Vancouver.
-  const deletionDateVancouver = addCalendarDays(expiresOn, 8);
-  const isEligibleForDeletion = vancouverToday >= deletionDateVancouver;
-
-  let statusLabel: string;
-  let retentionNote: string;
-
-  if (isEligibleForDeletion) {
-    statusLabel = `Expired on ${expiresOn}`;
-    retentionNote =
-      "Eligible for deletion (7 calendar days have passed since expiry in America/Vancouver).";
-  } else if (isExpired) {
-    statusLabel = `Expired on ${expiresOn}`;
-    retentionNote = `Retained until ${deletionDateVancouver} (7 calendar days after expiry in America/Vancouver).`;
-  } else {
-    statusLabel = `Expires on ${expiresOn}`;
-    retentionNote = `Retained for 7 calendar days after expiry (until ${deletionDateVancouver} in America/Vancouver).`;
-  }
-
+  const trimmed = expiresOn.trim();
   return {
     hasExpiry: true,
-    isExpired,
-    isEligibleForDeletion,
-    deletionDateVancouver,
-    statusLabel,
-    retentionNote,
+    expiresOnVerbatim: trimmed,
+    policyText: `Expires on ${trimmed} (auto-deleted 7 calendar days after expiry in America/Vancouver)`,
   };
 }
 
 export function MyPublishedDeals() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
 
-  // Query signed-in deals; skipped when signed out.
+  // Read-only signed-in query; skipped when signed out.
   const deals = useQuery(listMineRef, isAuthenticated ? { limit: 50 } : "skip");
-  const removeDeal = useMutation(api.deals.remove);
-
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  async function handleConfirmDelete(dealId: Id<"deals">) {
-    setDeletingId(dealId);
-    setDeleteError(null);
-    try {
-      await removeDeal({ dealId });
-      setConfirmingId(null);
-    } catch {
-      setDeleteError("Could not delete this deal. Please try again.");
-    } finally {
-      setDeletingId(null);
-    }
-  }
 
   return (
     <section className="narrow-page my-published-deals" aria-label="Your published deals">
@@ -224,16 +160,9 @@ export function MyPublishedDeals() {
           </div>
         ) : (
           <div className="published-deals-list" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {deleteError && (
-              <p role="alert" className="field-error" style={{ margin: 0 }}>
-                {deleteError}
-              </p>
-            )}
             {deals.map((deal) => {
               const source = classifyDealSource(deal.sourceUrl);
-              const retention = getDealRetentionInfo(deal.expiresOn);
-              const isConfirming = confirmingId === deal._id;
-              const isDeleting = deletingId === deal._id;
+              const expiry = formatDealExpiryPolicy(deal.expiresOn);
 
               return (
                 <article
@@ -308,14 +237,15 @@ export function MyPublishedDeals() {
                       borderRadius: "4px",
                     }}
                   >
-                    <span style={{ fontWeight: 600, color: retention.isExpired ? "var(--red, #c5221f)" : "inherit" }}>
-                      {retention.statusLabel}
+                    <span style={{ fontWeight: 600 }}>
+                      {expiry.expiresOnVerbatim ? `Expires: ${expiry.expiresOnVerbatim}` : "No expiration date"}
                     </span>
                     <p style={{ margin: "2px 0 0 0", color: "var(--muted)", fontSize: "0.8rem" }}>
-                      {retention.retentionNote}
+                      {expiry.policyText}
                     </p>
                   </div>
 
+                  {/* Read-only navigation links: detail and edit. Author deletion is owned by the existing detail page. */}
                   <div
                     className="deal-actions"
                     style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.5rem" }}
@@ -326,47 +256,6 @@ export function MyPublishedDeals() {
                     <Link href={`/deal/${deal._id}/edit`} className="button secondary">
                       Edit deal
                     </Link>
-
-                    {isConfirming ? (
-                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                        <button
-                          type="button"
-                          className="button danger"
-                          disabled={isDeleting}
-                          onClick={() => handleConfirmDelete(deal._id)}
-                        >
-                          {isDeleting ? "Deleting…" : "Confirm delete"}
-                        </button>
-                        <button
-                          type="button"
-                          className="button secondary"
-                          disabled={isDeleting}
-                          onClick={() => setConfirmingId(null)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : retention.isEligibleForDeletion ? (
-                      <button
-                        type="button"
-                        className="button danger"
-                        onClick={() => {
-                          setDeleteError(null);
-                          setConfirmingId(deal._id);
-                        }}
-                      >
-                        Delete deal
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="button secondary"
-                        disabled
-                        title="Deals can only be deleted 7 calendar days after expiry (America/Vancouver). Unknown expiry is retained."
-                      >
-                        Delete (locked)
-                      </button>
-                    )}
                   </div>
                 </article>
               );

@@ -3,8 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
   classifyDealSource,
-  getDealRetentionInfo,
-  getVancouverIsoDate,
+  formatDealExpiryPolicy,
   MyPublishedDeals,
 } from "../../components/deals/MyPublishedDeals";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
@@ -16,7 +15,6 @@ let mockLastQueryArgs: unknown = undefined;
 
 vi.mock("convex/react", () => ({
   useConvexAuth: () => mockAuthState,
-  useMutation: () => vi.fn().mockResolvedValue(null),
   useQuery: (_queryRef: unknown, args: unknown) => {
     mockLastQueryArgs = args;
     if (args === "skip") return undefined;
@@ -49,8 +47,8 @@ function sampleDeal(overrides: Partial<Doc<"deals"> & { imageUrl: string | null 
   };
 }
 
-describe("classifyDealSource (posts vs Reels classification)", () => {
-  it("accurately classifies Instagram Reel URLs", () => {
+describe("classifyDealSource (posts vs Reels strict URL classification)", () => {
+  it("accurately classifies valid HTTPS Instagram Reel URLs with anchored shortcode", () => {
     expect(classifyDealSource("https://www.instagram.com/reel/C9_deal123/")).toEqual({
       kind: "instagram_reel",
       label: "Instagram Reel",
@@ -68,7 +66,7 @@ describe("classifyDealSource (posts vs Reels classification)", () => {
     });
   });
 
-  it("accurately classifies Instagram Post URLs (/p/)", () => {
+  it("accurately classifies valid HTTPS Instagram Post URLs (/p/) with anchored shortcode", () => {
     expect(classifyDealSource("https://www.instagram.com/p/DA_post987/")).toEqual({
       kind: "instagram_post",
       label: "Instagram Post",
@@ -86,7 +84,7 @@ describe("classifyDealSource (posts vs Reels classification)", () => {
     });
   });
 
-  it("classifies generic or non-/p/ /reel/ Instagram URLs without guessing", () => {
+  it("classifies generic Instagram URLs on exact hosts without guessing original kind", () => {
     expect(classifyDealSource("https://www.instagram.com/explore/locations/123/")).toEqual({
       kind: "instagram_generic",
       label: "Instagram source",
@@ -99,7 +97,34 @@ describe("classifyDealSource (posts vs Reels classification)", () => {
     });
   });
 
-  it("classifies non-Instagram links as external links", () => {
+  it("safely rejects credentials, ports, non-HTTPS, or invalid schemes without creating clickable hrefs", () => {
+    // Credentials in URL
+    expect(classifyDealSource("https://user:pass@instagram.com/reel/C9_deal123/")).toEqual({
+      kind: "direct_post",
+      label: "Direct post",
+    });
+    // Non-standard port
+    expect(classifyDealSource("https://instagram.com:8080/reel/C9_deal123/")).toEqual({
+      kind: "direct_post",
+      label: "Direct post",
+    });
+    // Plain HTTP
+    expect(classifyDealSource("http://instagram.com/reel/C9_deal123/")).toEqual({
+      kind: "direct_post",
+      label: "Direct post",
+    });
+    // Dangerous schemes
+    expect(classifyDealSource("javascript:alert(1)")).toEqual({
+      kind: "direct_post",
+      label: "Direct post",
+    });
+    expect(classifyDealSource("data:text/html,<h1>XSS</h1>")).toEqual({
+      kind: "direct_post",
+      label: "Direct post",
+    });
+  });
+
+  it("classifies safe external HTTPS links", () => {
     expect(classifyDealSource("https://example.com/specials/gyoza")).toEqual({
       kind: "external_link",
       label: "External link",
@@ -115,58 +140,37 @@ describe("classifyDealSource (posts vs Reels classification)", () => {
   });
 });
 
-describe("getDealRetentionInfo (Vancouver local 7-day retention rule)", () => {
-  it("treats missing or invalid expiresOn as unknown expiry retained indefinitely", () => {
-    const unknown1 = getDealRetentionInfo(undefined, new Date("2026-10-04T12:00:00Z"));
-    expect(unknown1.hasExpiry).toBe(false);
-    expect(unknown1.isEligibleForDeletion).toBe(false);
-    expect(unknown1.statusLabel).toContain("No expiration date");
-    expect(unknown1.retentionNote).toContain("retained indefinitely");
-
-    const unknown2 = getDealRetentionInfo("invalid-date", new Date("2026-10-04T12:00:00Z"));
-    expect(unknown2.hasExpiry).toBe(false);
-    expect(unknown2.isEligibleForDeletion).toBe(false);
+describe("formatDealExpiryPolicy (verbatim expiresOn & confirmed 7-day policy copy)", () => {
+  it("shows retained indefinitely copy for missing or empty expiry", () => {
+    expect(formatDealExpiryPolicy(undefined)).toEqual({
+      hasExpiry: false,
+      policyText: "No expiration date (retained indefinitely)",
+    });
+    expect(formatDealExpiryPolicy(null)).toEqual({
+      hasExpiry: false,
+      policyText: "No expiration date (retained indefinitely)",
+    });
+    expect(formatDealExpiryPolicy("")).toEqual({
+      hasExpiry: false,
+      policyText: "No expiration date (retained indefinitely)",
+    });
+    expect(formatDealExpiryPolicy("   ")).toEqual({
+      hasExpiry: false,
+      policyText: "No expiration date (retained indefinitely)",
+    });
   });
 
-  it("treats active deals on expiresOn date as active and not eligible for deletion", () => {
-    // 2026-10-04 15:00 UTC = 2026-10-04 08:00 Vancouver
-    const now = new Date("2026-10-04T15:00:00Z");
-    const info = getDealRetentionInfo("2026-10-04", now);
-    expect(info.hasExpiry).toBe(true);
-    expect(info.isExpired).toBe(false);
-    expect(info.isEligibleForDeletion).toBe(false);
-    expect(info.deletionDateVancouver).toBe("2026-10-12");
-    expect(info.statusLabel).toContain("Expires on 2026-10-04");
-    expect(info.retentionNote).toContain("Retained for 7 calendar days after expiry");
-  });
-
-  it("treats deals within the 7 calendar days after expiresOn as expired but NOT eligible for deletion", () => {
-    // Day 7 after Oct 4 is Oct 11.
-    // 2026-10-11 23:00 Vancouver = 2026-10-12 06:00 UTC
-    const nowWithinRetention = new Date("2026-10-12T06:00:00Z"); // Oct 11 23:00 Vancouver
-    expect(getVancouverIsoDate(nowWithinRetention)).toBe("2026-10-11");
-
-    const info = getDealRetentionInfo("2026-10-04", nowWithinRetention);
-    expect(info.isExpired).toBe(true);
-    expect(info.isEligibleForDeletion).toBe(false);
-    expect(info.deletionDateVancouver).toBe("2026-10-12");
-    expect(info.statusLabel).toContain("Expired on 2026-10-04");
-    expect(info.retentionNote).toContain("Retained until 2026-10-12");
-  });
-
-  it("treats deals 7 full calendar days after expiresOn as eligible for deletion", () => {
-    // Exactly Oct 12 00:00 Vancouver = Oct 12 07:00 UTC
-    const nowEligible = new Date("2026-10-12T07:00:00Z");
-    expect(getVancouverIsoDate(nowEligible)).toBe("2026-10-12");
-
-    const info = getDealRetentionInfo("2026-10-04", nowEligible);
-    expect(info.isExpired).toBe(true);
-    expect(info.isEligibleForDeletion).toBe(true);
-    expect(info.retentionNote).toContain("Eligible for deletion");
+  it("shows expiresOn verbatim and 7-day auto-deletion policy copy for provided expiry", () => {
+    const result = formatDealExpiryPolicy("2026-10-04");
+    expect(result.hasExpiry).toBe(true);
+    expect(result.expiresOnVerbatim).toBe("2026-10-04");
+    expect(result.policyText).toBe(
+      "Expires on 2026-10-04 (auto-deleted 7 calendar days after expiry in America/Vancouver)",
+    );
   });
 });
 
-describe("MyPublishedDeals component rendering", () => {
+describe("MyPublishedDeals component rendering (read-only list, no delete UI)", () => {
   it("renders sign-in prompt and skips query when user is signed out", () => {
     mockAuthState = { isLoading: false, isAuthenticated: false };
     mockDealsState = [];
@@ -200,7 +204,7 @@ describe("MyPublishedDeals component rendering", () => {
     expect(html).toContain("Private saves are separate from public deals");
   });
 
-  it("renders published deals with restaurant, deal text, price, public badge, and source classification", () => {
+  it("renders published deals with read-only list/detail/edit links and NO delete mutation UI", () => {
     mockAuthState = { isLoading: false, isAuthenticated: true };
     mockDealsState = [
       sampleDeal({
@@ -225,7 +229,7 @@ describe("MyPublishedDeals component rendering", () => {
         dealText: "Aburi Salmon Oshi 2-for-1",
         priceCad: 22,
         sourceUrl: undefined,
-        expiresOn: "2026-09-01", // Past retention date
+        expiresOn: "2026-09-01",
       }),
     ];
 
@@ -250,7 +254,12 @@ describe("MyPublishedDeals component rendering", () => {
     expect(html).toContain("Instagram Post");
     expect(html).toContain("Direct post");
 
-    // Links to detail and edit
+    // Expiry verbatim and policy text
+    expect(html).toContain("Expires: 2026-10-04");
+    expect(html).toContain("auto-deleted 7 calendar days after expiry in America/Vancouver");
+    expect(html).toContain("No expiration date (retained indefinitely)");
+
+    // Read-only navigation links: detail and edit
     expect(html).toContain('/deal/deal_reel_1');
     expect(html).toContain('/deal/deal_reel_1/edit');
     expect(html).toContain('/deal/deal_post_2');
@@ -258,10 +267,9 @@ describe("MyPublishedDeals component rendering", () => {
     expect(html).toContain('/deal/deal_manual_3');
     expect(html).toContain('/deal/deal_manual_3/edit');
 
-    // Deletion gating check
-    // deal_reel_1 expires 2026-10-04 -> locked (within retention or active)
-    expect(html).toContain("Delete (locked)");
-    // deal_manual_3 expired 2026-09-01 -> eligible for deletion (>= 7 calendar days passed)
-    expect(html).toContain("Delete deal");
+    // Confirm NO delete mutation UI or delete buttons exist (read-only list)
+    expect(html).not.toContain("Delete deal");
+    expect(html).not.toContain("Delete (locked)");
+    expect(html).not.toContain("Confirm delete");
   });
 });
