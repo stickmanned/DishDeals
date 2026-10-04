@@ -9,9 +9,9 @@ describe("parsePostSourceParam (synthetic URL validation, no network/provider)",
     expect(parsePostSourceParam(valid)).toBe("https://www.instagram.com/reel/C9_deal123/");
   });
 
-  it("normalizes a valid Instagram Post link (/p/) to canonical /reel/ format", () => {
+  it("normalizes a valid Instagram Post link (/p/) to canonical /p/ format", () => {
     const postLink = "https://instagram.com/p/C9_deal123/?igsh=abcdef123";
-    expect(parsePostSourceParam(postLink)).toBe("https://www.instagram.com/reel/C9_deal123/");
+    expect(parsePostSourceParam(postLink)).toBe("https://www.instagram.com/p/C9_deal123/");
   });
 
   it("normalizes mobile Instagram links (m.instagram.com)", () => {
@@ -111,7 +111,7 @@ describe("source provenance prefill and manual edit persistence", () => {
   it("initializes provenanceUrl and preserves manual edits across hook/deps updates and rerenders", async () => {
     const rawParam = "https://instagram.com/p/C9_deal123/?igsh=abc";
     const initialSourceUrl = parsePostSourceParam(rawParam);
-    expect(initialSourceUrl).toBe("https://www.instagram.com/reel/C9_deal123/");
+    expect(initialSourceUrl).toBe("https://www.instagram.com/p/C9_deal123/");
 
     const { ImageDraftFlow } = await import("../../lib/imageDraftFlow");
     const fakeDeps = {
@@ -133,7 +133,7 @@ describe("source provenance prefill and manual edit persistence", () => {
       flow.setContext({ provenanceUrl: initialSourceUrl });
     }
 
-    expect(flow.getSnapshot().source.provenanceUrl).toBe("https://www.instagram.com/reel/C9_deal123/");
+    expect(flow.getSnapshot().source.provenanceUrl).toBe("https://www.instagram.com/p/C9_deal123/");
 
     // User edits the provenance URL manually
     flow.setContext({ provenanceUrl: "https://www.instagram.com/reel/manually_edited_456/" });

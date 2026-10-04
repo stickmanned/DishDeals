@@ -17,7 +17,7 @@ import UniformTypeIdentifiers
         let baseFont = UIFont(name: "Figtree-Regular", size: 17) ?? .systemFont(ofSize: 17, weight: .regular)
         status.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: baseFont)
         status.adjustsFontForContentSizeCategory = true
-        status.text = "Received. Saving your Reel privately…"
+        status.text = "Received. Saving your Instagram link privately…"
         done.setTitle("Done", for: .normal)
         let doneFont = UIFont(name: "Figtree-SemiBold", size: 17) ?? .boldSystemFont(ofSize: 17)
         done.titleLabel?.font = UIFontMetrics(forTextStyle: .headline).scaledFont(for: doneFont)
@@ -76,9 +76,11 @@ import UniformTypeIdentifiers
         let context = ShareStore.makeContext(texts: texts, types: types, receivedAt: Date().timeIntervalSince1970, truncated: lost)
         let summary = ShareStore.summary(context: context, offeredDistinctTypes: distinctTypes.count, loadedURL: loadedURL, loadedText: loadedText)
         guard let url = try? ShareStore.resolveLink(texts) else {
-            status.text = "Share the Reel’s direct Instagram link. Profiles, shortened share links and messages with several different links aren’t supported.\n" + summary
+            status.text = "Share the direct Instagram post or Reel link. Profiles, shortened share links and messages with several different links aren’t supported.\n" + summary
             done.isHidden = false; return
         }
+        let kind = ShareStore.sourceKind(url)
+        let itemLabel = kind == "post" ? "post" : (kind == "reel" ? "Reel" : "post or Reel")
         // Keep a protected recovery copy before any request: an extension can be terminated at any time.
         let recovery: URL
         do { recovery = try ShareStore.enqueue(url, kind: "link", context: context) } catch { status.text = "Could not save locally. Check App Group setup.\n" + summary; done.isHidden = false; return }
@@ -86,7 +88,7 @@ import UniformTypeIdentifiers
             let id = try await ShareStore.submit(url, context: context)
             try ShareStore.enqueue(id, kind: "item", sourceUrl: url, context: context)
             try FileManager.default.removeItem(at: recovery)
-            status.text = "Saved privately. Open Dinedeals to continue and review your save.\n" + summary
+            status.text = "Saved \(itemLabel) privately. Open Dinedeals to review and publish publicly.\n" + summary
         } catch ShareFailure.signIn {
             status.text = "Link saved on this iPhone for 24 hours. Open Dinedeals and sign in to send it.\n" + summary
         } catch {

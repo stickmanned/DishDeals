@@ -3,17 +3,36 @@ import { DealResult } from "../dealSchema";
 import { nativeSourceForModel, suppliedFragments, type NativeContext } from "./nativeContext";
 z.config({ jitless: true });
 
+export type InstagramSourceKind = "post" | "reel" | "unknown";
+
+export function instagramSourceKind(url: string | null | undefined): InstagramSourceKind {
+  if (!url) return "unknown";
+  try {
+    const trimmed = url.trim();
+    if (!trimmed || /\s/.test(trimmed)) return "unknown";
+    const u = new URL(trimmed);
+    if (u.protocol !== "https:") return "unknown";
+    if (!["instagram.com", "www.instagram.com", "m.instagram.com"].includes(u.hostname.toLowerCase())) return "unknown";
+    if (u.username || u.password || u.port) return "unknown";
+    if (/^\/p\/[A-Za-z0-9_-]{5,64}\/?$/.test(u.pathname)) return "post";
+    if (/^\/(?:reel|reels)\/[A-Za-z0-9_-]{5,64}\/?$/.test(u.pathname)) return "reel";
+  } catch {
+    return "unknown";
+  }
+  return "unknown";
+}
+
 export function normalizeInstagramUrl(input: string): string {
-  if (input.length > 4096) throw new Error("Share one Instagram Reel link.");
+  if (input.length > 4096) throw new Error("Share one Instagram link.");
   const links = input.match(/https:\/\/[^\s<>]+/g) ?? [];
-  if (links.length !== 1) throw new Error("Share one Instagram Reel link.");
+  if (links.length !== 1) throw new Error("Share one Instagram link.");
   const u = new URL(links[0]);
   if (!["instagram.com", "www.instagram.com", "m.instagram.com"].includes(u.hostname) || u.username || u.password || u.port)
-    throw new Error("Use a public Instagram Reel link.");
-  const match = /^\/(?:reel|reels|p)\/([A-Za-z0-9_-]{5,64})\/?$/.exec(u.pathname);
-  if (!match) throw new Error("Use the Reel’s direct link, not a profile or shortened share link.");
-  // /p and /reel can refer to the same shortcode. Tracking never affects deduplication.
-  return `https://www.instagram.com/reel/${match[1]}/`;
+    throw new Error("Use a public Instagram link.");
+  const match = /^\/(reel|reels|p)\/([A-Za-z0-9_-]{5,64})\/?$/.exec(u.pathname);
+  if (!match) throw new Error("Use the post or Reel’s direct link, not a profile or shortened share link.");
+  const kind = match[1] === "p" ? "p" : "reel";
+  return `https://www.instagram.com/${kind}/${match[2]}/`;
 }
 
 const nullableText = (max: number) => z.string().trim().min(1).max(max).nullable();
