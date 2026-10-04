@@ -1,0 +1,155 @@
+"""Installed Android smoke check; all tap coordinates come from fresh UI XML bounds."""
+import pathlib
+import re
+import subprocess
+import sys
+import time
+import xml.etree.ElementTree as ET
+
+PACKAGE = "io.github.stickmanned.dishdeals"
+SERIAL = "emulator-5554"
+OUT = pathlib.Path("android-qa")
+OUT.mkdir(exist_ok=True)
+
+
+def adb(*args, binary=False, check=True):
+    return subprocess.run(["adb", "-s", SERIAL, *args], capture_output=True,
+                          text=not binary, check=check, timeout=25).stdout
+
+
+def tree(label):
+    result = adb("exec-out", "uiautomator", "dump", "/dev/tty")
+    start = result.find("<?xml")
+    end = result.rfind("</hierarchy>") + len("</hierarchy>")
+    if start < 0 or end < start:
+        raise RuntimeError("Android UI tree unavailable: " + result[:200])
+    xml = result[start:end]
+    (OUT / (label + ".xml")).write_text(xml, encoding="utf-8")
+    return ET.fromstring(xml)
+
+
+def visible(label, expected, timeout=40, scroll=False):
+    deadline = time.monotonic() + timeout
+    swipes = 0
+    launcher_recoveries = 0
+    while time.monotonic() < deadline:
+        try:
+            root = tree(label)
+        except (RuntimeError, subprocess.TimeoutExpired):
+            # WebView/splash startup can briefly have no accessibility root.
+            time.sleep(1)
+            continue
+        # A fresh Google APIs image can show an unrelated launcher ANR during first boot.
+        # Record it and close only Pixel Launcher using actual UI bounds. App ANRs must fail.
+        titles = [node.get("text", "") for node in root.iter("node")
+                  if node.get("resource-id") == "android:id/alertTitle"]
+        if any("DishDeals" in title and "responding" in title for title in titles):
+            raise AssertionError("DishDeals is not responding")
+        if any("Pixel Launcher" in title and "responding" in title for title in titles):
+            screenshot("launcher-anr")
+            launcher_recoveries += 1
+            if launcher_recoveries > 2:
+                raise RuntimeError("Emulator Pixel Launcher repeatedly stopped responding")
+            close = next(node for node in root.iter("node") if node.get("resource-id") == "android:id/aerr_close")
+            tap_node(close)
+            time.sleep(2)
+            continue
+        for node in root.iter("node"):
+            bounds = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
+            shown = len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]
+            if shown and any(expected in node.get(key, "") for key in ("text", "content-desc")):
+                return node
+        if scroll and swipes < 3:
+            for node in root.iter("node"):
+                bounds = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
+                if node.get("scrollable") == "true" and len(bounds) == 4:
+                    x = (bounds[0] + bounds[2]) // 2
+                    height = bounds[3] - bounds[1]
+                    adb("shell", "input", "swipe", str(x), str(bounds[1] + height * 3 // 4),
+                        str(x), str(bounds[1] + height // 3), "400")
+                    swipes += 1
+                    break
+        time.sleep(1)
+    raise AssertionError(f"Missing {expected!r} in {label}")
+
+
+def tap_node(node):
+    bounds = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
+    assert len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]
+    adb("shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2))
+    time.sleep(1)
+
+
+def tap(label, expected):
+    tap_node(visible(label, expected))
+
+
+def screenshot(name):
+    (OUT / (name + ".png")).write_bytes(adb("exec-out", "screencap", "-p", binary=True))
+
+
+def share(url):
+    adb("shell", "am", "start", "-a", "android.intent.action.SEND", "-t", "text/plain",
+        "-n", PACKAGE + "/.MainActivity", "--es", "android.intent.extra.TEXT", url)
+
+
+try:
+    subprocess.run(["adb", "start-server"], check=True, capture_output=True)
+    deadline = time.monotonic() + 240
+    while time.monotonic() < deadline:
+        try:
+            if adb("shell", "getprop", "sys.boot_completed", check=False).strip() == "1":
+                break
+        except subprocess.TimeoutExpired:
+            pass
+        time.sleep(2)
+    else:
+        raise RuntimeError("Android emulator did not boot")
+    adb("shell", "input", "keyevent", "82")
+    adb("shell", "settings", "put", "global", "window_animation_scale", "0")
+    adb("shell", "settings", "put", "global", "transition_animation_scale", "0")
+    adb("install", "-r", sys.argv[1])
+    adb("logcat", "-c")
+    adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
+    visible("discover", "Find your next good meal.", timeout=90)
+    screenshot("discover")
+    # Exercise a cold-launch share, then the warm-launch draft protection path.
+    adb("shell", "am", "force-stop", PACKAGE)
+    first = "https://www.instagram.com/reel/AndroidShareTest/"
+    share(first)
+    visible("cold-share", "Open shared text?")
+    screenshot("incoming-share")
+    tap("accept-share", "Use shared text")
+    visible("post", first)
+    visible("post-button", "Find the offer")
+    screenshot("post")
+    share("https://example.com/second-offer")
+    visible("warm-share", "This replaces your current source")
+    tap("keep-draft", "Keep current draft")
+    visible("preserved-draft", first)
+    # Back returns to Discover without losing the source in the active app session.
+    adb("shell", "input", "keyevent", "4")
+    visible("back", "Find your next good meal.")
+    screenshot("back-to-discover")
+    tap("map-navigation", "Map & AI")
+    visible("map-page", "Deal map", scroll=True)
+    time.sleep(5)
+    screenshot("map")
+    tap("reels-navigation", "Reels")
+    visible("reels", "Save a Reel.")
+    screenshot("reels")
+    crashes = adb("logcat", "-b", "crash", "-d")
+    # The shared emulator crash buffer also contains SDK/UiAutomator processes.
+    # Preserve the full evidence, but fail for this app (including app subprocesses).
+    app_crash = re.search(r"Process:\s*" + re.escape(PACKAGE) + r"(?:[:,\s]|$)", crashes)
+    native_crash = re.search(r">>>\s*" + re.escape(PACKAGE) + r"(?::[^\s]*)?\s*<<<", crashes)
+    assert not (app_crash or native_crash), crashes
+    (OUT / "result.txt").write_text("PASS: installed APK, Discover, cold/warm text shares, draft protection, Back, map and Reels navigation, no native crash. No offers submitted.\n")
+finally:
+    try:
+        screenshot("last-screen")
+        (OUT / "window.txt").write_text(adb("shell", "dumpsys", "window", check=False), encoding="utf-8")
+        (OUT / "logcat.txt").write_text(adb("logcat", "-d", check=False), encoding="utf-8")
+        (OUT / "crashes.txt").write_text(adb("logcat", "-b", "crash", "-d", check=False), encoding="utf-8")
+    except (OSError, subprocess.SubprocessError) as error:
+        (OUT / "diagnostic-error.txt").write_text(str(error), encoding="utf-8")

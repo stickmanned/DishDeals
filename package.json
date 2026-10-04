@@ -12,10 +12,16 @@
     "agents": "node scripts/agent-workflow.mjs",
     "test:workflow": "node --test scripts/agent-workflow.test.mjs",
     "check": "npm run typecheck && npm run lint && npm run test && npm run test:workflow && npm run build",
-    "build:pages": "node scripts/build-github-pages.mjs"
+    "build:pages": "node scripts/build-github-pages.mjs",
+    "build:android": "node scripts/build-android.mjs",
+    "android:sync": "node scripts/build-android.mjs --assets-only",
+    "android:open": "cap open android"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.5.2",
     "@convex-dev/auth": "^0.0.96",
     "@convex-dev/workflow": "^0.4.8",
     "@google/genai": "^2.27.0",
@@ -28,6 +34,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
     "@edge-runtime/vm": "^5.0.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.4",

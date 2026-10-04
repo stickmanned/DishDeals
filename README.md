@@ -1,5 +1,7 @@
 # DishDeals
 
+Android trial packaging and installation: [docs/android.md](docs/android.md).
+
 stormhacks project
 
 ## Integrated web trial

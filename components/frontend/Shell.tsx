@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { BrandMark, Icon } from "./Icon";
 import { useFrontend } from "./FrontendProvider";
 import type { ReactNode } from "react";
+import { AndroidBridge } from "./AndroidBridge";
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
@@ -12,6 +13,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const profileHref = app.authenticated ? "/profile" : "/signin";
   return (
     <>
+      <AndroidBridge />
       <a href="#content" className="skip-link">
         Skip to content
       </a>
@@ -87,6 +89,14 @@ export function Shell({ children }: { children: ReactNode }) {
         >
           <Icon name="plus" />
           <span>Post</span>
+        </Link>
+        <Link href="/tools" aria-current={path.startsWith("/tools") ? "page" : undefined}>
+          <Icon name="pin" />
+          <span>Map &amp; AI</span>
+        </Link>
+        <Link href="/reels" aria-current={path.startsWith("/reels") ? "page" : undefined}>
+          <Icon name="camera" />
+          <span>Reels</span>
         </Link>
         <Link
           href={profileHref}

@@ -14,9 +14,9 @@ import { Icon } from "./Icon";
 import { DraftForm } from "./DraftForm";
 import { JobPanel } from "./JobPanel";
 import { Dialog } from "./Dialog";
-export function Post({ editId, jobId }: { editId?: string; jobId?: string }) {
+export function Post({ editId, jobId, incomingShareId }: { editId?: string; jobId?: string; incomingShareId?: string }) {
   const app = useFrontend();
-  return <PostView key={`${app.mode}:${editId ?? "new"}`} editId={editId} jobId={jobId} />;
+  return <PostView key={`${app.mode}:${editId ?? "new"}:${incomingShareId ?? ""}`} editId={editId} jobId={jobId} />;
 }
 function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
   const app = useFrontend();
