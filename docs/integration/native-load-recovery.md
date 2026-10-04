@@ -16,3 +16,10 @@ Fixes the observed blank white native screen (placeholder `WebsiteURL`, loading 
 - `tests/native/WebLoadChecks.swift`: 61 pure checks (config, same-origin, stale/failed/canceled/finish/retry/termination/share scrub, late older starts, requested-route retry, inbox routing). Run command is in the file header (extracts the `WebLoadModel` region).
 - iPhoneOS SDK typecheck of App+ShareStore and ShareExtension+ShareStore: clean (only deprecation warnings).
 - NOT done: simulator build/QA of this source (after integration, sole device `DishDeals Native QA`, outputs `/tmp/dishdeals-cinder-load-recovery`); real WKWebView behaviour of cancel codes and termination is unobserved; real phone pending.
+
+## Simulator check (post-integration, c4b937a source)
+Root `workflow/ios` Swift (App, Shared, ShareExtension) was `diff`-identical to c4b937a before the build. Root `ios/project.yml` (unowned human iPad-orientation edit) and the ignored Team project were not touched.
+- Command: `xcodebuild -project Dinedeals.xcodeproj -scheme Dinedeals -configuration Debug -destination 'platform=iOS Simulator,id=2F091162-0FA9-455C-8FC5-B904A971601D' -derivedDataPath /tmp/dishdeals-cinder-load-recovery CODE_SIGNING_ALLOWED=NO build` (unsigned; App Group stays blocked).
+- Result: exit 0, `** BUILD SUCCEEDED **`, app + embedded ReelShare.appex; only the AppIntents-metadata warning. Debug dylib sha256 1c92590976dfdeb2…; log /tmp/dishdeals-cinder-load-recovery/build.log.
+- Install + `maestri portal launch dev.dishdeals.app` on iPhone 17e iOS 27.0 (`DishDeals Native QA`): the app no longer shows a blank white screen. Placeholder `WebsiteURL` evaluates to unconfigured, and the cream overlay "Dinedeals isn’t set up on this build yet. Install an updated build to continue." is shown. The accessibility snapshot exposes it as 1 element (text, no Retry, no URL). Screenshot /tmp/dishdeals-cinder-load-recovery/unconfigured.png (sha256 ff21e1d14dd11f1f…).
+- Not verified (needs a real public host): loading spinner on a live page, failed-load + Retry on real network errors, termination, WKWebView cancel codes, bridge, foreground no-reload. Later bounded live E2E QA.
