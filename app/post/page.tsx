@@ -1,8 +1,14 @@
 import { CanonicalPost, LegacyPostLinkNotice, PreviewPost } from "@/components/deals/CanonicalPost";
+import { parsePostSourceParam } from "@/lib/postSource";
 
 export const metadata = { title: "Post a deal", referrer: "no-referrer" };
 
-type Params = { edit?: string | string[]; job?: string | string[]; preview?: string | string[] };
+type Params = {
+  edit?: string | string[];
+  job?: string | string[];
+  preview?: string | string[];
+  source?: string | string[];
+};
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 // /post is the canonical live flow (real auth, owned upload, common review form, deals.create).
@@ -15,5 +21,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
   if (edit !== undefined) return <LegacyPostLinkNotice kind="edit" id={edit} />;
   if (job !== undefined) return <LegacyPostLinkNotice kind="job" />;
   if (first(params.preview) === "1") return <PreviewPost />;
-  return <CanonicalPost />;
+  const initialSourceUrl = parsePostSourceParam(params.source);
+  return <CanonicalPost initialSourceUrl={initialSourceUrl ?? undefined} />;
 }

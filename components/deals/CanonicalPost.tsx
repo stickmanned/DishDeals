@@ -38,6 +38,7 @@ import { RecordingPicker } from "./RecordingFrames";
 import { prepareRecordingFrames } from "@/lib/recordingFrameFlow";
 import { browserDemoCache, CACHED_COPY, cachedOfferNote } from "@/lib/demoCacheFlow";
 import { createSearch } from "@/lib/reels/publish";
+import { hasNonUrlText } from "@/lib/postSource";
 import { DealReviewForm } from "./DealReviewForm";
 
 export interface CanonicalPostProps {
@@ -46,14 +47,15 @@ export interface CanonicalPostProps {
    * absent and the picker shows its explicit "search unavailable" state; no coordinates are invented.
    */
   searchLocation?: (query: string) => Promise<GeocodeCandidate[]>;
+  initialSourceUrl?: string;
 }
 
 const PHASE_COPY: Partial<Record<FlowSnapshot["phase"], string>> = {
   preparing: "Preparing your image or recording…",
   uploading: "Uploading…",
-  extracting: "Reading your image. This can take a little while.",
+  extracting: "Reading your deal details. This can take a little while.",
   done: "Analysis finished. Choose how to use the suggestions below.",
-  canceled: "Analysis canceled. Your image and details are kept.",
+  canceled: "Analysis canceled. Your details are kept.",
 };
 
 export function CanonicalPost(props: CanonicalPostProps) {
@@ -74,7 +76,7 @@ export function CanonicalPost(props: CanonicalPostProps) {
   return <LivePost {...props} />;
 }
 
-function LivePost({ searchLocation }: CanonicalPostProps) {
+function LivePost({ searchLocation, initialSourceUrl }: CanonicalPostProps) {
   const router = useRouter();
   const session = useSession();
   const me = useQuery(api.users.me, session.isAuthenticated ? {} : "skip");
@@ -97,7 +99,13 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
     // T-16B: same-origin saved-capture replay. Nothing is fetched unless the user switches replay on and asks for analysis.
     ...browserDemoCache(),
   };
-  const [flow] = useState(() => new ImageDraftFlow(deps));
+  const [flow] = useState(() => {
+    const f = new ImageDraftFlow(deps);
+    if (initialSourceUrl) {
+      f.setContext({ provenanceUrl: initialSourceUrl });
+    }
+    return f;
+  });
   useEffect(() => {
     flow.setDeps(deps);
   });
@@ -105,7 +113,12 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
   const snap = useSyncExternalStore(flow.subscribe, flow.getSnapshot, flow.getSnapshot);
 
   const hasWork =
-    snap.source.file !== null || snap.source.recording !== null || snap.offers.length > 0 || snap.forms.some((f) => f.saved !== null || isFormEdited(f.draft));
+    snap.source.file !== null ||
+    snap.source.recording !== null ||
+    hasNonUrlText(snap.source.caption, snap.source.text) ||
+    snap.source.provenanceUrl !== "" ||
+    snap.offers.length > 0 ||
+    snap.forms.some((f) => f.saved !== null || isFormEdited(f.draft));
   const ready = session.isAuthenticated && !!me;
   const notice = sessionNotice({ isLoading: session.isLoading, isAuthenticated: session.isAuthenticated, profile: me === undefined ? undefined : me !== null });
 
@@ -206,7 +219,8 @@ function Gate({ loading, signedIn, children }: { loading: boolean; signedIn: boo
 function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot }) {
   const running = isRunning(snap.phase);
   const { source } = snap;
-  const hasSource = source.file !== null || source.recording !== null;
+  const hasText = hasNonUrlText(source.caption, source.text);
+  const hasSource = source.file !== null || source.recording !== null || hasText;
 
   function pick(e: ChangeEvent<HTMLInputElement>) {
     const chosen = e.target.files?.[0];
@@ -291,7 +305,11 @@ function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot 
           </button>
         )}
       </div>
-      {!hasSource && <p className="muted">Add an image to get suggestions, or skip this and fill in the form below by hand.</p>}
+      {!hasSource && (
+        <p className="muted">
+          Add an image or enter deal text from the post to get suggestions, or skip this and fill in the form below by hand.
+        </p>
+      )}
       {PHASE_COPY[snap.phase] && <p role="status" aria-live="polite">{snap.cacheLookup ? CACHED_COPY.checking : PHASE_COPY[snap.phase]}</p>}
       {snap.error && (
         <p role="alert" className="field-error">
@@ -344,12 +362,16 @@ function OffersPanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot 
           <h3>
             From {offer.imageName} <span className="muted">· model {offer.model}</span>
           </h3>
-          {offer.cached && (
+          {offer.cached && offer.source !== "text" && (
             <p role="note" className="quiet-note">
               <b>{CACHED_COPY.badge}.</b> {cachedOfferNote(offer.cached, offer.source)}
             </p>
           )}
-          {offer.noDeal && <p role="status">No clear dining deal was found in this image. You can fill in the form by hand.</p>}
+          {offer.noDeal && (
+            <p role="status">
+              No clear dining deal was found {offer.source === "text" ? "in this text" : "in this image"}. You can fill in the form by hand.
+            </p>
+          )}
           {offer.drafts.map((draft, index) => {
             const s = summary(draft);
             const appliedTo = offer.appliedTo[index];
