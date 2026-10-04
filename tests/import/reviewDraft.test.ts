@@ -399,15 +399,94 @@ describe("N-FORM-B: Reel Review Draft Helpers and Lifecycle", () => {
     const extraction = (offers: unknown[], warnings: string[]) =>
       JSON.stringify({ isDeal: true, drafts: offers, evidence: [], transcript: "synthetic", warnings });
 
-    it("carries model warnings into a saved draft with the same offer count and blocks publish", () => {
+    it("binds model warnings by index only for an UNEDITED saved draft with the same count", () => {
+      const [d] = initDraftsFromReelItem({
+        draftJson: JSON.stringify([base()]),
+        draftEdited: false,
+        extractionJson: extraction([base()], ["Students only"]),
+      });
+      expect(d.reviewIssues).toHaveLength(1);
+      expect(d.reviewIssues[0]).toMatchObject({ code: "UNSUPPORTED_CONSTRAINT", detail: "Students only", resolved: false, blocking: true });
+      expect(d.fields.restaurant.suggestion?.value).toBe("Mine");
+      expect(validateForPublish(d).errors.join("|")).toContain("Unresolved provider constraint");
+    });
+
+    it("treats an edited saved draft as unaligned even at the same count: warnings stay with a source-review note", () => {
       const [d] = initDraftsFromReelItem({
         draftJson: JSON.stringify([base()]),
         draftEdited: true,
         extractionJson: extraction([base()], ["Students only"]),
       });
-      expect(d.reviewIssues).toHaveLength(1);
-      expect(d.reviewIssues[0]).toMatchObject({ code: "UNSUPPORTED_CONSTRAINT", detail: "Students only", resolved: false, blocking: true });
-      expect(validateForPublish(d).errors.join("|")).toContain("Unresolved provider constraint");
+      const details = d.reviewIssues.map((i) => i.detail).join("|");
+      expect(details).toContain("Students only");
+      expect(details).toContain("cannot be matched automatically");
+      expect(d.reviewIssues.every((i) => i.blocking && !i.resolved)).toBe(true);
+      expect(Object.values(d.fields).every((f) => f.suggestion === undefined)).toBe(true);
+      expect(validateForPublish(d).valid).toBe(false);
+    });
+
+    it("regression: same-count edited reorder cannot make a typed FUTURE_START disappear", () => {
+      // Model: offer 0 (A) starts in the future; offer 1 (B) is ordinary.
+      const modelJson = JSON.stringify({
+        isDeal: true,
+        drafts: [base({ restaurant: "A" }), base({ restaurant: "B" })],
+        evidence: [{ draftIndex: 0, field: "hours", channel: "caption", quote: "starts next month", timestampSeconds: null }],
+        transcript: "synthetic transcript",
+        warnings: [],
+        manualReview: [{ code: "FUTURE_START", dealIndex: 0, detail: "A starts next month", blocking: true }],
+      });
+      // User reorders (B first, A second) and saves: count is still 2, draftEdited true.
+      const reordered = JSON.stringify([base({ restaurant: "B" }), base({ restaurant: "A" })]);
+      const drafts = initDraftsFromReelItem({ draftJson: reordered, draftEdited: true, extractionJson: modelJson });
+      expect(drafts.map((d) => d.fields.restaurant.value)).toEqual(["B", "A"]);
+      for (const d of drafts) {
+        const future = d.reviewIssues.filter((i) => i.code === "FUTURE_START");
+        expect(future).toHaveLength(1);
+        expect(future[0]).toMatchObject({ detail: "A starts next month", blocking: true, resolved: false });
+        expect(d.reviewIssues.some((i) => i.detail.includes("cannot be matched automatically"))).toBe(true);
+        // Everything else is confirmed and located, yet publish is still hard-blocked.
+        let ready = d;
+        for (const action of confirmationActions(ready)) ready = dealDraftReducer(ready, action);
+        ready = dealDraftReducer(ready, { type: "CONFIRM_LOCATION", lat: 49.28, lng: -123.1 });
+        for (const field of ["address", "hours", "expiresOn", "validDays", "conditions", "priceCad"] as const) {
+          ready = dealDraftReducer(ready, { type: "REVIEW_OMISSION", field });
+        }
+        expect(() => buildPublishFields(ready)).toThrow(/future-start/);
+      }
+      // The note cannot be resolved away through the reducer.
+      const id = drafts[0].reviewIssues.find((i) => i.code === "FUTURE_START")!.id;
+      const attempted = dealDraftReducer(drafts[0], { type: "RESOLVE_REVIEW_ISSUE", issueId: id, resolutionNote: "fine" });
+      expect(attempted.reviewIssues.find((i) => i.id === id)?.resolved).toBe(false);
+    });
+
+    it("a typed FUTURE_START also reaches first-load model drafts and unedited saved drafts", () => {
+      const withFuture = JSON.stringify({
+        isDeal: true,
+        drafts: [base()],
+        evidence: [],
+        transcript: "",
+        warnings: [],
+        manualReview: [{ code: "FUTURE_START", detail: "Starts later", blocking: false }],
+      });
+      for (const item of [{ extractionJson: withFuture }, { extractionJson: withFuture, draftJson: JSON.stringify([base()]) }]) {
+        const [d] = initDraftsFromReelItem(item);
+        const f = d.reviewIssues.find((i) => i.code === "FUTURE_START");
+        expect(f).toMatchObject({ blocking: true, resolved: false });
+      }
+    });
+
+    it("ignores malformed typed notes and never alters the immutable extraction JSON", () => {
+      const raw = JSON.stringify({
+        isDeal: true,
+        drafts: [base()],
+        evidence: [],
+        transcript: "",
+        warnings: [],
+        manualReview: [{ code: "BOGUS", detail: "x" }, { code: "FUTURE_START", detail: "  " }, 7],
+      });
+      const [d] = initDraftsFromReelItem({ extractionJson: raw });
+      expect(d.reviewIssues).toEqual([]);
+      expect(JSON.parse(raw).manualReview).toHaveLength(3);
     });
 
     it("keeps one model currency note (no duplicate) when the saved price is still non-CAD", () => {

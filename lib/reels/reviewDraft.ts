@@ -114,13 +114,65 @@ function modelOffers(
 ): { drafts: DealDraft[]; extraction: ReelExtraction } | null {
   if (!extractionJson) return null;
   try {
-    const extraction = reelExtraction.parse(JSON.parse(extractionJson));
+    const raw: unknown = JSON.parse(extractionJson);
+    // Additive, optional typed notes (e.g. FUTURE_START) beside the strict extraction contract.
+    const notes = typedManualReview(raw);
+    const base = raw !== null && typeof raw === "object" && !Array.isArray(raw)
+      ? Object.fromEntries(Object.entries(raw).filter(([k]) => k !== "manualReview"))
+      : raw;
+    const extraction = reelExtraction.parse(base);
     if (!extraction.isDeal || extraction.drafts.length === 0) return null;
     const res = reelExtractionToDealDrafts(extraction, { sourceUrl });
-    return { drafts: res.drafts, extraction };
+    const drafts = res.drafts.map((d, index) => {
+      const issues = [...d.reviewIssues];
+      for (const n of notes) {
+        if (n.dealIndex !== undefined && n.dealIndex !== index) continue;
+        if (issues.some((i) => i.code === n.code && i.detail === n.detail)) continue;
+        issues.push({
+          id: `issue-${n.code}-${index}-typed-${issues.length}`,
+          dealIndex: index,
+          code: n.code,
+          detail: n.detail,
+          resolved: false,
+          blocking: n.blocking,
+        });
+      }
+      return { ...d, reviewIssues: issues };
+    });
+    return { drafts, extraction };
   } catch {
     return null;
   }
+}
+
+interface TypedNote {
+  code: ReviewIssue["code"];
+  detail: string;
+  dealIndex?: number;
+  blocking: boolean;
+}
+
+const NOTE_CODES: readonly string[] = ["FUTURE_START", "UNSUPPORTED_CONSTRAINT", "CURRENCY_UNVERIFIED"];
+
+function typedManualReview(raw: unknown): TypedNote[] {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return [];
+  const list = (raw as { manualReview?: unknown }).manualReview;
+  if (!Array.isArray(list)) return [];
+  const notes: TypedNote[] = [];
+  for (const entry of list) {
+    if (entry === null || typeof entry !== "object") continue;
+    const { code, detail, dealIndex, blocking } = entry as Record<string, unknown>;
+    if (typeof code !== "string" || !NOTE_CODES.includes(code)) continue;
+    if (typeof detail !== "string" || detail.trim() === "") continue;
+    notes.push({
+      code: code as ReviewIssue["code"],
+      detail: detail.trim(),
+      ...(typeof dealIndex === "number" && Number.isInteger(dealIndex) ? { dealIndex } : {}),
+      // A typed future start is always blocking; other notes default to blocking unless stated.
+      blocking: code === "FUTURE_START" ? true : blocking !== false,
+    });
+  }
+  return notes;
 }
 
 function cloneIssue(issue: ReviewIssue, id: string, dealIndex: number): ReviewIssue {
@@ -134,11 +186,12 @@ function cloneIssue(issue: ReviewIssue, id: string, dealIndex: number): ReviewIs
  * 1. If stored draftJson exists, parse it strictly. Populated fields start with isReviewed = false
  *    on reload so unaccepted or unconfirmed values are never treated as reviewed; the user
  *    confirms them explicitly (see confirmationActions).
- * 2. Immutable model review issues are carried into saved/manual drafts. When the saved offer
- *    count equals the model offer count they bind by index. When it differs, no offer
- *    correspondence is guessed: every model warning/future-start note is attached to every
- *    offer, index-bound currency notes and suggestions are dropped, and one blocking note
- *    requires explicit manual source review.
+ * 2. Immutable model review issues are carried into saved/manual drafts. Saved offers have no
+ *    stable model ids, so alignment is only trusted for an UNEDITED saved draft with the same
+ *    offer count. For any user-edited draft (reorder/delete+append keeps the count) or a changed
+ *    count, no correspondence is guessed: every blocking model constraint/warning/future-start
+ *    note is attached to every offer, index-bound currency notes and suggestions are dropped,
+ *    and one blocking note requires explicit manual source review.
  * 3. If stored draftJson is absent, but extractionJson is present, initialize tentative
  *    suggestions via reelExtractionToDealDrafts.
  * 4. If neither exists (or item failed/no_deal with no extraction), provide a clean
@@ -156,7 +209,8 @@ export function initDraftsFromReelItem(
     try {
       const parsedReels = reelDraft.array().min(1).max(10).parse(JSON.parse(item.draftJson));
       const model = modelOffers(item.extractionJson, source);
-      const aligned = model !== null && model.drafts.length === parsedReels.length;
+      const aligned =
+        model !== null && !(item.draftEdited ?? false) && model.drafts.length === parsedReels.length;
 
       // Unique model notes that are not bound to an offer index (warnings, future start).
       const unboundModelIssues: ReviewIssue[] = [];
@@ -215,7 +269,9 @@ export function initDraftsFromReelItem(
             id: `issue-UNSUPPORTED_CONSTRAINT-${index}-count-changed`,
             dealIndex: index,
             code: "UNSUPPORTED_CONSTRAINT",
-            detail: `The saved draft has ${parsedReels.length} offer(s) but the model found ${model.drafts.length}. Offers cannot be matched automatically; check the source evidence and confirm this offer manually.`,
+            detail: item.draftEdited
+              ? `This saved draft was edited, so its ${parsedReels.length} offer(s) cannot be matched automatically to the model's ${model.drafts.length}. All model notes apply to every offer; check the source evidence and confirm this offer manually.`
+              : `The saved draft has ${parsedReels.length} offer(s) but the model found ${model.drafts.length}. Offers cannot be matched automatically; check the source evidence and confirm this offer manually.`,
             resolved: false,
             blocking: true,
           });
@@ -278,6 +334,8 @@ export function initDraftsFromReelItem(
   }
 
   // Case 2: No stored draftJson, but model extractionJson is present
+  const model = modelOffers(item.extractionJson, source);
+  if (model) return model.drafts;
   if (item.extractionJson) {
     try {
       const res = reelExtractionToDealDrafts(JSON.parse(item.extractionJson), { sourceUrl: source });

@@ -30,6 +30,12 @@
 - `npm run test:workflow` → 23/23.
 - `node /tmp/dishdeals-owner-check.mjs N-FORM-B` → `approved centralized packet ownership PASS`.
 
+## Correction 2 (Northstar review of 76288cc)
+- Saved edited offers have no stable model ids, so `initDraftsFromReelItem` now trusts index alignment only for an unedited saved draft with equal count. Any `draftEdited: true` draft is unaligned: every blocking model constraint/warning/FUTURE_START goes on every saved offer with the explicit source-review note; model currency notes and suggestions are dropped (own non-CAD note kept). Original extraction/evidence untouched.
+- Typed notes: stored extraction JSON may carry additive optional `manualReview` entries (strict extraction contract unchanged; read tolerantly in `lib/reels/reviewDraft.ts`; FUTURE_START always blocking). Prism's helper replaces this source later.
+- Regression: same-count edited reorder with typed FUTURE_START (`tests/import/reviewDraft.test.ts`) — both reordered offers keep the unresolved FUTURE_START, unresolvable via reducer, `buildPublishFields` throws even after all confirmations/location/omissions. Plus unedited-binds-by-index, first-load typed note, malformed-note tests.
+- Checks: `npx vitest run tests/import tests/backend/reelManualDraft.test.ts tests/backend/reelDraftRevisions.test.ts` 9 files 316/316; `npm run typecheck` and `npm run lint` exit 0. Full suite not re-run (correction scoped to reviewDraft helper/tests/docs). No backend/API/schema/deals change.
+
 ## Not run / pending (no mock acceptance claims)
 - Real browser DOM, live map rendering/geocoding, native iOS WKWebView, phone and publish are NOT verified; unit/convex-test use synthetic identities and fixtures only. No provider, cloud, remote, browser or native execution, no secrets read.
 - Component-level behaviors (Confirm saved values button, late-extraction notice, mounted-during-processing) are covered through their pure helpers; there is no DOM test of the components themselves.
