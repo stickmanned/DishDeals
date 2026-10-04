@@ -79,3 +79,5 @@ LatestWilliamnavigation: SavedPosts/Reels entry, tap-to-map. Primary share/revie
 
 
 October3 late evening update: William confirms his Apple Account is added in Xcode. Read-only devicectl still reports zero connected devices; signing/provisioning and installation unverified. Simulator runtime inventory remains empty at the fresh native SDK-build milestone. Native app/extension rebuild after storage hardening passed, but no UI run. Local browser QA request was explicitly declined by browser security policy; no workaround attempted and temporary harness/server removed. All rendered/browser/native/phone checks remain unrun.
+
+October4 00:29 device milestone: William reports cable connected/trusted/Developer Mode enabled. Actual devicectl inventory finds one paired wired booted iPhone, OS26.6.1, tunnel connected; Xcode showdestinations lists it. Inventory developerModeStatus is disabled, so discrepancy awaiting William restart/TurnOn confirmation. No device identifier recorded here. Signing/team still blank in project.yml; placeholder website/backend configuration, installation/auth/native sharing remain pending. Logs private/tmp only.

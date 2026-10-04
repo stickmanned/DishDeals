@@ -762,9 +762,10 @@
       "packet": "docs/tasks/T-09C.md",
       "pinnedBaseSha": "75352608f1cbd8b8a573996efa4745d76ee5f451",
       "backendTarget": "actual in-memory component tests only; no cloud",
-      "implementationState": "dispatched to Loom sole canonical schema/package/API/deals writer",
+      "implementationState": "db5de05 reviewed locally integrated84415d9",
       "nativeChecks": "pending native form/map",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "worker900Vitest/23workflow/typecheck/lint/build PASS; combined root pending"
     },
     {
       "id": "N-FORM-B",
@@ -823,6 +824,44 @@
       "implementationState": "dispatched to Prism source-evidence constraints",
       "nativeChecks": "pending actual media/extraction",
       "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-07B",
+      "owner": "Loom",
+      "branch": "t-07-owned-image-extraction",
+      "worktree": "image-extraction",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-03",
+        "T-05A",
+        "T-09C"
+      ],
+      "allowedPaths": [
+        "convex/deals.ts",
+        "convex/dealUploads.ts",
+        "convex/dealImage.ts",
+        "convex/extract.ts",
+        "convex/http.ts",
+        "convex/convex.config.ts",
+        "convex/_generated/api.d.ts",
+        "convex/_generated/server.d.ts",
+        "convex/crons.ts",
+        "lib/dealImageUpload.ts",
+        "tests/backend/dealImageUpload.test.ts",
+        "tests/backend/extractAction.test.ts",
+        "tests/import/dealImageUpload.test.ts",
+        "docs/integration/image-extraction.md",
+        "docs/handoffs/t-07b.md",
+        ".env.example",
+        "lib/extractCore.ts"
+      ],
+      "packet": "docs/tasks/T-07B.md",
+      "pinnedBaseSha": "84415d9b542a9e3abafa51f59d85df0817025286",
+      "backendTarget": "local synthetic checks only; no cloud/provider",
+      "implementationState": "dispatched Loom owned image/extraction",
+      "nativeChecks": "pending actual image decoding/file picker",
+      "phoneAcceptance": "pending real screenshot/flyer"
     }
   ],
   "completedDependencies": {
