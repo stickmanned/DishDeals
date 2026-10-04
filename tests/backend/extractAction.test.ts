@@ -9,6 +9,10 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import schema from "../../convex/schema";
 import { api } from "../../convex/_generated/api";
+import { extractDeal } from "../../convex/extract";
+import type { ActionCtx } from "../../convex/_generated/server";
+import type { FunctionArgs } from "convex/server";
+import type { ExtractOutcome } from "../../lib/extractCore";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
@@ -66,7 +70,7 @@ describe("access, arguments and the provider gate (no provider call)", () => {
     const id = await s.upload(s.aId, img(PNG));
     await rejectsWith(s.t.action(api.extract.extractDeal, { imageIds: [id] }), "NOT_SIGNED_IN");
   });
-  it("requires 1 to 8 different images", async () => {
+  it("requires source content and at most 8 different images", async () => {
     const s = await setup(); enable();
     const ids = await Promise.all(Array.from({ length: 9 }, () => s.upload(s.aId, img(PNG))));
     await rejectsWith(s.alice.action(api.extract.extractDeal, { imageIds: [] }), "INVALID_INPUT");
@@ -88,6 +92,136 @@ describe("access, arguments and the provider gate (no provider call)", () => {
     for (const [k, v] of Object.entries({ REEL_PROVIDER_USAGE_AUTHORIZED: "true", REEL_MEDIA_USAGE_AUTHORIZED: "true", GEMINI_API_KEY: KEY, GEMINI_REEL_MODEL: "m" })) vi.stubEnv(k, v);
     const id = await s.upload(s.aId, img(PNG));
     await rejectsWith(s.alice.action(api.extract.extractDeal, { imageIds: [id] }), "CONFIGURATION");
+  });
+});
+
+describe("supplied caption/text without images (synthetic source and network)", () => {
+  it.each([
+    { caption: "Tuesday special at Pho Hoa: 2-for-1 pho, dine-in only" },
+    { text: "Tuesday special at Pho Hoa: 2-for-1 pho, dine-in only" },
+    { caption: "Tuesday special at Pho Hoa", text: "2-for-1 pho, dine-in only" },
+    { text: "Pho:C$10" },
+    { text: "週二優惠" },
+  ])("accepts actual source text %j with unchanged confidence and blocking partial-source review", async source => {
+    const s = await setup(); enable(); const net = network([ok(good)]);
+    const before = await s.snapshot();
+    const out = await s.alice.action(api.extract.extractDeal, {
+      imageIds: [], ...source, provenanceUrl: "https://www.instagram.com/p/ABC/?igsh=PRIVATE", publishedAt: "2026-09-29",
+    });
+    expect(net.calls).toHaveLength(1);
+    const body = JSON.parse(net.calls[0].init.body as string);
+    expect(body.contents[0].parts).toHaveLength(1);
+    expect(JSON.parse(body.contents[0].parts[0].text)).toMatchObject({ imageCount: 0, ...source, publishedAt: "2026-09-29" });
+    expect(net.calls[0].init.body).not.toContain("instagram");
+    expect(net.calls[0].init.body).not.toContain("PRIVATE");
+    expect(out.result.deals[0].confidence).toEqual(good.deals[0].confidence);
+    expect(Object.keys(out.result.deals[0].confidence).sort()).toEqual(["expiresOn", "hours", "priceCad", "restaurant"]);
+    expect(out.result.deals[0].conditions).toEqual(["dine-in only"]);
+    expect(out.manualReview).toEqual([{ dealIndex: 0, code: "UNSUPPORTED_CONSTRAINT", blocking: true,
+      detail: "Only supplied caption/text was examined; video and audio were not examined. Verify all fields and any restrictions missing from this partial source before publishing." }]);
+    expect(out.requiresBlockingReview).toBe(true);
+    expect(out.model).toBe("gemini-3.8-flash");
+    expect(await s.snapshot()).toEqual(before);
+  });
+  it("makes no image registry query or storage read for text-only input", async () => {
+    const s = await setup(); enable(); network([ok(good)]);
+    const query = vi.fn(async () => { throw new Error("unexpected registry query"); });
+    const get = vi.fn(async () => { throw new Error("unexpected storage read"); });
+    // The real handler with convex-test authentication; spies fail if it touches image infrastructure.
+    // Convex's runtime registration exposes _handler, but its public RegisteredAction type omits it.
+    const registered = extractDeal as typeof extractDeal & {
+      _handler: (ctx: ActionCtx, args: FunctionArgs<typeof api.extract.extractDeal>) => Promise<ExtractOutcome>;
+    };
+    await s.alice.action(async ctx => registered._handler({ ...ctx, runQuery: query, storage: { ...ctx.storage, get } }, {
+      imageIds: [], text: "Tuesday special at Pho Hoa: 2-for-1 pho",
+    }));
+    expect(query).not.toHaveBeenCalled();
+    expect(get).not.toHaveBeenCalled();
+  });
+  it.each([
+    {}, { caption: " \t\n ", text: "  " }, { provenanceUrl: "https://www.instagram.com/p/ABC/?igsh=PRIVATE" },
+    { caption: "https://www.instagram.com/p/ABC/?igsh=PRIVATE" },
+    { text: "http://www.instagram.com/reel/ABC/" }, { text: "www.instagram.com/reel/ABC/" },
+    { caption: "instagram.com/p/ABC/" }, { text: "HTTPS://WWW.INSTAGRAM.COM/p/ABC/" },
+    { caption: "https://example.org/post", text: "https://www.instagram.com/p/ABC/" },
+    { text: "(https://www.instagram.com/p/ABC/)" },
+    { text: "https://example.org/a\nhttps://example.org/b" },
+    { text: "//www.instagram.com/p/ABC/" }, { text: "“https://www.instagram.com/p/ABC/”" },
+    { text: "instagram.com" }, { caption: "...!", text: "  " },
+  ])("rejects absent or URL-only source %j before the provider", async source => {
+    const s = await setup(); enable();
+    await rejectsWith(s.alice.action(api.extract.extractDeal, { imageIds: [], ...source }), "INVALID_INPUT");
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it("URL provenance is allowed beside real source text and is never fetched", async () => {
+    const s = await setup(); enable(); const net = network([ok(good)]);
+    const caption = "2-for-1 pho on Tuesday https://www.instagram.com/p/ABC/";
+    await s.alice.action(api.extract.extractDeal, { imageIds: [], caption });
+    expect(net.calls).toHaveLength(1);
+    expect(net.calls[0].url).toContain("generativelanguage.googleapis.com");
+    expect(JSON.parse(JSON.parse(net.calls[0].init.body as string).contents[0].parts[0].text).caption).toBe(caption);
+  });
+  it("still authenticates before source validation, model configuration or extraction", async () => {
+    const s = await setup(); enable({ IMAGE_PROVIDER_USAGE_AUTHORIZED: "false" });
+    for (const caption of ["2-for-1 pho", "https://www.instagram.com/p/ABC/", ""]) {
+      await rejectsWith(s.t.action(api.extract.extractDeal, { imageIds: [], caption }), "NOT_SIGNED_IN");
+    }
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it.each<Record<string, string>>([
+    { IMAGE_PROVIDER_USAGE_AUTHORIZED: "false" }, { IMAGE_PROVIDER_USAGE_AUTHORIZED: "" },
+    { GEMINI_API_KEY: "" }, { GEMINI_IMAGE_MODEL: "" },
+  ])("requires the same image-analysis server gate/key/model for text %j", async over => {
+    const s = await setup(); enable(over);
+    await rejectsWith(s.alice.action(api.extract.extractDeal, { imageIds: [], text: "Tuesday 2-for-1 pho" }), "CONFIGURATION");
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it("text does not bypass the owner check when any image is supplied", async () => {
+    const s = await setup(); enable(); const theirs = await s.upload(s.bId, img(PNG));
+    await rejectsWith(s.alice.action(api.extract.extractDeal, { imageIds: [theirs], caption: "Tuesday 2-for-1 pho" }), "IMAGE_NOT_AVAILABLE");
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it("preserves existing sidecars and adds one blocking partial-source note for each deal", async () => {
+    const s = await setup(); enable(); network([ok({ isDeal: true, deals: [
+      deal({ startDate: "2099-01-01", unsupportedConstraints: ["members only"], statedPrice: 12, cadEvidence: null }),
+      deal({ restaurant: "Other restaurant" }),
+    ] })]);
+    const out = await s.alice.action(api.extract.extractDeal, { imageIds: [], caption: "2-for-1 pho; members only from 2099-01-01; second offer" });
+    expect(out.manualReview.slice(0, 3).map(n => [n.dealIndex, n.code, n.blocking])).toEqual([
+      [0, "FUTURE_START", true], [0, "UNSUPPORTED_CONSTRAINT", true], [0, "CURRENCY_UNVERIFIED", false],
+    ]);
+    expect(out.manualReview[2].originalAmount).toBe(12);
+    expect(out.manualReview.slice(3).map(n => [n.dealIndex, n.code, n.blocking])).toEqual([
+      [0, "UNSUPPORTED_CONSTRAINT", true], [1, "UNSUPPORTED_CONSTRAINT", true],
+    ]);
+    expect(out.requiresBlockingReview).toBe(true);
+    expect(out.result.deals.map(d => d.confidence)).toEqual([good.deals[0].confidence, good.deals[0].confidence]);
+  });
+  it("does not invent deals or review notes for a text-only non-deal", async () => {
+    const s = await setup(); enable(); network([ok({ isDeal: false, deals: [] })]);
+    expect(await s.alice.action(api.extract.extractDeal, { imageIds: [], text: "We enjoyed lunch at Pho Hoa" })).toEqual({
+      result: { isDeal: false, deals: [] }, manualReview: [], requiresBlockingReview: false, model: "gemini-3.8-flash",
+    });
+  });
+  it.each([
+    [{ text: "x".repeat(20_001) }, "TEXT_TOO_LONG"],
+    [{ text: "Tuesday 2-for-1 pho", publishedAt: "not-a-date" }, "INVALID_INPUT"],
+  ] as const)("retains core input validation for %j", async (source, expected) => {
+    const s = await setup(); enable();
+    await rejectsWith(s.alice.action(api.extract.extractDeal, { imageIds: [], ...source }), expected);
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+  it.each([
+    [() => new Response(`bad key ${KEY}`, { status: 403 }), "PROVIDER_AUTH"],
+    [() => ok({ isDeal: true, deals: [deal({ confidence: { restaurant: 2, priceCad: 0, hours: 0, expiresOn: 0 } })] }), "INVALID_MODEL_OUTPUT"],
+  ] as const)("preserves sanitized text-only model failure %s", async (response, expected) => {
+    const s = await setup(); enable(); network([response()]);
+    const err = await s.alice.action(api.extract.extractDeal, { imageIds: [], caption: "private caption text" }).then(() => null, (e: unknown) => e) as { data: Record<string, unknown> };
+    expect(err.data.code).toBe(expected);
+    expect(Object.keys(err.data).sort()).toEqual(["code", "message", "retryable"]);
+    expect(JSON.stringify(err.data)).not.toContain(KEY);
+    expect(JSON.stringify(err.data)).not.toContain("private caption");
+    expect((await s.snapshot()).deals).toHaveLength(0);
   });
 });
 
