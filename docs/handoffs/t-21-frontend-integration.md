@@ -9,6 +9,8 @@ The implementation combines `t-20-reel-sharing` (the Dinedeals frontend and Reel
 - The new frontend uses the deployed `workflow/deals` and `workflow/jobs` functions, with one shared Convex Auth client for password and anonymous sessions.
 - Discover, offer details, caption/screenshot submissions and processing status use real backend data. Map, AI search, restaurant comparison and submission history remain available at `/tools/`.
 - Details and submission pages use query parameters so future deal/job IDs work in a static GitHub Pages export. Fonts, images and links respect `/DishDeals`.
+- The web interface and recommendation language are English. Dates and file selection use English app controls rather than locale-dependent browser controls. Extraction generates English prose while preserving proper names and literal source evidence.
+- Map package 0.2.0 replaces 0.1.0 in tools, offer details and candidate review. The same component provides vector streets, restaurant pins and selected-offer cards; the old external map iframes are removed. Its source update is preserved separately on `feature/deal-map` at `34c622c`.
 - Canonical profile/deal/vote tables are preserved. Profile editing and voting remain unavailable until their real API adapters are implemented; preview actions are not presented as live persistence.
 - Reel scraping remains disabled until its existing explicit provider-authorization gate and required provider key are configured. Caption/screenshot extraction is available now.
 

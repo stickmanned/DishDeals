@@ -24,7 +24,7 @@
     "react-dom": "^19.3.0",
     "zod": "^4.6.5",
     "@auth/core": "^0.41.3",
-    "@restaurant-deals/map": "file:vendor/restaurant-deals-map-0.1.0.tgz"
+    "@restaurant-deals/map": "file:vendor/restaurant-deals-map-0.2.0.tgz"
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",

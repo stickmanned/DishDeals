@@ -81,7 +81,11 @@ export function DraftForm({
         <label className="field">
           Expiry date
           <input
-            type="date"
+            type="text"
+            inputMode="numeric"
+            placeholder="YYYY-MM-DD"
+            pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+            maxLength={10}
             value={value.expiry}
             onChange={(e) => update("expiry", e.target.value)}
             onInput={(e) => update("expiry", e.currentTarget.value)}

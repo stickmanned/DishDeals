@@ -11,6 +11,7 @@ import {
 } from "@/lib/frontend/workflow";
 import { Icon } from "./Icon";
 import { useClock } from "./useClock";
+import { OfferMap } from "@/components/OfferMap";
 
 export function JobPanel({
   jobId,
@@ -281,10 +282,16 @@ function ReviewCard({
           )}
           {p && (
             <div className="location-panel">
-              <iframe
-                loading="lazy"
-                title={`${p.name} candidate location`}
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${p.longitude - 0.005}%2C${p.latitude - 0.003}%2C${p.longitude + 0.005}%2C${p.latitude + 0.003}&layer=mapnik&marker=${p.latitude}%2C${p.longitude}`}
+              <OfferMap
+                key={p.placeId}
+                deals={[{ id: p.placeId, restaurantName: p.name, title: "Restaurant candidate",
+                  latitude: p.latitude, longitude: p.longitude, address: p.address }]}
+                initialCenter={[p.longitude, p.latitude]}
+                initialZoom={14}
+                showLocateControl={false}
+                showDealCard={false}
+                ariaLabel={`${p.name} candidate location`}
+                style={{ height: 320 }}
               />
               <p className="quiet-note">
                 © OpenStreetMap contributors · Restaurant candidate from this

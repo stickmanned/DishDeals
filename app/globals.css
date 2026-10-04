@@ -1041,9 +1041,8 @@ img {
 .location-panel {
   margin-top: 32px;
 }
-.location-panel iframe {
+.location-panel .bitemap {
   width: 100%;
-  height: 250px;
   border: 0;
   border-radius: 16px;
 }

@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
-import dynamic from "next/dynamic";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { OfferMap as DealMap } from "@/components/OfferMap";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { ConvexError } from "convex/values";
@@ -12,9 +12,6 @@ import type { SearchResult } from "@/lib/workflow/search-contracts";
 import type { ComparisonInput, ComparisonResult } from "@/lib/workflow/compare-contracts";
 import { prepareTrialImage } from "@/lib/trial-image";
 
-const DealMap = dynamic(() => import("@restaurant-deals/map").then(m => m.DealMap), {
-  ssr: false, loading: () => <div className="map-loading">Loading map…</div>,
-});
 function errorMessage(error: unknown) {
   if (error instanceof ConvexError) {
     const data: unknown = error.data;
@@ -62,7 +59,7 @@ function Dashboard({ authenticated }: { authenticated: boolean }) {
   const [selectedId, setSelectedId] = useState<string | null>(null), [selected, setSelected] = useState<string[]>([]);
   const [viewport, setViewport] = useState<MapViewport | null>(null);
   const [query, setQuery] = useState(""), [budget, setBudget] = useState("");
-  const [language, setLanguage] = useState<"en" | "zh">("en"), [nearby, setNearby] = useState(false), [availableNow, setAvailableNow] = useState(false);
+  const [nearby, setNearby] = useState(false), [availableNow, setAvailableNow] = useState(false);
   const [priority, setPriority] = useState<ComparisonInput["priority"]>("value");
   const [evidence, setEvidence] = useState<Record<string, { quote: string; sourceUrl: string }>>({});
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null), [comparison, setComparison] = useState<ComparisonResult | null>(null);
@@ -75,7 +72,7 @@ function Dashboard({ authenticated }: { authenticated: boolean }) {
     setBusy("search"); setError(""); setSearchResult(null);
     try {
       if (nearby && !viewport) throw new Error("Wait for the map to load before searching nearby.");
-      setSearchResult(await find({ inputJson: JSON.stringify({ query: query.trim() || "food offers", language, limit: focusDealId ? 1 : 5,
+      setSearchResult(await find({ inputJson: JSON.stringify({ query: query.trim() || "food offers", language: "en", limit: focusDealId ? 1 : 5,
         ...(budget ? { maxPrice: Number(budget), currency: "CAD" } : {}), ...(availableNow ? { availableNow: true } : {}),
         ...(nearby && viewport ? { origin: { longitude: viewport.center[0], latitude: viewport.center[1] }, maxDistanceKm: 5 } : {}), ...(focusDealId ? { focusDealId } : {}) }) }));
     } catch (e) { setError(errorMessage(e)); } finally { setBusy(""); }
@@ -88,9 +85,8 @@ function Dashboard({ authenticated }: { authenticated: boolean }) {
   }
   function toggle(id: string) { setComparison(null); setSelected(current => current.includes(id) ? current.filter(v => v !== id) : current.length < 5 ? [...current, id] : current); }
   return <><section><h2>Find an offer</h2><form onSubmit={e => { e.preventDefault(); void search(); }}>
-    <label>What would you like?<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Sushi under CAD 15 / 15加元以内的寿司" maxLength={1000} /></label>
-    <div className="row"><label>Maximum listed price (CAD)<input type="number" min="0" max="100000" value={budget} onChange={e => setBudget(e.target.value)} placeholder="Any" /></label>
-      <label>Result language<select value={language} onChange={e => setLanguage(e.target.value as "en" | "zh")}><option value="en">English</option><option value="zh">中文</option></select></label></div>
+    <label>What would you like?<input value={query} onChange={e => setQuery(e.target.value)} placeholder="Sushi under CAD 15" maxLength={1000} /></label>
+    <label>Maximum listed price (CAD)<input type="number" min="0" max="100000" value={budget} onChange={e => setBudget(e.target.value)} placeholder="Any" /></label>
     <label className="check"><input type="checkbox" checked={nearby} onChange={e => setNearby(e.target.checked)} />Within 5 km of the map center</label>
     <label className="check"><input type="checkbox" checked={availableNow} onChange={e => setAvailableNow(e.target.checked)} />Offer schedule matches now</label>
     <button className="primary" disabled={!authenticated || !!busy}>{busy === "search" ? "Searching…" : "Search offers"}</button>
@@ -103,7 +99,7 @@ function Dashboard({ authenticated }: { authenticated: boolean }) {
         <button onClick={() => toggle(r.dealId)}>{selected.includes(r.dealId) ? "Remove from comparison" : "Add to comparison"}</button></article>)}</div>}
   </section>
   <section><h2>Deal map <span className="badge">{filtered.length} offers</span></h2>
-    <DealMap deals={filtered} selectedId={selectedId} onSelect={d => setSelectedId(d.id)} onViewportChange={setViewport} initialCenter={[-123.1207, 49.2827]} initialZoom={12} showLocateControl={false} style={{ height: 380 }} />
+    <DealMap deals={filtered} selectedId={selectedId} onSelect={d => setSelectedId(d.id)} onViewportChange={setViewport} initialCenter={[-123.1207, 49.2827]} initialZoom={12} showLocateControl={false} style={{ height: 480 }} />
     {offers === undefined ? <p>Loading offers…</p> : !offers.length ? <p>No offers have been published yet. Submit a screenshot or caption below; any uncertain result needs your review.</p> : !filtered.length && <p>No offers match this CAD price limit.</p>}
     <div className="cards">{filtered.map(d => <article key={d.id} className={selectedId === d.id ? "chosen" : ""}>
       <button className="link" onClick={() => setSelectedId(d.id)}><h3>{d.restaurantName}</h3></button><p>{d.title}</p><p>{d.price === undefined ? "Price not recorded" : `${d.currency ?? "Currency unknown"} ${d.price}`}{d.discountPercent !== undefined ? ` · ${d.discountPercent}% off` : ""}</p><small>{d.address}</small>
@@ -124,6 +120,7 @@ function Dashboard({ authenticated }: { authenticated: boolean }) {
   </section>{authenticated && <Submissions />}</>;
 }
 function Submissions() {
+  const imageInput = useRef<HTMLInputElement>(null);
   const submit = useMutation(api.workflow.jobs.submit), jobs = useQuery(api.workflow.jobs.listMine);
   const [jobId, setJobId] = useState<Id<"workflowJobs"> | null>(null), [type, setType] = useState<"text" | "url" | "image">("text");
   const [text, setText] = useState(""), [url, setUrl] = useState(""), [sourceUrl, setSourceUrl] = useState(""), [publishedAt, setPublishedAt] = useState("");
@@ -131,6 +128,7 @@ function Submissions() {
   async function send(e: FormEvent) {
     e.preventDefault(); setBusy(true); setError("");
     try {
+      if (type === "image" && !file) throw new Error("Choose an image before submitting.");
       const provenance = { ...(publishedAt ? { publishedAt } : {}), ...(sourceUrl ? { sourceUrl } : {}) };
       const source: WorkflowInput["source"] = type === "image" ? { type, ...(await prepareTrialImage(file!)), caption: text, ...provenance } : type === "url" ? { type, url, ...provenance } : { type, text, ...provenance };
       const result = await submit({ inputJson: JSON.stringify({ source, context: { city, region: "British Columbia", countryCode: "ca", timezone: "America/Vancouver" } }) }); setJobId(result.jobId);
@@ -139,10 +137,10 @@ function Submissions() {
   return <section><h2>Submit an offer</h2><p>Upload an Instagram screenshot or paste the caption. Public restaurant webpages can also be read. Processing may take a minute.</p><form onSubmit={e => { void send(e); }}>
     <label>Source<select value={type} onChange={e => setType(e.target.value as typeof type)}><option value="text">Pasted text</option><option value="image">Screenshot / flyer photo</option><option value="url">Public restaurant webpage</option></select></label>
     {type === "url" ? <label>Webpage URL<input type="url" required value={url} onChange={e => setUrl(e.target.value)} placeholder="https://restaurant.example/offers" /></label> : <label>{type === "image" ? "Caption (optional)" : "Offer text"}<textarea required={type === "text"} minLength={type === "text" ? 10 : undefined} maxLength={type === "text" ? 30000 : 10000} value={text} onChange={e => setText(e.target.value)} rows={4} /></label>}
-    {type === "image" && <label>Image<input type="file" accept="image/*" required onChange={e => setFile(e.target.files?.[0] ?? null)} /></label>}
-    <div className="row"><label>City hint<input required maxLength={100} value={city} onChange={e => setCity(e.target.value)} /></label><label>Original publication date (optional)<input type="date" value={publishedAt} onChange={e => setPublishedAt(e.target.value)} /></label></div>
+    {type === "image" && <div><span>Image</span><button type="button" onClick={() => imageInput.current?.click()}>Choose image</button><span>{file?.name ?? "No image selected"}</span><input ref={imageInput} hidden type="file" accept="image/*" onChange={e => setFile(e.target.files?.[0] ?? null)} /></div>}
+    <div className="row"><label>City hint<input required maxLength={100} value={city} onChange={e => setCity(e.target.value)} /></label><label>Original publication date (optional)<input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxLength={10} value={publishedAt} onChange={e => setPublishedAt(e.target.value)} /></label></div>
     <label>Source link for attribution (optional)<input type="url" value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://…" /></label><button className="primary" disabled={busy}>{busy ? "Submitting…" : "Extract offer"}</button>
-  </form>{error && <p role="alert">{error}</p>}<h3>Your recent submissions</h3><div className="row">{jobs?.map(j => <button key={j.jobId} onClick={() => setJobId(j.jobId)} aria-pressed={jobId === j.jobId}>{new Date(j.createdAt).toLocaleString()} · {j.status}</button>)}</div>{jobId && <Job key={jobId} id={jobId} />}</section>;
+  </form>{error && <p role="alert">{error}</p>}<h3>Your recent submissions</h3><div className="row">{jobs?.map(j => <button key={j.jobId} onClick={() => setJobId(j.jobId)} aria-pressed={jobId === j.jobId}>{new Date(j.createdAt).toLocaleString("en-CA")} · {j.status}</button>)}</div>{jobId && <Job key={jobId} id={jobId} />}</section>;
 }
 function Job({ id }: { id: Id<"workflowJobs"> }) {
   const job = useQuery(api.workflow.jobs.get, { jobId: id }), retry = useMutation(api.workflow.jobs.retryJob), review = useMutation(api.workflow.deals.reviewDeal);

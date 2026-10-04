@@ -400,7 +400,11 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
                 <label className="field">
                   Original post date
                   <input
-                    type="date"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="YYYY-MM-DD"
+                    pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
+                    maxLength={10}
                     value={publishedAt}
                     onChange={(e) => setPublishedAt(e.target.value)}
                     onInput={(e) => setPublishedAt(e.currentTarget.value)}

@@ -16,6 +16,7 @@ Do not invent restaurants, prices, eligibility, dates, currency, addresses or co
 Return all distinct offers (at most 10). RestaurantName must refer to the restaurant, not the social account or author.
 Evidence is a short verbatim quote from the source, or literal visible text for an image.
 Normalize days to English and local times to HH:mm. Overnight ranges are allowed. Dates use YYYY-MM-DD.
+Write generated titles, descriptions, conditions, warnings and rejection reasons in English, translating source prose when needed. Preserve proper restaurant/place names and literal evidence quotes as written in the source.
 Resolve relative dates ONLY if the source publication date is supplied. Never assume an old post was published today.
 Do not infer a currency from the default search city. Add a warning for unclear dates, currency, conditions or multiple branches.
 locationHint is a city or municipality explicitly named by the source, not a branch name or street intersection. Preserve branch and street details in addressHint.

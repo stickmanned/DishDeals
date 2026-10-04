@@ -9,7 +9,7 @@ This branch integrates the existing feature modules into the root Next.js app. T
 1. Continue as guest, or create an email/password account. Guest history belongs to the saved browser session; an email account can access its submissions across devices.
 2. Submit pasted offer text, a screenshot/flyer, or a public restaurant webpage. Supply the original publication date only when known. Instagram links are attribution only; upload the screenshot or paste the caption instead.
 3. Open your saved task to see processing, failure/retry or extracted offers. Uncertain offers remain private until you confirm a verified restaurant candidate or reject them. A missing candidate requires a clearer caption and retry. High-confidence complete offers may publish automatically.
-4. Search published offers in English or Chinese, filter known CAD prices, optionally use the map center as the distance origin, and ask why to consider a particular restaurant. This searches submitted offers, not the whole internet.
+4. Search published offers with English recommendations, filter known CAD prices, optionally use the map center as the distance origin, and ask why to consider a particular restaurant. This searches submitted offers, not the whole internet.
 5. Select 2–5 offers from distinct restaurants and compare value, price or taste. Taste comparisons accept review excerpts and HTTPS source URLs; supplied reviews are not independently verified. Missing evidence is reported, not invented.
 
 No fictitious restaurant offers are seeded into live tables. An empty feed needs a real source submitted before map pins or comparison become available.
