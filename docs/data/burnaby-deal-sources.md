@@ -5,7 +5,7 @@
 **Access Date:** 2026-10-03  
 **Target Area:** Burnaby, BC / Simon Fraser University (SFU Burnaby Mountain & UniverCity)  
 **Evaluation Status:** Publicly advertised candidates with live terms unconfirmed  
-**Scope:** Research, evidence capture, and inert candidate formatting only. No seed mutations, geocoding, or code execution.
+**Scope:** Research, primary source evidence capture, and inert candidate formatting only. No seed mutations, geocoding, or code execution.
 
 ---
 
@@ -16,16 +16,19 @@ This document records publicly advertised restaurant and promoter food deals in 
 ### Crucial Standards & Review Corrections Applied:
 1. **Status Clarification (No False Live Availability Claims):** A publicly accessible website proves that an offer has been advertised, but **not** that live terms, currency, or hours are verified production facts. All candidate records are classified as **publicly advertised candidates with live terms unconfirmed**. Unknown expiry is recorded as `expiresOn: null` and is not converted into artificial current validity.
 2. **Strict Enforcement of Pending Currency (`priceCad: null`):** While CAD currency confirmation is pending, **every candidate's `canonicalProposal.priceCad` is strictly `null`**. Stated prices are recorded exclusively in source provenance (`provenance.statedAmount` and `provenance.statedCurrency`). Canadian geography and dollar symbols (`$`) do not prove CAD settlement.
-3. **Business Operating Hours vs Offer Hours:** General restaurant business hours (e.g., from website footers or directory listings) are not assumed to be offer validity hours:
+3. **Decoupled Business Operating Hours vs Offer Hours:** General restaurant business hours (e.g., from website footers or directory listings) are not assumed to be offer validity hours:
    - **Tenen Restaurant (CAND-01, CAND-02):** The footer's 10:30am–10:30pm reflects general business opening, not confirmed lunch special hours. Inferred `validStart` has been cleared to `null` and `validDays` set to `[]` (pending).
    - **Tentatsu (CAND-03):** Business operating hours (11:00am–9:30pm) are not confirmed offer hours; `validStart`/`validEnd`/`validDays` remain pending. Actual exclusions (lunch specials, combos, and other special items) from the official takeout offer are explicitly incorporated.
    - **Argo Greek (CAND-04, CAND-05):** Explicit lunch hours (11:30am–2:30pm) are verified from menu text; however, all 7 days availability was inferred from business hours and is flagged as pending (`validDays: []`). Inferred dine-in/takeout conditions have been removed.
 4. **Schedule Conflicts & Representational Schema Limitations:**
-   - **Time & Place Burnaby (CAND-10):** The primary source ([menus-happyhour](https://www.timeandplaceburnaby.com/menus-happyhour)) specifies Monday–Friday 16:00–18:00 and Saturday–Sunday 17:00–18:00. The DishDeals schema supports only a single contiguous `validStart`/`validEnd` window per record. A single 16:00–18:00 all-days window is false. Canonical times and days are left pending (`null`/`[]`) with the complete dual schedule recorded in provenance.
+   - **Time & Place Burnaby (CAND-08, CAND-09, CAND-10):** The primary source ([menus-happyhour](https://www.timeandplaceburnaby.com/menus-happyhour)) specifies Monday–Friday 16:00–18:00 and Saturday–Sunday 17:00–18:00. The DishDeals schema supports only a single contiguous `validStart`/`validEnd` window per record. A single 16:00–18:00 all-days window is false. Canonical times and days are left pending (`null`/`[]`) with the complete dual schedule recorded in provenance.
    - **Acqua Restaurant & Bar (CAND-11):** The official PDF ([Acqua-HH-Menu-05-2026.pdf](https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf)) reveals a direct price conflict: Lounge/Bar Happy Hour lists oysters at $1.75 each (min 6), while Patio Happy Hour lists $1.50 each (min 6). Minimum order of 6 pieces is an essential condition. Furthermore, the website and PDF conflict on hours (daily 16:00–18:00 vs Sunday–Monday 16:00–18:00 and Tuesday–Saturday 16:00–18:00 & 21:00–22:00). Because the DishDeals schema cannot represent multiple non-contiguous windows in one record, canonical times are left pending so the late-night window is not silently discarded.
-5. **Exact Primary Offer and Address URLs:** Both the exact offer page URL and the specific address URL (where the street address is explicitly evidenced) are supplied for every candidate. For Burnaby Mountain Restaurant, the offer is on `/burnaby-mountain-happy-hour`, while the address (7600 Halifax Street) is published on `/restaurants/burnaby-mountain-restaurant`.
-6. **Digital Ad Image Asset Verification:** The Burnaby Mountain banner (`https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg`) was verified reachable with HTTP 200 OK. It is documented as a digital web asset and explicitly distinguished from physical photographed flyers.
-7. **BierCraft UniverCity Tool Accessibility & Uncertainty:** The primary read was conducted via `https://biercraft.com/univercity/` and search index cache. Automated scraping tools encounter access limits on certain endpoints, introducing verification uncertainty that must be resolved prior to production promotion.
+5. **Exclusion of Unverified Historical Leads (BierCraft UniverCity):**
+   - Live inspection of `https://biercraft.com/univercity/` confirms the restaurant location and general operating hours atop SFU Burnaby Mountain, but contains **no active menu offers, Manna Burger ($5.50), or 1 lb Wings ($12.00) specials**.
+   - These items derived from historical aggregator guides and third-party mirrors. In strict compliance with review findings, they have been downgraded to unverified historical leads and excluded from the candidate set.
+   - To maintain full 10-candidate coverage with verifiable primary offers, additional explicit food offers from the current Time & Place Happy Hour menu ([menus-happyhour](https://www.timeandplaceburnaby.com/menus-happyhour)) have been incorporated: Smashed Beef Slider ($6.00) and Fraser Valley Wings ($0.89 each, min 6 pcs).
+6. **Exact Primary Offer and Address URLs:** Both the exact offer page URL and the specific address URL (where the street address is explicitly evidenced) are supplied for every candidate. For Burnaby Mountain Restaurant, the offer is on `/burnaby-mountain-happy-hour`, while the address (7600 Halifax Street) is published on `/restaurants/burnaby-mountain-restaurant`.
+7. **Digital Ad Image Asset Verification:** The Burnaby Mountain banner (`https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg`) was verified reachable with HTTP 200 OK. It is documented as a digital web asset and explicitly distinguished from physical photographed flyers.
 8. **Coordinates & Pins:** Geocoding and map pin confirmation remain strictly owned by Pinyuan; `lat` and `lng` are omitted across all candidate proposals.
 9. **Zero Instagram Scraping:** No Instagram endpoints, GraphQL APIs, or third-party mirrors were queried.
 10. **Exclusion of Expired Promotions:** The March "Bite of Burnaby" festival remains excluded as historical and expired.
@@ -43,9 +46,9 @@ This document records publicly advertised restaurant and promoter food deals in 
 | **CAND-05** | Argo Greek | Unit 108 – 3790 Canada Way, Burnaby, BC V5G 1G4 | Lunch Special: 6 oz Lunch Skewer | $12.00 | `$12` (Pending CAD) | `[]` (Pending) | 11:30–14:30 | `null` | Available 11:30am–2:30pm; smaller lunch portion | [Argo Greek Menu](https://www.argogreek.ca/menu/) | [Argo Greek Contact](https://www.argogreek.ca/contact/) |
 | **CAND-06** | Burnaby Mountain Restaurant | 7600 Halifax St, Burnaby, BC V5A 4M8 | Happy Hour: Truffle Fries | $8.00 | `$8.00` (Pending CAD) | Wed–Sun | 14:30–16:30 | `null` | Happy Hour menu item (Wed–Sun 2:30–4:30pm) | [Burnaby Mountain HH](https://burnabyhospitality.ca/burnaby-mountain-happy-hour) | [Burnaby Mountain Restaurant](https://burnabyhospitality.ca/restaurants/burnaby-mountain-restaurant) |
 | **CAND-07** | Burnaby Mountain Restaurant | 7600 Halifax St, Burnaby, BC V5A 4M8 | Happy Hour: Classic Cheeseburger | $15.00 | `$15.00` (Pending CAD) | Wed–Sun | 14:30–16:30 | `null` | Happy Hour menu item (Wed–Sun 2:30–4:30pm); add-ons extra | [Burnaby Mountain HH](https://burnabyhospitality.ca/burnaby-mountain-happy-hour) | [Burnaby Mountain Restaurant](https://burnabyhospitality.ca/restaurants/burnaby-mountain-restaurant) |
-| **CAND-08** | BierCraft UniverCity | 8902 University High St, Burnaby, BC V5A 4X6 | Thursday Special: Manna Burger | $5.50 | `$5.50` (Pending CAD) | Thu | `null` (Pending) | `null` | Thursday feature; UniverCity SFU location | [BierCraft UniverCity](https://biercraft.com/univercity/) | [BierCraft UniverCity](https://biercraft.com/univercity/) |
-| **CAND-09** | BierCraft UniverCity | 8902 University High St, Burnaby, BC V5A 4X6 | Wednesday Special: 1 lb Wings | $12.00 | `$12.00` (Pending CAD) | Wed | `null` (Pending) | `null` | Wednesday feature; UniverCity SFU location | [BierCraft UniverCity](https://biercraft.com/univercity/) | [BierCraft UniverCity](https://biercraft.com/univercity/) |
-| **CAND-10** | Time & Place Burnaby | 6083 McKay Ave, Burnaby, BC V5H 2W7 | Happy Hour: Mediterranean Beef Kebobs | $5.00 | `$5` (Pending CAD) | `[]` (Pending) | `null` (Pending) | `null` | Schedule: M–F 16–18, S–S 17–18 (schema limit); Hilton Metrotown | [Time & Place HH](https://www.timeandplaceburnaby.com/menus-happyhour) | [Time & Place Home](https://www.timeandplaceburnaby.com/) |
+| **CAND-08** | Time & Place Burnaby | 6083 McKay Ave, Burnaby, BC V5H 2W7 | Happy Hour: Mediterranean Beef Kebobs | $5.00 | `$5` (Pending CAD) | `[]` (Pending) | `null` (Pending) | `null` | Schedule: M–F 16–18, S–S 17–18 (schema limit); Hilton Metrotown | [Time & Place HH](https://www.timeandplaceburnaby.com/menus-happyhour) | [Time & Place Home](https://www.timeandplaceburnaby.com/) |
+| **CAND-09** | Time & Place Burnaby | 6083 McKay Ave, Burnaby, BC V5H 2W7 | Happy Hour: Smashed Beef Slider (1 pc) | $6.00 | `$6` (Pending CAD) | `[]` (Pending) | `null` (Pending) | `null` | Schedule: M–F 16–18, S–S 17–18 (schema limit); Hilton Metrotown | [Time & Place HH](https://www.timeandplaceburnaby.com/menus-happyhour) | [Time & Place Home](https://www.timeandplaceburnaby.com/) |
+| **CAND-10** | Time & Place Burnaby | 6083 McKay Ave, Burnaby, BC V5H 2W7 | Happy Hour: Fraser Valley Wings ($0.89 each, min 6) | $0.89 / pc | `$0.89 each (min. 6 pcs)` (Pending CAD) | `[]` (Pending) | `null` (Pending) | `null` | Min 6 pcs; M–F 16–18, S–S 17–18 (schema limit); Hilton Metrotown | [Time & Place HH](https://www.timeandplaceburnaby.com/menus-happyhour) | [Time & Place Home](https://www.timeandplaceburnaby.com/) |
 | **CAND-11** | Acqua Restaurant & Bar | 4201 Lougheed Hwy, Burnaby, BC V5C 3Y6 | Happy Hour: Fresh Oysters (min 6) | Conflicting: $1.50 patio vs $1.75 lounge | `$1.50` / `$1.75` (Pending CAD) | `[]` (Pending) | `null` (Pending) | `null` | Min 6 pcs; price varies by dining area; multi-window limit | [Acqua HH Menu PDF](https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf) | [Acqua Home](https://acquarestaurantandbar.com/) |
 
 ---
@@ -218,57 +221,7 @@ This document records publicly advertised restaurant and promoter food deals in 
   - Ad Image URL: `https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg`
   - Missing Fields: `["lat", "lng", "priceCad", "flyerPhoto"]`
 
-### Candidate 08: BierCraft UniverCity — Thursday Manna Burger Special
-- **Canonical Deal Proposal:**
-  - `restaurant`: `"BierCraft UniverCity"`
-  - `address`: `"8902 University High St, Burnaby, BC V5A 4X6"`
-  - `dealText`: `"Thursday Daily Special: Manna Burger"`
-  - `priceCad`: `null`
-  - `validDays`: `["thu"]`
-  - `validStart`: `null` *(hours pending verification)*
-  - `validEnd`: `null`
-  - `expiresOn`: `null`
-  - `conditions`: `["Thursday daily feature", "UniverCity location on SFU campus"]`
-  - `sourceUrl`: `"https://biercraft.com/univercity/"`
-- **Provenance & Uncertainty Metadata:**
-  - Offer URL: `https://biercraft.com/univercity/`
-  - Address URL: `https://biercraft.com/univercity/`
-  - Access Date: `2026-10-03`
-  - Evaluation Status: `publicly_advertised_candidate_live_terms_unconfirmed`
-  - Stated Amount: `5.5`
-  - Stated Currency: `"$5.50 displayed for Thursday feature; ISO currency unstated (pending CAD confirmation)"`
-  - Location Context: On Simon Fraser University (SFU) campus, Burnaby Mountain (8902 University High St).
-  - Tool Accessibility & Uncertainty Note: Location and daily features retrieved from primary WordPress site metadata; automated crawling tools encountered access limits on certain endpoints, introducing verification uncertainty for real-time menu shifts.
-  - Coordinate Status: `omitted_pending_pinyuan_pin`
-  - Ad Image URL: `null`
-  - Missing Fields: `["lat", "lng", "priceCad", "validStart", "validEnd", "flyerPhoto"]`
-
-### Candidate 09: BierCraft UniverCity — Wednesday 1 lb Wings Special
-- **Canonical Deal Proposal:**
-  - `restaurant`: `"BierCraft UniverCity"`
-  - `address`: `"8902 University High St, Burnaby, BC V5A 4X6"`
-  - `dealText`: `"Wednesday Daily Special: One Pound of Wings"`
-  - `priceCad`: `null`
-  - `validDays`: `["wed"]`
-  - `validStart`: `null`
-  - `validEnd`: `null`
-  - `expiresOn`: `null`
-  - `conditions`: `["Wednesday daily feature", "UniverCity location on SFU campus"]`
-  - `sourceUrl`: `"https://biercraft.com/univercity/"`
-- **Provenance & Uncertainty Metadata:**
-  - Offer URL: `https://biercraft.com/univercity/`
-  - Address URL: `https://biercraft.com/univercity/`
-  - Access Date: `2026-10-03`
-  - Evaluation Status: `publicly_advertised_candidate_live_terms_unconfirmed`
-  - Stated Amount: `12.0`
-  - Stated Currency: `"$12.00 displayed for Wednesday feature; ISO currency unstated (pending CAD confirmation)"`
-  - Location Context: On Simon Fraser University (SFU) campus, Burnaby Mountain (8902 University High St).
-  - Tool Accessibility & Uncertainty Note: Retrieved from primary WordPress site metadata; automated web tools encountered access limits on specific endpoints.
-  - Coordinate Status: `omitted_pending_pinyuan_pin`
-  - Ad Image URL: `null`
-  - Missing Fields: `["lat", "lng", "priceCad", "validStart", "validEnd", "flyerPhoto"]`
-
-### Candidate 10: Time & Place Burnaby — Happy Hour Mediterranean Beef Kebobs
+### Candidate 08: Time & Place Burnaby — Happy Hour Mediterranean Beef Kebobs
 - **Canonical Deal Proposal:**
   - `restaurant`: `"Time & Place Burnaby"`
   - `address`: `"6083 McKay Ave, Burnaby, BC V5H 2W7"`
@@ -289,6 +242,57 @@ This document records publicly advertised restaurant and promoter food deals in 
   - Stated Currency: `"$5 displayed on Happy Hour food menu; ISO currency unstated (pending CAD confirmation)"`
   - Full Stated Schedule: Monday–Friday 16:00–18:00, Saturday–Sunday 17:00–18:00.
   - Representational Limitation: DishDeals schema only supports a single contiguous `validStart`/`validEnd` window per record; it cannot represent differing weekday vs weekend hours without creating separate candidate variant records (e.g. weekday vs weekend). Canonical hours/days are left pending to avoid inventing a false all-day or merged time window.
+  - Coordinate Status: `omitted_pending_pinyuan_pin`
+  - Ad Image URL: `null`
+  - Missing Fields: `["lat", "lng", "priceCad", "validDays", "validStart", "validEnd", "flyerPhoto"]`
+
+### Candidate 09: Time & Place Burnaby — Happy Hour Smashed Beef Slider
+- **Canonical Deal Proposal:**
+  - `restaurant`: `"Time & Place Burnaby"`
+  - `address`: `"6083 McKay Ave, Burnaby, BC V5H 2W7"`
+  - `dealText`: `"Happy Hour: Smashed Beef Slider (1 pc)"`
+  - `priceCad`: `null`
+  - `validDays`: `[]`
+  - `validStart`: `null`
+  - `validEnd`: `null`
+  - `expiresOn`: `null`
+  - `conditions`: `["Happy Hour menu item (Mon-Fri 4pm-6pm, Sat-Sun 5pm-6pm)", "Single slider portion", "Located in Hilton Vancouver Metrotown"]`
+  - `sourceUrl`: `"https://www.timeandplaceburnaby.com/menus-happyhour"`
+- **Provenance & Uncertainty Metadata:**
+  - Offer URL: `https://www.timeandplaceburnaby.com/menus-happyhour`
+  - Address URL: `https://www.timeandplaceburnaby.com/`
+  - Access Date: `2026-10-03`
+  - Evaluation Status: `publicly_advertised_candidate_live_terms_unconfirmed`
+  - Stated Amount: `6.0`
+  - Stated Currency: `"$6 displayed on Happy Hour food menu (Smashed Beef Slider 1pc); ISO currency unstated (pending CAD confirmation)"`
+  - Full Stated Schedule: Monday–Friday 16:00–18:00, Saturday–Sunday 17:00–18:00.
+  - Representational Limitation: DishDeals schema only supports a single contiguous window; canonical times/days left pending.
+  - Coordinate Status: `omitted_pending_pinyuan_pin`
+  - Ad Image URL: `null`
+  - Missing Fields: `["lat", "lng", "priceCad", "validDays", "validStart", "validEnd", "flyerPhoto"]`
+
+### Candidate 10: Time & Place Burnaby — Happy Hour Fraser Valley Wings
+- **Canonical Deal Proposal:**
+  - `restaurant`: `"Time & Place Burnaby"`
+  - `address`: `"6083 McKay Ave, Burnaby, BC V5H 2W7"`
+  - `dealText`: `"Happy Hour: Fraser Valley Wings ($0.89 each, min 6 pcs)"`
+  - `priceCad`: `null`
+  - `validDays`: `[]`
+  - `validStart`: `null`
+  - `validEnd`: `null`
+  - `expiresOn`: `null`
+  - `conditions`: `["Happy Hour menu item (Mon-Fri 4pm-6pm, Sat-Sun 5pm-6pm)", "Minimum order of 6 pieces", "Located in Hilton Vancouver Metrotown"]`
+  - `sourceUrl`: `"https://www.timeandplaceburnaby.com/menus-happyhour"`
+- **Provenance & Uncertainty Metadata:**
+  - Offer URL: `https://www.timeandplaceburnaby.com/menus-happyhour`
+  - Address URL: `https://www.timeandplaceburnaby.com/`
+  - Access Date: `2026-10-03`
+  - Evaluation Status: `publicly_advertised_candidate_live_terms_unconfirmed`
+  - Stated Amount: `0.89`
+  - Stated Currency: `"$0.89 each (min. 6 pcs) displayed on Happy Hour food menu; ISO currency unstated (pending CAD confirmation)"`
+  - Minimum Quantity: 6 pieces
+  - Full Stated Schedule: Monday–Friday 16:00–18:00, Saturday–Sunday 17:00–18:00.
+  - Representational Limitation: Single-window schema constraint applies; canonical times/days left pending.
   - Coordinate Status: `omitted_pending_pinyuan_pin`
   - Ad Image URL: `null`
   - Missing Fields: `["lat", "lng", "priceCad", "validDays", "validStart", "validEnd", "flyerPhoto"]`
@@ -321,7 +325,16 @@ This document records publicly advertised restaurant and promoter food deals in 
 
 ---
 
-## 4. Next Steps for Integration Team (Gap Analysis)
+## 4. Documentation of Excluded Leads (BierCraft UniverCity)
+
+- **Establishment:** BierCraft UniverCity (8902 University High St, Burnaby, BC V5A 4X6, SFU Campus)
+- **Primary Page Inspected:** `https://biercraft.com/univercity/`
+- **Findings:** Direct curl and text parse of the live webpage confirms restaurant location and operating hours atop Burnaby Mountain. However, **no Manna Burger ($5.50), wings promotion ($12.00), or active daily food deals** are published on the live webpage.
+- **Disposition:** Previous references were based on historical aggregator guides and third-party mirrors. In strict compliance with project data standards prohibiting external mirrors and unverified historical claims, these leads have been downgraded to unverified historical leads and fully removed from the active candidate set.
+
+---
+
+## 5. Next Steps for Integration Team (Gap Analysis)
 
 To graduate these source candidates into canonical seeds, extraction test fixtures, and visual media, the following sequential steps are required:
 
@@ -331,9 +344,9 @@ To graduate these source candidates into canonical seeds, extraction test fixtur
 2. **Step 2: Explicit Currency Confirmation (Human / Team):**
    - Confirm that all `$` listings in Burnaby are settled in CAD dollars, converting `priceCad` from pending (`null`) into confirmed numeric values.
 3. **Step 3: Schedule Representational Decisions (Team / Schema):**
-   - For CAND-10 (Time & Place) and CAND-11 (Acqua), decide whether to split multi-window / multi-day schedules into separate candidate records or keep simplified single windows.
+   - For Time & Place (CAND-08/09/10) and Acqua (CAND-11), decide whether to split multi-window / multi-day schedules into separate candidate records or keep simplified single windows.
 4. **Step 4: Three Real Extraction Sources (Harry / iOS Integration):**
-   - Select 3 candidates (e.g. CAND-06 Burnaby Mountain Truffle Fries, CAND-08 BierCraft Manna Burger, CAND-10 Time & Place Kebobs).
+   - Select 3 candidates (e.g. CAND-06 Burnaby Mountain Truffle Fries, CAND-08 Time & Place Kebobs, CAND-10 Time & Place Wings).
    - Feed the actual sharing payload (text caption / URL from Instagram share sheet) into the VLM extraction pipeline without web scraping.
 5. **Step 5: Two Real Flyer Photos (Human Supplied):**
    - Acquire two genuine photographs of physical paper flyers or print menus from local Burnaby establishments (e.g., printed university bulletin board or takeaway flyer) to fulfill the 2-flyer demonstration requirement. Digital website hero banners cannot be substituted for photographed flyers.

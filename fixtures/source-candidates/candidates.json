@@ -267,86 +267,6 @@
   {
     "candidateId": "CAND-08",
     "canonicalProposal": {
-      "restaurant": "BierCraft UniverCity",
-      "address": "8902 University High St, Burnaby, BC V5A 4X6",
-      "dealText": "Thursday Daily Special: Manna Burger",
-      "priceCad": null,
-      "validDays": [
-        "thu"
-      ],
-      "validStart": null,
-      "validEnd": null,
-      "expiresOn": null,
-      "conditions": [
-        "Thursday daily feature",
-        "UniverCity location on SFU campus"
-      ],
-      "sourceUrl": "https://biercraft.com/univercity/"
-    },
-    "provenance": {
-      "offerUrl": "https://biercraft.com/univercity/",
-      "addressUrl": "https://biercraft.com/univercity/",
-      "accessDate": "2026-10-03",
-      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
-      "statedAmount": 5.5,
-      "statedCurrency": "$5.50 displayed for Thursday feature; ISO currency unstated (pending CAD confirmation)",
-      "coordinatesStatus": "omitted_pending_pinyuan_pin",
-      "adImageUrl": null,
-      "locationContext": "On Simon Fraser University (SFU) campus, Burnaby Mountain (8902 University High St)",
-      "toolAccessibilityNote": "Location and daily features retrieved from primary WordPress site metadata; web fetching tools encountered automated access limits on certain endpoints, introducing verification uncertainty for real-time menu shifts.",
-      "missingFields": [
-        "lat",
-        "lng",
-        "priceCad",
-        "validStart",
-        "validEnd",
-        "flyerPhoto"
-      ]
-    }
-  },
-  {
-    "candidateId": "CAND-09",
-    "canonicalProposal": {
-      "restaurant": "BierCraft UniverCity",
-      "address": "8902 University High St, Burnaby, BC V5A 4X6",
-      "dealText": "Wednesday Daily Special: One Pound of Wings",
-      "priceCad": null,
-      "validDays": [
-        "wed"
-      ],
-      "validStart": null,
-      "validEnd": null,
-      "expiresOn": null,
-      "conditions": [
-        "Wednesday daily feature",
-        "UniverCity location on SFU campus"
-      ],
-      "sourceUrl": "https://biercraft.com/univercity/"
-    },
-    "provenance": {
-      "offerUrl": "https://biercraft.com/univercity/",
-      "addressUrl": "https://biercraft.com/univercity/",
-      "accessDate": "2026-10-03",
-      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
-      "statedAmount": 12,
-      "statedCurrency": "$12.00 displayed for Wednesday feature; ISO currency unstated (pending CAD confirmation)",
-      "coordinatesStatus": "omitted_pending_pinyuan_pin",
-      "adImageUrl": null,
-      "locationContext": "On Simon Fraser University (SFU) campus, Burnaby Mountain (8902 University High St)",
-      "toolAccessibilityNote": "Location and daily features retrieved from primary WordPress site metadata; web fetching tools encountered automated access limits on certain endpoints, introducing verification uncertainty for real-time menu shifts.",
-      "missingFields": [
-        "lat",
-        "lng",
-        "priceCad",
-        "validStart",
-        "validEnd",
-        "flyerPhoto"
-      ]
-    }
-  },
-  {
-    "candidateId": "CAND-10",
-    "canonicalProposal": {
       "restaurant": "Time & Place Burnaby",
       "address": "6083 McKay Ave, Burnaby, BC V5H 2W7",
       "dealText": "Happy Hour: Mediterranean Beef Kebobs",
@@ -371,7 +291,88 @@
       "coordinatesStatus": "omitted_pending_pinyuan_pin",
       "adImageUrl": null,
       "fullSchedule": "Monday-Friday 16:00-18:00, Saturday-Sunday 17:00-18:00",
-      "representationalLimitation": "DishDeals schema only supports a single contiguous validStart/validEnd window per record; cannot represent different weekday vs weekend hours without splitting into separate candidate variants (e.g. weekday vs weekend). Canonical hours/days left pending to prevent false all-day window.",
+      "representationalLimitation": "DishDeals schema only supports a single contiguous validStart/validEnd window per record; cannot represent different weekday vs weekend hours without splitting into separate candidate variants. Canonical hours/days left pending to prevent false all-day window.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "validStart",
+        "validEnd",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-09",
+    "canonicalProposal": {
+      "restaurant": "Time & Place Burnaby",
+      "address": "6083 McKay Ave, Burnaby, BC V5H 2W7",
+      "dealText": "Happy Hour: Smashed Beef Slider (1 pc)",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour menu item (Mon-Fri 4pm-6pm, Sat-Sun 5pm-6pm)",
+        "Single slider portion",
+        "Located in Hilton Vancouver Metrotown"
+      ],
+      "sourceUrl": "https://www.timeandplaceburnaby.com/menus-happyhour"
+    },
+    "provenance": {
+      "offerUrl": "https://www.timeandplaceburnaby.com/menus-happyhour",
+      "addressUrl": "https://www.timeandplaceburnaby.com/",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 6,
+      "statedCurrency": "$6 displayed on Happy Hour food menu (Smashed Beef Slider 1pc); ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "fullSchedule": "Monday-Friday 16:00-18:00, Saturday-Sunday 17:00-18:00",
+      "representationalLimitation": "DishDeals schema only supports a single contiguous validStart/validEnd window per record; cannot represent different weekday vs weekend hours without splitting into separate candidate variants. Canonical hours/days left pending to prevent false all-day window.",
+      "missingFields": [
+        "lat",
+        "lng",
+        "priceCad",
+        "validDays",
+        "validStart",
+        "validEnd",
+        "flyerPhoto"
+      ]
+    }
+  },
+  {
+    "candidateId": "CAND-10",
+    "canonicalProposal": {
+      "restaurant": "Time & Place Burnaby",
+      "address": "6083 McKay Ave, Burnaby, BC V5H 2W7",
+      "dealText": "Happy Hour: Fraser Valley Wings ($0.89 each, min 6 pcs)",
+      "priceCad": null,
+      "validDays": [],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour menu item (Mon-Fri 4pm-6pm, Sat-Sun 5pm-6pm)",
+        "Minimum order of 6 pieces",
+        "Located in Hilton Vancouver Metrotown"
+      ],
+      "sourceUrl": "https://www.timeandplaceburnaby.com/menus-happyhour"
+    },
+    "provenance": {
+      "offerUrl": "https://www.timeandplaceburnaby.com/menus-happyhour",
+      "addressUrl": "https://www.timeandplaceburnaby.com/",
+      "accessDate": "2026-10-03",
+      "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+      "statedAmount": 0.89,
+      "statedCurrency": "$0.89 each (min. 6 pcs) displayed on Happy Hour food menu; ISO currency unstated (pending CAD confirmation)",
+      "minimumQuantity": 6,
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "adImageUrl": null,
+      "fullSchedule": "Monday-Friday 16:00-18:00, Saturday-Sunday 17:00-18:00",
+      "representationalLimitation": "DishDeals schema only supports a single contiguous validStart/validEnd window per record; cannot represent different weekday vs weekend hours without splitting into separate candidate variants. Canonical hours/days left pending to prevent false all-day window.",
       "missingFields": [
         "lat",
         "lng",
