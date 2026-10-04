@@ -634,6 +634,43 @@
       "localChecks": "18 synthetic Foundation checks PASS",
       "nativeChecks": "actual unsigned generic Simulator SDK app+extension build PASS",
       "phoneAcceptance": "pending signing/runtime/iPhone"
+    },
+    {
+      "id": "N-SOURCE-A",
+      "owner": "Loom",
+      "branch": "t-13-supplied-reel-media",
+      "worktree": "supplied-reel-media",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02",
+        "N-SHARE-DRAFT"
+      ],
+      "allowedPaths": [
+        "convex/schema.ts",
+        "convex/reels.ts",
+        "convex/reelActions.ts",
+        "convex/reelWorkflow.ts",
+        "convex/reelSource.ts",
+        "convex/http.ts",
+        "convex/convex.config.ts",
+        "convex/_generated/api.d.ts",
+        "convex/_generated/server.d.ts",
+        "components/reels/ReelIntake.tsx",
+        "lib/reels/suppliedMedia.ts",
+        "tests/backend/reelSource.test.ts",
+        "tests/import/suppliedMedia.test.ts",
+        "convex/reels.test.ts",
+        "docs/integration/supplied-reel-media.md",
+        "docs/handoffs/n-source-a.md",
+        ".env.example"
+      ],
+      "packet": "docs/tasks/N-SOURCE-A.md",
+      "pinnedBaseSha": "5190dfaf2695a75e5f211809cae33e35a10394c6",
+      "backendTarget": "local synthetic tests only; cloud/provider authorization pending",
+      "implementationState": "dispatched to Loom after reviewed draft guards",
+      "nativeChecks": "pending real WKWebView file picker",
+      "phoneAcceptance": "pending real native receipt/recording/VLM"
     }
   ],
   "completedDependencies": {
