@@ -19,9 +19,10 @@ import UserNotifications
             }
     } }
     private func consumeInbox() {
-        if let (file, kind, value) = ShareStore.first() {
+        if let (file, kind, value, _) = ShareStore.first() {
             if kind == "item", value.range(of: "^[A-Za-z0-9]{1,128}$", options: .regularExpression) != nil {
-                route = "/reels?item=\(value)"; try? FileManager.default.removeItem(at: file)
+                // Retained (marked routed) until server receipt or 24h expiry so the web view can recover its source context.
+                route = "/reels?item=\(value)"; ShareStore.markRouted(file)
             } else if kind == "link", let normalized = try? ShareStore.normalize(value) {
                 var c = URLComponents(); c.path = "/reels"; c.queryItems = [URLQueryItem(name: "shared", value: normalized)]
                 route = c.string ?? "/reels"
@@ -66,10 +67,14 @@ struct WebShell: UIViewRepresentable {
             case "session": _ = ShareStore.saveToken(body["token"] as? String)
             case "received":
                 // Remove matching local recovery copies only after the backend's deduplicated receipt.
-                if let link = body["sourceUrl"] as? String, let inbox = ShareStore.inbox,
-                   let files = try? FileManager.default.contentsOfDirectory(at: inbox, includingPropertiesForKeys: nil) {
-                    for file in files { if let data = try? Data(contentsOf: file), let record = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], record["kind"] as? String == "link", record["value"] as? String == link { try? FileManager.default.removeItem(at: file) } }
-                }
+                if let link = body["sourceUrl"] as? String { ShareStore.discard(source: link) }
+            case "requestShareContext":
+                // Context only for a current stored recovery of exactly this source; passed as native arguments (no JS interpolation).
+                guard let link = body["sourceUrl"] as? String, let source = try? ShareStore.normalize(link),
+                      let context = ShareStore.context(forSource: source), let web = message.webView else { return }
+                let detail: [String: Any] = ["sourceUrl": source, "nativeContext": context]
+                web.callAsyncJavaScript("window.dispatchEvent(new CustomEvent('dishdeals:shareContext', { detail: detail }));",
+                                        arguments: ["detail": detail], in: nil, in: .page) { _ in }
             case "enableNotifications": UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
             case "result":
                 guard let id = body["itemId"] as? String, let state = body["status"] as? String, id.range(of: "^[A-Za-z0-9]{1,128}$", options: .regularExpression) != nil,

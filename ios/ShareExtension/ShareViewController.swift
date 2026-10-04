@@ -13,36 +13,58 @@ import UniformTypeIdentifiers
         view.addSubview(stack); NSLayoutConstraint.activate([stack.centerYAnchor.constraint(equalTo: view.centerYAnchor), stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24), stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)])
         Task { await receive() }
     }
-    private func receive() async {
-        var incoming: String?
-        for item in extensionContext?.inputItems as? [NSExtensionItem] ?? [] {
-            for provider in item.attachments ?? [] {
-                let type = provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) ? UTType.url.identifier : UTType.text.identifier
-                guard provider.hasItemConformingToTypeIdentifier(type) else { continue }
-                let loaded: NSSecureCoding? = try? await withCheckedThrowingContinuation { continuation in
-                    provider.loadItem(forTypeIdentifier: type, options: nil) { item, error in
-                        if let error = error { continuation.resume(throwing: error) } else { continuation.resume(returning: item) }
-                    }
-                }
-                let text = (loaded as? URL)?.absoluteString ?? loaded as? String
-                if let text = text, let normalized = try? ShareStore.normalize(text) { incoming = normalized; break }
+    private final class Once: @unchecked Sendable {
+        private let lock = NSLock(); private var claimed = false
+        func claim() -> Bool { lock.lock(); defer { lock.unlock() }; if claimed { return false }; claimed = true; return true }
+    }
+    /// Loads one offered type as text with a hard timeout. Never loads media bytes.
+    private func load(_ provider: NSItemProvider, _ type: String, timeout: TimeInterval) async -> (text: String?, ok: Bool) {
+        await withCheckedContinuation { (continuation: CheckedContinuation<(String?, Bool), Never>) in
+            let once = Once()
+            provider.loadItem(forTypeIdentifier: type, options: nil) { item, error in
+                let text = (item as? URL)?.absoluteString ?? (item as? String) ?? (item as? NSAttributedString)?.string
+                    ?? (item as? Data).flatMap { String(data: $0, encoding: .utf8) }
+                if once.claim() { continuation.resume(returning: (text, error == nil && text != nil)) }
             }
-            if incoming != nil { break }
-            if let text = item.attributedContentText?.string, let normalized = try? ShareStore.normalize(text) { incoming = normalized }
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) { if once.claim() { continuation.resume(returning: (nil, false)) } }
         }
-        guard let url = incoming else { status.text = "Share the Reel’s direct Instagram link. Profiles and shortened share links aren’t supported."; done.isHidden = false; return }
+    }
+    private func receive() async {
+        let deadline = Date().addingTimeInterval(10)   // extension-wide budget
+        var texts: [String] = [], types: [String] = []
+        var lost = false, loadedURL = false, loadedText = false
+        for item in extensionContext?.inputItems as? [NSExtensionItem] ?? [] {
+            if let text = item.attributedContentText?.string, !text.isEmpty { texts.append(text); loadedText = true }
+            for provider in item.attachments ?? [] {
+                types.append(contentsOf: provider.registeredTypeIdentifiers)
+                for (type, isURL) in [(UTType.url.identifier, true), (UTType.text.identifier, false)] where provider.hasItemConformingToTypeIdentifier(type) {
+                    let remaining = deadline.timeIntervalSinceNow
+                    if remaining <= 0 { lost = true; continue }
+                    let result = await load(provider, type, timeout: min(4, remaining))
+                    if let text = result.text, result.ok { texts.append(text); if isURL { loadedURL = true } else { loadedText = true } } else { lost = true }
+                }
+            }
+        }
+        var distinctTypes: [String] = []
+        for type in types where !distinctTypes.contains(type) { distinctTypes.append(type) }
+        let context = ShareStore.makeContext(texts: texts, types: types, receivedAt: Date().timeIntervalSince1970, truncated: lost)
+        let summary = ShareStore.summary(context: context, offeredDistinctTypes: distinctTypes.count, loadedURL: loadedURL, loadedText: loadedText)
+        guard let url = try? ShareStore.resolveLink(texts) else {
+            status.text = "Share the Reel’s direct Instagram link. Profiles, shortened share links and messages with several different links aren’t supported.\n" + summary
+            done.isHidden = false; return
+        }
         // Keep a protected recovery copy before any request: an extension can be terminated at any time.
         let recovery: URL
-        do { recovery = try ShareStore.enqueue(url, kind: "link") } catch { status.text = "Could not save locally. Check App Group setup."; done.isHidden = false; return }
+        do { recovery = try ShareStore.enqueue(url, kind: "link", context: context) } catch { status.text = "Could not save locally. Check App Group setup.\n" + summary; done.isHidden = false; return }
         do {
-            let id = try await ShareStore.submit(url)
-            try ShareStore.enqueue(id, kind: "item")
+            let id = try await ShareStore.submit(url, context: context)
+            try ShareStore.enqueue(id, kind: "item", sourceUrl: url, context: context)
             try FileManager.default.removeItem(at: recovery)
-            status.text = "Saved privately. Open Dinedeals to continue and review your save."
+            status.text = "Saved privately. Open Dinedeals to continue and review your save.\n" + summary
         } catch ShareFailure.signIn {
-            status.text = "Link saved on this iPhone for 24 hours. Open Dinedeals and sign in to send it."
+            status.text = "Link saved on this iPhone for 24 hours. Open Dinedeals and sign in to send it.\n" + summary
         } catch {
-            status.text = "Link saved on this iPhone for 24 hours. Open Dinedeals to retry when connected."
+            status.text = "Link saved on this iPhone for 24 hours. Open Dinedeals to retry when connected.\n" + summary
         }
         done.isHidden = false
     }
