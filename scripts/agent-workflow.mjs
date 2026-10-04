@@ -167,6 +167,20 @@ export function changedFiles(cwd, base) {
   return [...files].sort();
 }
 
+// Protected paths touched by any task-only commit (merges included), even if later removed.
+// Path-name matching only; file contents and secret values are never read or printed.
+export function historyProtectedViolations(cwd, baseRef) {
+  const out = [];
+  for (const sha of git(cwd, ["rev-list", `${baseRef}..HEAD`]).split("\n").filter(Boolean)) {
+    const names = nulList(git(cwd, ["diff-tree", "-m", "-r", "--no-renames", "--name-only", "--no-commit-id", "-z", "--root", sha]));
+    for (const f of new Set(names)) {
+      const why = protectedReason(f);
+      if (why) out.push(`${f}: protected path (${why}) appears in task commit ${sha.slice(0, 7)} history; rewrite the branch before pushing`);
+    }
+  }
+  return out;
+}
+
 function requireTaskCheckout(cwd, manifest, task) {
   const resolved = validateTask(manifest, task, cwd);
   assertNotPrimary(cwd);
@@ -194,6 +208,7 @@ export function check(cwd, id) {
     if (secret) violations.push(`${f}: protected path (${secret})`);
     else if (!pathAllowed(f, task.allowedPaths)) violations.push(`${f}: outside allowedPaths for ${task.id}`);
   }
+  for (const v of historyProtectedViolations(cwd, baseRef)) if (!violations.includes(v)) violations.push(v);
   const lines = [`check ${task.id} on ${task.branch} (merge-base ${base.slice(0, 7)} with ${baseRef}): ${files.length} changed path(s)`];
   for (const f of files) lines.push(`  ${f}`);
   if (violations.length) {
@@ -201,7 +216,7 @@ export function check(cwd, id) {
   } else {
     lines.push("OK: all changes are inside allowedPaths and touch no protected paths.");
   }
-  lines.push("Note: check is a guardrail, not a security sandbox; it inspects Git state only.");
+  lines.push("Note: check is a guardrail, not a security sandbox or secret scanner; it matches path names only and never inspects file contents.");
   return { ok: violations.length === 0, lines, files, violations };
 }
 
@@ -218,7 +233,7 @@ export function sync(cwd) {
   } catch {
     /* manifest optional for sync */
   }
-  git(cwd, ["fetch", "origin"]);
+  git(cwd, ["fetch", "--no-write-fetch-head", "origin"]);
   if (!gitOk(cwd, ["rev-parse", "--verify", "-q", `${baseRef}^{commit}`])) throw new WorkflowError(`${baseRef} not found after fetch.`);
   if (gitOk(cwd, ["merge-base", "--is-ancestor", baseRef, "HEAD"])) return [`${branch} already contains ${baseRef}; nothing to do.`];
   if (!gitOk(cwd, ["merge-base", "--is-ancestor", "HEAD", baseRef])) {

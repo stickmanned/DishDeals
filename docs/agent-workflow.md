@@ -19,7 +19,7 @@ Checkouts live under the sibling `DishDeals-worktrees/` directory. The original 
 
 1. Finish T-00: publish the committed T-01/T-02 baseline plus this workflow, run CI, review the exact PR head, integrate through GitHub.
 2. Northstar fetches origin, reads task packets and latest teammate branches, verifies dependencies and assigns `ready` to approved independent tasks in `docs/workflow/tasks.json`.
-3. `npm run agents -- create T-03` and `npm run agents -- create T-04` create isolated branches from `origin/main`. Run `npm ci` per worktree. Do not copy `.env.local` automatically. Pure logic and mocked tests need no provider secrets.
+3. Verify the prepared auth/logic worktrees match the manifest branch and contain the integrated baseline. For a task without a worktree, set it ready and use `npm run agents -- create TASK_ID`; create deliberately refuses existing paths/branches. Run `npm ci` per worktree. Do not copy `.env.local` automatically. Pure logic and mocked tests need no provider secrets.
 4. Dispatch T-03 and T-04 concurrently through Maestri using their exact packets. T-05R starts only with usable Gemini credits and a new assignment. It initially produces a reconciliation report, not a second backend. Stop after this batch. Later tickets remain backlog.
 
 The current task manifest records prepared scopes, not an instruction to implement features during workflow setup. T-01 live browser/HTTPS/phone evidence remains pending. A coordinator may authorize local T-03 work on the reviewed baseline without pretending those live acceptance checks passed.
@@ -27,7 +27,7 @@ The current task manifest records prepared scopes, not an instruction to impleme
 ## Git loop
 
 ```sh
-git fetch origin
+git fetch --no-write-fetch-head origin
 npm run agents -- status
 npm run agents -- sync
 npm run agents -- check T-04
@@ -40,7 +40,7 @@ gh pr create --base main --draft --title "T-04: deal validity and distance" --bo
 
 `sync` only fast-forwards a clean task branch. If branches diverge, preserve commits and stop for Northstar to integrate `origin/main` in that task worktree explicitly; do not reset, stash, force push or rewrite a teammate's branch. Remote feature branches are read with `git show origin/<branch>:<path>` or `git diff`; fetch never merges their code automatically.
 
-Only Northstar integrates approved PRs, one at a time. Require the `quality` CI check, an independent review of the exact current head and ownership evidence. Reviewers do not self-approve an implementation. Keep PRs small; re-run review/checks after material changes or integration conflicts. No auto-merge of failing checks. Main protection blocks force pushes/deletions and requires PR + green quality; an AI review is recorded as evidence, not misrepresented as a human GitHub approval.
+Only Northstar integrates approved PRs, one at a time (the setup installer may land T-00 after Northstar review). Require the `quality` CI check, an independent review of the exact current head and ownership evidence. Reviewers do not self-approve an implementation. Keep PRs small; re-run review/checks after material changes or integration conflicts. No auto-merge of failing checks. Verified main protection (2026-10-03) blocks force pushes/deletions, requires a PR, resolved conversations and an up-to-date green `quality` from GitHub Actions, including for admins. GitHub human approval count is zero so a solo hackathon team can land after recorded independent AI review; an AI review is recorded as evidence, not misrepresented as a human GitHub approval.
 
 ## Contracts and shared resources
 
@@ -61,3 +61,5 @@ No automatic unlimited task queue, background polling routine or surprise notifi
 Use `docs/handoffs/TEMPLATE.md`. CI installs from the lock and runs typecheck, lint, tests, workflow tests and build without provider credentials or deployment. Mock tests cannot establish live auth/extraction acceptance. Phone tests, latency and live integrations stay pending until measured. Convex's authentic generated files are tracked in the T-02 baseline, so clean CI does not need live codegen. The earlier research report's claim that they were ignored was incorrect.
 
 Recovery: preserve a failing branch and its worktree, document the blocker, repair or revert with a new commit. Never delete a worktree containing uncommitted work. Retire clean merged worktrees only after their evidence has been retained.
+
+Northstar uses `git fetch --no-write-fetch-head origin` because its sandbox prohibits FETCH_HEAD writes. If a Git metadata operation is denied, report it and schedule the exact Git operation through the idle integration operator or Loom; do not weaken the sandbox or claim the sync succeeded.

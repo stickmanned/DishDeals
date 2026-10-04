@@ -22,7 +22,7 @@ Without a Convex URL, the home page shows "DishDeals" and a visible "Convex is n
 3. Do not commit `.env*` or any key. `.env*` is git-ignored. Keep server-only keys out of `NEXT_PUBLIC_*` variables.
 4. `npm run dev` should then show "Convex says: Hello from Convex".
 
-`convex/test.ts` is a table-free `queryGeneric` (`test:ping`, validated with `returns: v.object({ message: v.string() })`). `components/ConvexTestResult.tsx` calls it through an explicitly typed `makeFunctionReference`, because `convex/_generated` does not exist until `npx convex dev` (cloud setup) has generated authentic files. After generation, it can switch to `api.test.ping`. `convex/_generated/` is not git-ignored; Convex recommends committing it, and authentic generated files are now committed in the T-02 baseline.
+`convex/test.ts` is a table-free `queryGeneric` (`test:ping`, validated with `returns: v.object({ message: v.string() })`). `components/ConvexTestResult.tsx` calls it through an explicitly typed `makeFunctionReference`, This scaffold originally preceded code generation; authentic generated files are now tracked in T-02. Switching this test to `api.test.ping` is optional later cleanup. `convex/_generated/` is not git-ignored; Convex recommends committing it, and authentic generated files are now committed in the T-02 baseline.
 
 ### Checks
 

@@ -229,6 +229,39 @@ describe("agent workflow", () => {
       }
     });
 
+    test("fails when a protected file was committed then removed, but not for a removed allowed file", () => {
+      write(wt, "lib/feature.ts");
+      commitAll(wt, "add allowed");
+      git(wt, "rm", "-q", "lib/feature.ts");
+      git(wt, "commit", "-q", "-m", "remove allowed");
+      assert.equal(check(wt, "T-03").ok, true);
+      write(wt, "convex/feature/.env.production", "SYNTHETIC=1\n");
+      git(wt, "add", "-f", "convex/feature/.env.production");
+      git(wt, "commit", "-q", "-m", "oops");
+      git(wt, "rm", "-q", "convex/feature/.env.production");
+      git(wt, "commit", "-q", "-m", "remove");
+      const r = check(wt, "T-03");
+      assert.deepEqual(r.files, []);
+      assert.equal(r.ok, false);
+      assert.match(r.violations[0], /\.env\.production: protected path.*history/);
+      assert.ok(!r.lines.join("\n").includes("SYNTHETIC"));
+    });
+
+    test("origin/main merged into the task branch is not assigned to the worker", () => {
+      const other = path.join(f.dir, "other");
+      git(f.dir, "clone", "-q", f.origin, other);
+      write(other, "app/upstream.tsx");
+      commitAll(other, "upstream");
+      git(other, "push", "-q", "origin", "HEAD:main");
+      write(wt, "lib/feature.ts");
+      commitAll(wt, "local");
+      git(wt, "fetch", "-q", "origin");
+      git(wt, "merge", "-q", "--no-edit", "origin/main");
+      const r = check(wt, "T-03");
+      assert.equal(r.ok, true, r.lines.join("\n"));
+      assert.deepEqual(r.files, ["lib/feature.ts"]);
+    });
+
     test("directory entries do not match sibling prefixes", () => {
       write(wt, "convex/feature-other/a.ts");
       assert.equal(check(wt, "T-03").ok, false);
