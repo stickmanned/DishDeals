@@ -698,7 +698,9 @@ describe("the deadline cancels receipt for good", () => {
 
 describe("next.config.ts", () => {
   it("only adds headers for /sw.js (no-cache, JavaScript, nosniff, strict CSP) and nothing else", async () => {
-    expect(Object.keys(nextConfig)).toEqual(["headers"]);
+    // `images` is the one other key, added so deal photos load from this deployment's Convex storage
+    // (see tests/setup/nextImages.test.ts); it carries no header, auth or route behavior.
+    expect(Object.keys(nextConfig).sort()).toEqual(["headers", "images"]);
     const rules = await nextConfig.headers!();
     expect(rules).toHaveLength(1);
     expect(rules[0].source).toBe("/sw.js");
