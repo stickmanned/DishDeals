@@ -262,7 +262,7 @@ export function CanonicalReelReview({
         <p>
           <b>Private save vs. Public deal:</b> You are editing a draft from a privately saved Reel.
           Saving below keeps this draft private to your account.
-          When you confirm all required fields and click &ldquo;Publish deal&rdquo;, this offer is published publicly for everyone on the Discover feed and map.
+          When you confirm all required fields and click &ldquo;Publish deal&rdquo;, this offer is published as a community deal on the map and deal detail page (feed integration is pending until resolved).
         </p>
         {sourceUrl && (
           <p className="muted">

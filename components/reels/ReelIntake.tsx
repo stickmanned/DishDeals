@@ -89,7 +89,7 @@ function Result({ itemId }: { itemId: Id<"reelItems"> }) {
       <h2>Public deal entry</h2>
       <p>
         <b>Private save vs. Public deal:</b> This saved Reel is private to your account.
-        To share this deal with the community, review the details and publish it publicly so other users can find it on the Discover feed and map.
+        To share this deal with the community, review the details and publish it as a community deal on the map and deal detail page (feed integration is pending until resolved).
       </p>
       <div className="form-actions">
         <a className="button secondary" href="#reel-deal-review">

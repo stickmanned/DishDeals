@@ -13,36 +13,46 @@
   - `docs/handoffs/n-public-entry.md`
 
 ## Summary of Changes
-1. **Public Deal Entry & Explanation (`components/reels/ReelIntake.tsx`):**
+1. **Public Deal Entry & Feed-Pending Copy (`components/reels/ReelIntake.tsx`):**
    - Added a minimal functional "Public deal entry" section to `Result`:
-     - Discloses the difference between a private save (stored privately to the account) and a public deal (published to community Discover feed and map).
-     - Provides a direct jump anchor `<a href="#reel-deal-review">` to the review and publish form.
-     - Provides an encoded provenance link `<Link href="/post?source=...">` to the standard manual post form.
+     - Discloses the difference between a private save (stored privately to the account) and a public deal.
+     - Accurate status copy: offer is published as a community deal on the map and deal detail page, explicitly disclosing that Discover feed integration is pending until resolved (avoids false promise given broken legacy feed query).
+     - Direct jump anchor `<a href="#reel-deal-review">` to the review and publish form.
+     - Encoded provenance link `<Link href="/post?source=...">` to the standard manual post form.
    - Updated `AttachRecording` copy to accurately describe recording as optional:
      - Title updated to `Attach recording (optional)`.
      - Copy explains that the saved Instagram link alone supplies no facts and cannot be automatically analyzed; users can optionally attach a screen recording, review/publish manually below, or use the standard post form with screenshot/caption text.
-2. **Review Anchor & Public Entry Clarification (`components/reels/CanonicalReelReview.tsx`):**
+2. **Review Anchor, Publish Affordance & Gating (`components/reels/CanonicalReelReview.tsx`):**
    - Added `id="reel-deal-review"` to the main container for the review anchor.
-   - Added a clear note explaining private save vs. public community publication: saving keeps the draft private to the account; publishing makes the offer public to everyone on Discover and map once required fields are confirmed.
+   - Added a clear note explaining private save vs. public community publication: saving keeps the draft private to the account; publishing makes the offer a community deal on the map and deal detail page (feed integration pending until resolved).
    - Added direct link to `/post?source=${encodeURIComponent(sourceUrl)}` for users who prefer standard manual post submission.
-   - Properly scoped `effectivePublishUnavailableReason` so that when `onPublish` is supplied and no custom reason is given, the form correctly displays the publish controls rather than blocking with the default offline notice.
-   - Kept field confirmations, source reviews, profile checks, manual pin, and `deals.create` genuine receipt logic intact.
-3. **Synthetic Regression Tests (`tests/import/reelPublicEntry.test.tsx`):**
-   - Added 5 component test cases with `react-dom/server` (clearly labeled SSR / synthetic, not a phone/browser):
-     - `CanonicalReelReview` contains `id="reel-deal-review"` direct review anchor.
-     - `CanonicalReelReview` renders clear explanation of private save vs. public community publication.
-     - `CanonicalReelReview` renders encoded provenance link `/post?source=<encoded sourceUrl>`.
-     - `CanonicalReelReview` distinguishes active publish controls from unavailable publish states.
-     - `ReelIntake` renders the public deal entry panel with anchor link, encoded `/post` link, and optional recording copy.
+   - **Publish Affordance Bugfix:** Scoped `effectivePublishUnavailableReason` so that when `onPublish` is supplied and no custom reason is given, the form receives `publishUnavailableReason={undefined}`, allowing `DealReviewForm` to render `<button type="submit" className="button primary draft-submit">Publish deal</button>`. (Previously, defaulting `publishUnavailableReason` to a string in props destructuring caused `DealReviewForm` to hide the submit button and show a quiet note even with `onPublish` present).
+   - Preserved all preconditions: version checking, in-flight publishing lock, draft existence, and authentication/profile gate messages.
+3. **Synthetic Regression Tests & DOM Parsing (`tests/import/reelPublicEntry.test.tsx`):**
+   - Added helper `parseButtons` to extract rendered `<button>` elements, attributes, and text from SSR markup.
+   - Verified that naive text assertions like `expect(html).toContain("Publish deal")` are vulnerable to false-passes because the explanatory note contains the text `click "Publish deal"`.
+   - Added 4 explicit publish affordance test cases asserting actual rendered DOM button tags/roles:
+     - **Available handler + no reason:** MUST render `<button type="submit" class="...draft-submit...">Publish deal</button>` with `disabled=false`.
+     - **No-handler default unavailable:** `onPublish: undefined` must NOT render the submit button; renders default unavailable text and preserves private save button.
+     - **Explicit signed-out reason:** must NOT render the submit button; renders the signed-out notice.
+     - **Explicit profile-pending reason:** must NOT render the submit button; renders the profile-pending notice.
+     - **Mutation revert guard test:** proves that when `publishUnavailableReason` is provided (simulating the original bug where default reason suppressed the button), DOM button parsing detects the absent button while naive string matching false-passes.
+   - Verified pending feed copy assertions in both `CanonicalReelReview` and `ReelIntake`.
 
 ## Checks Actually Run
-- `npx vitest run tests/import/reelPublicEntry.test.tsx`: 5/5 tests passed (captured 5 initial failures prior to implementation).
-- `npx vitest run tests/import/`: 21 test files / 788 tests passed with 0 regressions.
-- `npm run typecheck`: clean (exit code 0).
-- `npm run lint`: clean (exit code 0).
+- `npx vitest run tests/import/reelPublicEntry.test.tsx`: 9/9 tests passed (SSR static markup, not a phone or browser).
+- `npx vitest run tests/import/`: 21 test files / 792 tests passed with 0 regressions.
+- `npm run typecheck`: clean (`tsc --noEmit`, exit code 0).
+- `npm run lint`: clean (`eslint .`, exit code 0).
+
+## Mutation Revert Guard Verification
+- Tested mutation revert behavior:
+  - If `CanonicalReelReview` passes a fallback string to `publishUnavailableReason` when `onPublish` is provided, `DealReviewForm` renders `<p className="quiet-note">` and does not render `<button type="submit">`.
+  - Naive assertion `html.includes("Publish deal")` returns `true` (false-pass on paragraph copy).
+  - DOM assertion `findSubmitPublishButton(parseButtons(html))` returns `undefined` (correctly fails on regression).
+- All checks explicitly labeled as SSR static markup; no false claims of phone or cloud verification.
 
 ## Boundaries & Blockers
 - No native code, XcodeGen, backend schema, auth provider, or package modifications made.
-- Native receipt continues to rely on real returned deal ID.
 - No automated cloud deployment, provider calls, or account sign-ins performed.
 - Stopping now after one ticket as required.

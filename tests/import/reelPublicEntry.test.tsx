@@ -36,6 +36,40 @@ vi.mock("@/lib/nativeSession", async () => import("../../lib/nativeSession"));
 vi.mock("@/lib/reels/suppliedMedia", async () => import("../../lib/reels/suppliedMedia"));
 vi.mock("@/lib/reels/publish", async () => import("../../lib/reels/publish"));
 
+// DOM parsing helper for rendered <button> elements in SSR markup
+interface RenderedButton {
+  tag: string;
+  type: string;
+  className: string;
+  text: string;
+  disabled: boolean;
+  rawAttrs: string;
+}
+
+function parseButtons(html: string): RenderedButton[] {
+  const matches = [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/gi)];
+  return matches.map((m) => {
+    const rawAttrs = m[1];
+    const text = m[2].replace(/<[^>]+>/g, "").trim();
+    const typeMatch = /type=["']([^"']+)["']/i.exec(rawAttrs);
+    const classMatch = /class(?:Name)?=["']([^"']+)["']/i.exec(rawAttrs);
+    return {
+      tag: "button",
+      type: typeMatch ? typeMatch[1] : "",
+      className: classMatch ? classMatch[1] : "",
+      text,
+      disabled: /\bdisabled\b/i.test(rawAttrs),
+      rawAttrs,
+    };
+  });
+}
+
+function findSubmitPublishButton(buttons: RenderedButton[]): RenderedButton | undefined {
+  return buttons.find(
+    (b) => b.type === "submit" && b.className.includes("draft-submit") && b.text === "Publish deal"
+  );
+}
+
 // Synthetic sample item for testing
 function makeSyntheticItem(overrides: Partial<Doc<"reelItems">> = {}): Doc<"reelItems"> {
   return {
@@ -85,7 +119,7 @@ describe("CanonicalReelReview public entry and copy (SSR markup; not a phone)", 
     expect(html).toContain('id="reel-deal-review"');
   });
 
-  it("explains private save vs. public community publication clearly", () => {
+  it("explains private save vs. public community publication clearly with pending feed integration copy", () => {
     const item = makeSyntheticItem();
     const html = renderToStaticMarkup(
       createElement(CanonicalReelReview, {
@@ -98,7 +132,10 @@ describe("CanonicalReelReview public entry and copy (SSR markup; not a phone)", 
     // Discloses that saving keeps the draft private, while publishing makes the deal public
     expect(html).toMatch(/private save vs\.? public deal/i);
     expect(html).toMatch(/private to your account/i);
-    expect(html).toMatch(/publish.*public/i);
+    expect(html).toMatch(/community deal on the map and deal detail page/i);
+    expect(html).toMatch(/feed integration is pending until resolved/i);
+    // Verifies broken live Discover feed is not promised as immediately active
+    expect(html).not.toMatch(/for everyone on the Discover feed/i);
   });
 
   it("renders encoded provenance link to standard /post form (/post?source=...)", () => {
@@ -114,33 +151,120 @@ describe("CanonicalReelReview public entry and copy (SSR markup; not a phone)", 
     expect(html).toContain(`/post?source=${ENCODED_SOURCE}`);
   });
 
-  it("distinguishes available publish controls from unavailable publish state", () => {
-    const item = makeSyntheticItem();
+  describe("Publish affordance: button rendering and gating states (DOM parsed; not bare copy)", () => {
+    it("MUST render actual submit <button> element with draft-submit class when onPublish is provided with no reason", () => {
+      const item = makeSyntheticItem();
+      const html = renderToStaticMarkup(
+        createElement(CanonicalReelReview, {
+          item,
+          onSave: async () => {},
+          sourceUrl: SOURCE_URL,
+          onPublish: async () => {},
+          publishUnavailableReason: undefined,
+        })
+      );
 
-    // Available publish handler
-    const availableHtml = renderToStaticMarkup(
-      createElement(CanonicalReelReview, {
-        item,
-        onSave: async () => {},
-        sourceUrl: SOURCE_URL,
-        onPublish: async () => {},
-      })
-    );
-    expect(availableHtml).toContain("Publish deal");
+      const buttons = parseButtons(html);
+      const submitBtn = findSubmitPublishButton(buttons);
 
-    // Unavailable publish handler
-    const reason = "Publishing is disabled in offline mode.";
-    const unavailableHtml = renderToStaticMarkup(
-      createElement(CanonicalReelReview, {
-        item,
-        onSave: async () => {},
-        sourceUrl: SOURCE_URL,
-        onPublish: undefined,
-        publishUnavailableReason: reason,
-      })
-    );
-    expect(unavailableHtml).toContain(reason);
-    expect(unavailableHtml).toContain("Save draft privately");
+      expect(submitBtn).toBeDefined();
+      expect(submitBtn?.tag).toBe("button");
+      expect(submitBtn?.type).toBe("submit");
+      expect(submitBtn?.className).toContain("draft-submit");
+      expect(submitBtn?.className).toContain("button primary");
+      expect(submitBtn?.text).toBe("Publish deal");
+      expect(submitBtn?.disabled).toBe(false);
+    });
+
+    it("must NOT render submit button when onPublish is undefined (no-handler default unavailable)", () => {
+      const item = makeSyntheticItem();
+      const html = renderToStaticMarkup(
+        createElement(CanonicalReelReview, {
+          item,
+          onSave: async () => {},
+          sourceUrl: SOURCE_URL,
+          onPublish: undefined,
+          publishUnavailableReason: undefined,
+        })
+      );
+
+      const buttons = parseButtons(html);
+      const submitBtn = findSubmitPublishButton(buttons);
+
+      // Submit button is NOT rendered
+      expect(submitBtn).toBeUndefined();
+      expect(buttons.some((b) => b.text === "Publish deal")).toBe(false);
+
+      // Default unavailable message is rendered instead
+      expect(html).toContain("Community deal publishing is not available in this view. You can save this draft privately.");
+      // Private save action is preserved
+      expect(html).toContain("Save draft privately");
+    });
+
+    it("must NOT render submit button when onPublish is provided with explicit signed-out reason", () => {
+      const item = makeSyntheticItem();
+      const signedOutReason = "Sign in to publish.";
+      const html = renderToStaticMarkup(
+        createElement(CanonicalReelReview, {
+          item,
+          onSave: async () => {},
+          sourceUrl: SOURCE_URL,
+          onPublish: async () => {},
+          publishUnavailableReason: signedOutReason,
+        })
+      );
+
+      const buttons = parseButtons(html);
+      const submitBtn = findSubmitPublishButton(buttons);
+
+      expect(submitBtn).toBeUndefined();
+      expect(buttons.some((b) => b.text === "Publish deal")).toBe(false);
+      expect(html).toContain(signedOutReason);
+    });
+
+    it("must NOT render submit button when onPublish is provided with explicit profile-pending reason", () => {
+      const item = makeSyntheticItem();
+      const profileReason = "Create your profile first (open Profile), then publish.";
+      const html = renderToStaticMarkup(
+        createElement(CanonicalReelReview, {
+          item,
+          onSave: async () => {},
+          sourceUrl: SOURCE_URL,
+          onPublish: async () => {},
+          publishUnavailableReason: profileReason,
+        })
+      );
+
+      const buttons = parseButtons(html);
+      const submitBtn = findSubmitPublishButton(buttons);
+
+      expect(submitBtn).toBeUndefined();
+      expect(buttons.some((b) => b.text === "Publish deal")).toBe(false);
+      expect(html).toContain(profileReason);
+    });
+
+    it("regression mutation revert guard: catches false-pass from explanatory copy when publish button is absent", () => {
+      const item = makeSyntheticItem();
+      // Simulate the original bug state: where publishUnavailableReason was defaulted to a string in CanonicalReelReview,
+      // suppressing DealReviewForm's submit button even when onPublish was passed.
+      const simulatedBugHtml = renderToStaticMarkup(
+        createElement(CanonicalReelReview, {
+          item,
+          onSave: async () => {},
+          sourceUrl: SOURCE_URL,
+          onPublish: async () => {},
+          publishUnavailableReason: "Community deal publishing is not available in this view. You can save this draft privately.",
+        })
+      );
+
+      // Naive string check false-passes because explanatory copy contains "Publish deal"
+      expect(simulatedBugHtml.includes("Publish deal")).toBe(true);
+
+      // DOM parsing correctly detects that NO actual submit button tag exists in this state
+      const buttons = parseButtons(simulatedBugHtml);
+      const submitBtn = findSubmitPublishButton(buttons);
+      expect(submitBtn).toBeUndefined();
+    });
   });
 });
 
@@ -155,7 +279,7 @@ describe("ReelIntake public entry from owned Reel result (SSR markup; not a phon
     vi.unstubAllEnvs();
   });
 
-  it("renders public deal entry panel with anchor link and encoded /post link", async () => {
+  it("renders public deal entry panel with anchor link, encoded /post link, and pending feed copy", async () => {
     const { ReelIntake } = await import("../../components/reels/ReelIntake");
     const html = renderToStaticMarkup(
       createElement(ReelIntake, { itemId: "reel-fixture-0001" })
@@ -164,6 +288,9 @@ describe("ReelIntake public entry from owned Reel result (SSR markup; not a phon
     // 1. Clear public deal entry and explanation of private save vs public publication
     expect(html).toMatch(/public deal entry/i);
     expect(html).toMatch(/private save vs\.? public deal/i);
+    expect(html).toMatch(/community deal on the map and deal detail page/i);
+    expect(html).toMatch(/feed integration is pending until resolved/i);
+    expect(html).not.toMatch(/for everyone on the Discover feed/i);
 
     // 2. Direct review anchor #reel-deal-review
     expect(html).toContain('href="#reel-deal-review"');
