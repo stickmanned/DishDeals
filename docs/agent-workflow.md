@@ -1,3 +1,5 @@
+> Latest October4 routing: William reports Claude Code reset and directs Claude Code Sonnet5.5/high for Loom and Sonnet5.5/medium for Cinder/Mica/Prism. Antigravity actual low-credit errors occurred on all lanes; files/commits preserved, same nodes replaced in place. Continue existing bounded packets, no new ticket autopull. Northstar unchanged GPT6.1Sol/high.
+
 > October4 quota routing amendment: Claude Code shared usage limit was reported by Prism at 01:47. William directs switching at less than 1% remaining to Antigravity Claude Sonnet 5.5 until that quota runs out. Reuse the same Maestri nodes, worktrees and packets with in-place replacement; preserve source and handoffs. No credit purchases, extra-usage enablement or account changes. A stale footer alone is not failure evidence: verify a fresh request. Northstar remains GPT-6.1 Sol/high.
 
 > October4 worker routing: William authorized Claude Code after Gemini quota exhaustion. Loom, Mica, Prism and Cinder are reused; no duplicate recruits. Historical Gemini routing below is superseded for current packets. Human-reported iPhone Xcode build passed; actual device flow remains pending.
