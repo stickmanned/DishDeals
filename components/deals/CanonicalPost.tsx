@@ -35,6 +35,7 @@ import {
 import { isValidDealId } from "@/lib/mapPage";
 import { RecordingPicker } from "./RecordingFrames";
 import { prepareRecordingFrames } from "@/lib/recordingFrameFlow";
+import { browserDemoCache, CACHED_COPY, cachedOfferNote } from "@/lib/demoCacheFlow";
 import { createSearch } from "@/lib/reels/publish";
 import { DealReviewForm } from "./DealReviewForm";
 
@@ -92,6 +93,8 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
     // The controller hands over ids only from real upload receipts; the casts below are that typed adapter.
     extract: (args) => extractDeal({ ...args, imageIds: args.imageIds as unknown as Id<"_storage">[] }),
     createDeal: (args) => createDeal({ ...args, imageId: args.imageId as unknown as Id<"_storage"> | undefined }),
+    // T-16B: same-origin saved-capture replay. Nothing is fetched unless the user switches replay on and asks for analysis.
+    ...browserDemoCache(),
   };
   const [flow] = useState(() => new ImageDraftFlow(deps));
   useEffect(() => {
@@ -218,6 +221,12 @@ function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot 
         <input type="file" accept="image/*" capture="environment" onChange={pick} disabled={running} />
       </label>
       <RecordingPicker flow={flow} snap={snap} />
+      <label className="field">
+        <span>
+          <input type="checkbox" checked={snap.demoReplay} disabled={running} onChange={(e) => flow.setDemoReplay(e.target.checked)} /> {CACHED_COPY.toggle}
+        </span>
+        <span className="muted">{CACHED_COPY.toggleHelp}</span>
+      </label>
       {source.fileError && (
         <p role="alert" className="field-error">
           {source.fileError}
@@ -274,7 +283,7 @@ function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot 
         )}
       </div>
       {!hasSource && <p className="muted">Add an image to get suggestions, or skip this and fill in the form below by hand.</p>}
-      {PHASE_COPY[snap.phase] && <p role="status" aria-live="polite">{PHASE_COPY[snap.phase]}</p>}
+      {PHASE_COPY[snap.phase] && <p role="status" aria-live="polite">{snap.cacheLookup ? CACHED_COPY.checking : PHASE_COPY[snap.phase]}</p>}
       {snap.error && (
         <p role="alert" className="field-error">
           {snap.error.message}
@@ -326,6 +335,11 @@ function OffersPanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot 
           <h3>
             From {offer.imageName} <span className="muted">· model {offer.model}</span>
           </h3>
+          {offer.cached && (
+            <p role="note" className="quiet-note">
+              <b>{CACHED_COPY.badge}.</b> {cachedOfferNote(offer.cached, offer.source)}
+            </p>
+          )}
           {offer.noDeal && <p role="status">No clear dining deal was found in this image. You can fill in the form by hand.</p>}
           {offer.drafts.map((draft, index) => {
             const s = summary(draft);

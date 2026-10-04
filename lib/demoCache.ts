@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { validateExtractOutcome } from "./extractionDraft";
 import type { ExtractOutcome } from "./extractCore";
+import { RESPONSE_JSON_SCHEMA, SYSTEM_PROMPT, buildContextText } from "./prompt";
 
 // Browser-safe cache preparation. Metadata records an operator's provenance
 // assertion; validation cannot prove a provider call occurred. Never treat
@@ -36,26 +37,56 @@ async function sha(bytes: Uint8Array): Promise<string> {
   const hash = await crypto.subtle.digest("SHA-256", copy);
   return Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, "0")).join("");
 }
-export async function demoKey(input: DemoInput): Promise<DemoKey> {
-  if (!input.original.length || input.original.length > 20 * 1024 * 1024 ||
-      !input.images.length || input.images.length > 8 ||
-      !input.promptVersion.trim() || input.promptVersion.length > 100) throw new Error("Invalid demo source.");
-  for (const value of [input.caption, input.text, input.provenanceUrl, input.publishedAt]) {
+const IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+/**
+ * What a key needs from the actual bytes, kept as hashes only: the original source file and every prepared
+ * (resized, uploaded) image in upload order. Computed once per selected source so a retry or a later toggle never
+ * needs the bytes again and nothing large stays in memory.
+ */
+export type DemoMaterial = { sourceSha256: string; images: { sha256: string; mimeType: string }[] };
+export type DemoContext = { caption?: string; text?: string; provenanceUrl?: string; publishedAt?: string };
+
+export async function demoMaterial(original: Uint8Array, images: { bytes: Uint8Array; mimeType: string }[]): Promise<DemoMaterial> {
+  if (!original.length || original.length > 20 * 1024 * 1024 || !images.length || images.length > 8) throw new Error("Invalid demo source.");
+  const hashed = [];
+  for (const image of images) {
+    if (!image.bytes.length || image.bytes.length > 5 * 1024 * 1024 || !IMAGE_MIMES.includes(image.mimeType)) throw new Error("Invalid demo image.");
+    hashed.push({ sha256: await sha(image.bytes), mimeType: image.mimeType });
+  }
+  return { sourceSha256: await sha(original), images: hashed };
+}
+export async function demoKeyFromMaterial(material: DemoMaterial, context: DemoContext, promptVersion: string): Promise<DemoKey> {
+  if (!SHA.test(material.sourceSha256) || !material.images.length || material.images.length > 8 || !promptVersion.trim() || promptVersion.length > 100) throw new Error("Invalid demo source.");
+  for (const image of material.images) if (!SHA.test(image.sha256) || !IMAGE_MIMES.includes(image.mimeType)) throw new Error("Invalid demo image.");
+  for (const value of [context.caption, context.text, context.provenanceUrl, context.publishedAt]) {
     if (value !== undefined && (typeof value !== "string" || value.length > 20000)) throw new Error("Invalid source context.");
   }
-  const images = [];
-  for (const image of input.images) {
-    if (!image.bytes.length || image.bytes.length > 5 * 1024 * 1024 ||
-      !["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"].includes(image.mimeType)) throw new Error("Invalid demo image.");
-    images.push({ sha256: await sha(image.bytes), mimeType: image.mimeType });
-  }
-  const sourceSha256 = await sha(input.original);
   const requestSha256 = await sha(new TextEncoder().encode(JSON.stringify({
-    sourceSha256, images, caption: input.caption ?? null, text: input.text ?? null,
-    provenanceUrl: input.provenanceUrl ?? null, publishedAt: input.publishedAt ?? null,
-    promptVersion: input.promptVersion,
+    sourceSha256: material.sourceSha256, images: material.images.map(i => ({ sha256: i.sha256, mimeType: i.mimeType })),
+    caption: context.caption ?? null, text: context.text ?? null,
+    provenanceUrl: context.provenanceUrl ?? null, publishedAt: context.publishedAt ?? null,
+    promptVersion,
   })));
-  return { sourceSha256, requestSha256, promptVersion: input.promptVersion };
+  return { sourceSha256: material.sourceSha256, requestSha256, promptVersion };
+}
+export async function demoKey(input: DemoInput): Promise<DemoKey> {
+  if (!input.promptVersion.trim() || input.promptVersion.length > 100) throw new Error("Invalid demo source.");
+  const material = await demoMaterial(input.original, input.images);
+  return demoKeyFromMaterial(material, input, input.promptVersion);
+}
+
+/** Bump when the extraction-outcome envelope (model, result, manualReview, requiresBlockingReview) changes shape. */
+export const EXTRACT_ENVELOPE_CONTRACT = "extract-outcome-v1";
+/**
+ * The prompt/contract version a genuine capture must have been made under: a digest of the CURRENT system prompt,
+ * response schema and context builder (lib/prompt.ts) plus the envelope contract. Editing the prompt or schema
+ * changes this value, so every older fixture becomes a miss instead of replaying stale behavior.
+ */
+export async function currentPromptVersion(): Promise<string> {
+  const digest = await sha(new TextEncoder().encode(JSON.stringify([
+    SYSTEM_PROMPT, RESPONSE_JSON_SCHEMA, buildContextText({ imageCount: 0 }), EXTRACT_ENVELOPE_CONTRACT,
+  ])));
+  return `${EXTRACT_ENVELOPE_CONTRACT}:${digest.slice(0, 24)}`;
 }
 export type DemoCacheResult =
   | { status: "hit"; outcome: ExtractOutcome; provenance: z.infer<typeof fixtureSchema>["provenance"] }
