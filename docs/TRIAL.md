@@ -1,6 +1,6 @@
 # Integrated DishDeals trial
 
-Published trial: https://dishdeals-trial.cpy1111.chatgpt.site (public link access; backend is the existing Convex dev deployment).
+Previous trial: https://dishdeals-trial.cpy1111.chatgpt.site (public link access; backend is the existing Convex dev deployment). That publishing project is currently inaccessible, and this URL has not been updated with the new frontend. The latest frontend is prepared on `gh-pages`, pending the repository owner's Pages setup. See [the current integration handoff](handoffs/t-21-frontend-integration.md) and [Pages instructions](GITHUB-PAGES.md).
 
 This branch integrates the existing feature modules into the root Next.js app. The user authorized a web trial on the existing `william-wen/dishdeals` development deployment, including map/geocoding integration and public link access. It does not merge into the human-owned main branch or claim completion of the full StormHacks plan.
 
@@ -27,7 +27,7 @@ Backend secrets: `GEMINI_API_KEY`, `GEOAPIFY_API_KEY`, and Convex Auth's `JWT_PR
 
 With explicit deployment authorization, `npx convex dev --once --env-file .env.local` syncs only the selected dev environment. `npm run dev` starts the frontend. `npm run check` checks types, lint, unit/backend contracts, Git workflow tests and the static build. `npm run build` exports the web app to `out/`, suitable for any HTTPS static host. Client auth needs no Next.js server or SSR middleware.
 
-The current hosting publication uses a separate checkout containing the verified static export. GitHub remains the editable source of the app. A deployment manifest/project identity is kept with that publishing checkout rather than added to the shared root repository.
+The previous Sites hosting publication uses a separate checkout containing its static export and deployment manifest. The latest GitHub Pages export is on `gh-pages`; editable source is on `t-21-frontend-integration`.
 
 ## Integration boundaries
 

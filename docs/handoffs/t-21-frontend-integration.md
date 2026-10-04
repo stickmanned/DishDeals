@@ -16,7 +16,7 @@ The implementation combines `t-20-reel-sharing` (the Dinedeals frontend and Reel
 
 The existing development deployment `proper-marmot-82` was backed up and updated successfully. API keys remain in Convex. Do not copy provider keys into frontend files or GitHub.
 
-Validation passed: TypeScript, ESLint, 184 unit/backend tests, 23 repository workflow checks and the GitHub Pages static build. Browser checks against the real deployment confirmed anonymous login, a published Cactus Club offer, and a caption submission returning the correct no-deal result without publishing fabricated offers.
+Validation passed: TypeScript, ESLint, 184 unit/backend tests, 23 repository workflow checks and the GitHub Pages static build. Browser checks against the real deployment confirmed anonymous login, a published Cactus Club offer, and a caption submission returning the correct no-deal result without publishing fabricated offers. The Pages export was also checked at 390px and 1280px, including real map data and a session shared between the new frontend and tools, with no console errors. The production dependency audit found zero vulnerabilities.
 
 Compiled frontend assets are uploaded to `gh-pages`. The repository owner still needs to enable Pages as described in [the hosting guide](../GITHUB-PAGES.md). The previous Sites trial project currently returns “Sites project not found”; its public URL has not been refreshed with this frontend. Do not treat that older URL as evidence of this release.
 
