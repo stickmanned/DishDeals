@@ -162,9 +162,10 @@ enum ShareStore {
         }
         return valid
     }
-    /// Oldest not-yet-routed record; routed item records are retained (for context recovery) until receipt or expiry.
-    static func first() -> (URL, String, String, [String: Any]?)? {
-        let pending = records().filter { !$0.1.routed }
+    /// Oldest pending record not already handled in this app session. A retained recovery link must not block a new share.
+    /// Routed item records remain available for context recovery until receipt or expiry.
+    static func first(excluding handledFiles: Set<String> = []) -> (URL, String, String, [String: Any]?)? {
+        let pending = records().filter { !$0.1.routed && !handledFiles.contains($0.0.lastPathComponent) }
         guard let oldest = pending.min(by: isOlder) else { return nil }
         return (oldest.0, oldest.1.kind, oldest.1.value, oldest.1.context)
     }

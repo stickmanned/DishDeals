@@ -97,6 +97,7 @@ struct WebLoadState {
 /// (and discards edits in) the same retained recovery page. A genuinely new record has a new key and routes once.
 struct InboxRouting {
     private var routed = Set<String>()
+    var handledFiles: Set<String> { routed }
     mutating func shouldRoute(_ key: String) -> Bool { routed.insert(key).inserted }
 }
 /// A route asked for by the app. The id makes repeated identical routes explicit and unrelated SwiftUI renders inert.
@@ -133,7 +134,7 @@ struct RouteRequest: Equatable {
     } }
     private func open(_ path: String) { route = RouteRequest.make(path) }
     private func consumeInbox() {
-        if let (file, kind, value, _) = ShareStore.first(), inbox.shouldRoute(file.lastPathComponent) {
+        if let (file, kind, value, _) = ShareStore.first(excluding: inbox.handledFiles), inbox.shouldRoute(file.lastPathComponent) {
             if kind == "item", value.range(of: "^[A-Za-z0-9]{1,128}$", options: .regularExpression) != nil {
                 // Retained (marked routed) until server receipt or 24h expiry so the web view can recover its source context.
                 open("/reels?item=\(value)"); ShareStore.markRouted(file)
