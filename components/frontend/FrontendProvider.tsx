@@ -169,10 +169,12 @@ function Runtime({
       setPreviewSession(true);
       setProfile((p) => ({ ...p, displayName: p.displayName || "Alex" }));
     },
-    authenticated: mode === "preview" ? previewSession : !!live?.authenticated,
+    // A real signed-in session counts in every mode, so the header and profile links follow the actual login even
+    // while Discover shows the example deals (the fake preview session only applies when there is no real one).
+    authenticated: !!live?.authenticated || (mode === "preview" && previewSession),
     signOut: async () => {
-      if (mode === "live") await auth?.signOut?.();
-      else {
+      if (mode === "live" || live?.authenticated) await auth?.signOut?.();
+      if (mode !== "live") {
         setPreviewSession(false);
         setProfile({ displayName: "", walletAddress: "" });
         setPreviewPosts([]);
@@ -347,7 +349,9 @@ export function FrontendProvider({
     () => (plan === "standalone" && url ? new ConvexReactClient(url) : null),
     [plan, url],
   );
-  const [mode, setMode] = useState<"preview" | "live">(plan === "preview" ? "preview" : "live");
+  // The legacy live feed targets its own deployment, so with only the canonical backend configured Discover opens on
+  // the example deals instead of a feed error; real sign-in state still comes from the canonical session.
+  const [mode, setMode] = useState<"preview" | "live">(plan === "preview" || plan === "canonical" ? "preview" : "live");
   if (plan === "canonical" || plan === "canonical_conflict") {
     return <CanonicalRuntime mode={mode} setMode={setMode} conflict={plan === "canonical_conflict"}>
       {children}

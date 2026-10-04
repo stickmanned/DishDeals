@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -41,34 +42,41 @@ function ProfileView() {
       router.replace(next);
     }
   }, [flow, next, router]);
-  if (isLoading) return <main><p role="status">Loading…</p></main>;
+  if (isLoading) return <main className="narrow-page"><p role="status">Loading…</p></main>;
   if (!isAuthenticated) {
     return (
-      <main>
-        <h1>Profile</h1>
-        <p>
-          <Link href={signInHref(next)}>Sign in</Link> to edit your profile.
-        </p>
+      <main className="narrow-page">
+        <div className="page-heading">
+          <h1>Profile</h1>
+        </div>
+        <div className="panel form-stack">
+          <p>Sign in to edit your profile.</p>
+          <Link className="button primary" href={signInHref(next)}>Sign in</Link>
+        </div>
       </main>
     );
   }
   if (me === undefined) {
-    return <main><p role="status">Loading profile…</p></main>;
+    return <main className="narrow-page"><p role="status">Loading profile…</p></main>;
   }
   if (flow === "continue" && next) {
     return (
-      <main>
-        <h1>Profile</h1>
-        <p role="status">Profile ready. Continuing…</p>
-        <p>
-          <Link href={next}>Continue</Link>
-        </p>
+      <main className="narrow-page">
+        <div className="page-heading">
+          <h1>Profile</h1>
+        </div>
+        <div className="panel form-stack">
+          <p role="status">Profile ready. Continuing…</p>
+          <Link className="button primary" href={next}>Continue</Link>
+        </div>
       </main>
     );
   }
   return (
-    <main>
-      <h1>Profile</h1>
+    <main className="narrow-page">
+      <div className="page-heading">
+        <h1>Profile</h1>
+      </div>
       <ProfileForm
         key={me?.displayName ?? "new"}
         displayName={me?.displayName ?? ""}
@@ -80,6 +88,7 @@ function ProfileView() {
 
 function ProfileForm(props: { displayName: string; walletAddress: string }) {
   const upsert = useMutation(api.users.upsertProfile);
+  const { signOut } = useAuthActions();
   const [displayName, setDisplayName] = useState(props.displayName);
   const [walletAddress, setWalletAddress] = useState(props.walletAddress);
   const [status, setStatus] = useState<string | null>(null);
@@ -106,8 +115,8 @@ function ProfileForm(props: { displayName: string; walletAddress: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit}>
-      <label>
+    <form className="panel form-stack" onSubmit={onSubmit}>
+      <label className="field">
         Display name
         <input
           value={displayName}
@@ -117,16 +126,17 @@ function ProfileForm(props: { displayName: string; walletAddress: string }) {
           required
         />
       </label>
-      <label>
+      <label className="field">
         Solana wallet (optional)
         <input
           value={walletAddress}
           onChange={(e) => setWalletAddress(e.target.value)}
         />
       </label>
-      <button type="submit" disabled={busy}>Save</button>
       {status && <p role="status">{status}</p>}
       {error && <p role="alert">{error}</p>}
+      <button type="submit" className="button primary" disabled={busy}>{busy ? "Saving…" : "Save"}</button>
+      <button type="button" className="button secondary" onClick={() => void signOut()}>Sign out</button>
     </form>
   );
 }
