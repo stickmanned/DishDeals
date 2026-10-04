@@ -8,9 +8,11 @@ export type InstagramSourceKind = "post" | "reel" | "unknown";
 export function instagramSourceKind(url: string | null | undefined): InstagramSourceKind {
   if (!url) return "unknown";
   try {
-    const u = new URL(url.trim());
+    const trimmed = url.trim();
+    if (!trimmed || /\s/.test(trimmed)) return "unknown";
+    const u = new URL(trimmed);
     if (u.protocol !== "https:") return "unknown";
-    if (!["instagram.com", "www.instagram.com", "m.instagram.com"].includes(u.hostname)) return "unknown";
+    if (!["instagram.com", "www.instagram.com", "m.instagram.com"].includes(u.hostname.toLowerCase())) return "unknown";
     if (u.username || u.password || u.port) return "unknown";
     if (/^\/p\/[A-Za-z0-9_-]{5,64}\/?$/.test(u.pathname)) return "post";
     if (/^\/(?:reel|reels)\/[A-Za-z0-9_-]{5,64}\/?$/.test(u.pathname)) return "reel";

@@ -23,6 +23,48 @@ test("normalizes shared prose and rejects ambiguous or unsafe targets", () => {
   expect(instagramSourceKind(undefined)).toBe("unknown");
   for (const url of ["https://instagram.com.evil/reel/AbCdEf123/", "http://instagram.com/reel/AbCdEf123/", "https://user:pass@instagram.com/reel/AbCdEf123/", "https://instagram.com/share/reel/x", "https://localhost/reel/AbCdEf123/", "https://instagram.com/reel/AbCdEf123/ https://evil.com/"]) expect(() => normalizeInstagramUrl(url)).toThrow();
 });
+test("instagramSourceKind strictly requires supported HTTPS host and direct anchored path, rejecting malformed/relative/foreign URLs without fallback", () => {
+  // Valid post and reel forms
+  expect(instagramSourceKind("https://www.instagram.com/p/AbCdEf123/")).toBe("post");
+  expect(instagramSourceKind("https://instagram.com/p/AbCdEf123/")).toBe("post");
+  expect(instagramSourceKind("https://m.instagram.com/p/AbCdEf123/")).toBe("post");
+  expect(instagramSourceKind("https://www.instagram.com/reel/AbCdEf123/")).toBe("reel");
+  expect(instagramSourceKind("https://instagram.com/reel/AbCdEf123/")).toBe("reel");
+  expect(instagramSourceKind("https://instagram.com/reels/AbCdEf123/")).toBe("reel");
+
+  // Relative paths must return unknown (never fallback substring)
+  expect(instagramSourceKind("/p/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("/reel/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("p/AbCdEf123/")).toBe("unknown");
+
+  // Foreign or deceptive domains
+  expect(instagramSourceKind("https://example.com/p/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("https://instagram.com.evil/reel/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("https://evil-instagram.com/p/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("https://tiktok.com/@user/video/123")).toBe("unknown");
+
+  // Substring fallback injection attempts
+  expect(instagramSourceKind("https://evil.com/?q=/p/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("https://evil.com/#/reel/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("Look at https://www.instagram.com/p/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("https://www.instagram.com/p/AbCdEf123/ and more")).toBe("unknown");
+
+  // Credentials, non-default ports, and non-HTTPS schemes
+  expect(instagramSourceKind("https://user:pass@instagram.com/reel/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("https://instagram.com:8080/p/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("http://instagram.com/p/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("javascript:alert(1)")).toBe("unknown");
+
+  // Malformed, empty, or non-anchored paths
+  expect(instagramSourceKind("https://instagram.com/p/AbCdEf123/extra")).toBe("unknown");
+  expect(instagramSourceKind("https://instagram.com/p/")).toBe("unknown");
+  expect(instagramSourceKind("https://instagram.com/p/123/")).toBe("unknown"); // too short (< 5)
+  expect(instagramSourceKind("https://instagram.com/profile_name")).toBe("unknown");
+  expect(instagramSourceKind("")).toBe("unknown");
+  expect(instagramSourceKind("   ")).toBe("unknown");
+  expect(instagramSourceKind(null)).toBe("unknown");
+  expect(instagramSourceKind(undefined)).toBe("unknown");
+});
 test("keeps unknown fields and non-CAD currency without invented canonical prices", () => {
   expect(validateExtraction(output, "", 12).drafts[0].validDays).toBeNull();
   expect(() => toCanonical(draft)).toThrow("Review unknown");

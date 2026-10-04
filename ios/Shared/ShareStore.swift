@@ -214,9 +214,12 @@ enum ShareStore {
     }
     static func sourceKind(_ urlString: String?) -> String {
         guard let urlString = urlString?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !urlString.isEmpty,
+              !urlString.contains(where: { $0.isWhitespace }),
               let url = URL(string: urlString),
               url.scheme == "https",
-              ["instagram.com", "www.instagram.com", "m.instagram.com"].contains(url.host ?? ""),
+              let host = url.host?.lowercased(),
+              ["instagram.com", "www.instagram.com", "m.instagram.com"].contains(host),
               url.user == nil, url.password == nil, url.port == nil else {
             return "unknown"
         }

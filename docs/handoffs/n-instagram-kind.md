@@ -6,7 +6,7 @@
   - **Branch:** `t-13-instagram-source-kind`
   - **Worktree:** `/Users/william/Code/DishDeals-worktrees/instagram-source-kind`
   - **Pinned Base SHA:** `dcdda819e97de9c371726dd7ba33585912afe7d5`
-  - **Head SHA:** `fbedd0c9c8479014dbfa99693f49231ee32c9b9d`
+  - **Head SHA:** `def16cace69f3f808e385a2f7921e8d1aeb3fe0b`
 - **Scope and Writable Paths:**
   - `lib/reels/contract.ts`
   - `ios/Shared/ShareStore.swift`
@@ -59,11 +59,11 @@
      - Added tests for `/p/` preservation, `/reels/` normalization, and `instagramSourceKind` validation edge cases.
 
 - **Checks Actually Run & Results:**
-  1. `lib/reels/contract.test.ts`: 9 tests passed.
+  1. `lib/reels/contract.test.ts`: 10 tests passed (including dedicated suite for malformed/relative/foreign URL edge cases).
   2. `tests/import/postSource.test.ts`: 14 tests passed.
   3. `tests/import/reelPublicEntry.test.tsx`: 10 tests passed.
-  4. Full Vitest run (3 suites, 33 tests): **All 33 passed** (381ms).
-  5. Native Foundation suite (`ShareStoreChecks.swift`): **81 passed**.
+  4. Full Vitest run (3 suites, 34 tests): **All 34 passed** (410ms).
+  5. Native Foundation suite (`ShareStoreChecks.swift`): **98 passed** (including relative URLs, foreign domains, substring attacks, credentials, and ports).
   6. Native Simulator suite (`ShareReceiptContrastChecks.swift` on iPhone 18 Pro `22E6EF8B-CC88-4109-870C-6C924AF613D6`):
      - Light Mode: `bg=#FBF7F2 text=#000000 ratio=19.69:1` (>= 4.5:1)
      - Dark Mode: `bg=#000000 text=#FFFFFF ratio=21.00:1` (>= 4.5:1)

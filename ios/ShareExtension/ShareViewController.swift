@@ -88,7 +88,7 @@ import UniformTypeIdentifiers
             let id = try await ShareStore.submit(url, context: context)
             try ShareStore.enqueue(id, kind: "item", sourceUrl: url, context: context)
             try FileManager.default.removeItem(at: recovery)
-            status.text = "Saved privately. Open Dinedeals to review your \(itemLabel) and publish publicly.\n" + summary
+            status.text = "Saved \(itemLabel) privately. Open Dinedeals to review and publish publicly.\n" + summary
         } catch ShareFailure.signIn {
             status.text = "Link saved on this iPhone for 24 hours. Open Dinedeals and sign in to send it.\n" + summary
         } catch {
