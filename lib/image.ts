@@ -754,7 +754,7 @@ export async function grabFrames(
             let seekStepFinished = false;
 
             cancelActiveStep = (stepErr: Error) => {
-              if (seekStepFinished || settled) return;
+              if (seekStepFinished) return;
               seekStepFinished = true;
               if (seekTimer) {
                 clearTimeout(seekTimer);

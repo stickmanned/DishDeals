@@ -765,6 +765,7 @@ describe("T-14A image and video frame core utilities", () => {
 
       let pendingToBlobCallback: ((blob: Blob | null) => void) | null = null;
       let seekCount = 0;
+      let metadataPromise: Promise<void> | null = null;
 
       class PendingEncodeCanvas {
         width = 640;
@@ -797,7 +798,10 @@ describe("T-14A image and video frame core utilities", () => {
         set src(val: string) {
           if (val) {
             setTimeout(() => {
-              if (this.onloadedmetadata) this.onloadedmetadata();
+              if (this.onloadedmetadata) {
+                // Capture the actual Promise returned by the async onloadedmetadata callback
+                metadataPromise = (this.onloadedmetadata as () => Promise<void>)();
+              }
             }, 5);
           }
         }
@@ -849,6 +853,12 @@ describe("T-14A image and video frame core utilities", () => {
         // The outer grabFrames promise must reject immediately with AbortError
         await expect(grabPromise).rejects.toThrow("The operation was aborted");
 
+        // Assert that the async video.onloadedmetadata callback Promise itself resolves,
+        // proving that the inner awaited seekStep Promise was actively rejected and
+        // the async coroutine exited rather than leaking/suspending forever in memory
+        expect(metadataPromise).not.toBeNull();
+        await expect(metadataPromise).resolves.toBeUndefined();
+
         // Now simulate the in-flight canvas encoder eventually finishing late
         expect(pendingToBlobCallback).not.toBeNull();
         if (pendingToBlobCallback) {
@@ -860,6 +870,83 @@ describe("T-14A image and video frame core utilities", () => {
         // Verify that no subsequent seek occurred (frame 2 was never sought)
         // and inner work settled cleanly without late capture
         expect(seekCount).toBe(1);
+      } finally {
+        globalThis.window = originalWindow;
+        globalThis.document = originalDocument;
+      }
+    });
+
+    it("settles inner coroutine immediately on seek/encode timeout, resolving metadata callback Promise", async () => {
+      const originalWindow = globalThis.window;
+      const originalDocument = globalThis.document;
+
+      let metadataPromise: Promise<void> | null = null;
+
+      class HungCanvas {
+        width = 640;
+        height = 480;
+        getContext() {
+          return { fillStyle: "", fillRect: vi.fn(), drawImage: vi.fn() };
+        }
+        toBlob() {
+          // Never calls back
+        }
+      }
+
+      class SteppingVideo {
+        duration = 10;
+        videoWidth = 640;
+        videoHeight = 480;
+        onloadedmetadata: (() => void) | null = null;
+        onseeked: (() => void) | null = null;
+        currentTime = 0;
+
+        set src(val: string) {
+          if (val) {
+            setTimeout(() => {
+              if (this.onloadedmetadata) {
+                metadataPromise = (this.onloadedmetadata as () => Promise<void>)();
+              }
+            }, 5);
+          }
+        }
+
+        pause = vi.fn();
+        removeAttribute = vi.fn();
+        load = vi.fn();
+      }
+
+      globalThis.window = {} as unknown as Window & typeof globalThis;
+      globalThis.document = {
+        createElement: (tag: string) => {
+          if (tag === "video") {
+            const v = new SteppingVideo();
+            Object.defineProperty(v, "currentTime", {
+              get: () => 0,
+              set: function (this: SteppingVideo) {
+                setTimeout(() => {
+                  if (this.onseeked) this.onseeked();
+                }, 5);
+              },
+            });
+            return v as unknown as HTMLVideoElement;
+          }
+          if (tag === "canvas") {
+            return new HungCanvas() as unknown as HTMLCanvasElement;
+          }
+          return {} as unknown as HTMLElement;
+        },
+      } as unknown as Document;
+
+      try {
+        const videoFile = new File(["bytes"], "timeout-step.mp4", { type: "video/mp4" });
+        const grabPromise = grabFrames(videoFile, 2, { seekTimeoutMs: 30 });
+
+        await expect(grabPromise).rejects.toThrow("timed out after 30ms");
+
+        // The async onloadedmetadata coroutine Promise must have resolved upon timeout rejection
+        expect(metadataPromise).not.toBeNull();
+        await expect(metadataPromise).resolves.toBeUndefined();
       } finally {
         globalThis.window = originalWindow;
         globalThis.document = originalDocument;
