@@ -32,7 +32,12 @@ def visible(label, expected, timeout=40, scroll=False):
     deadline = time.monotonic() + timeout
     swipes = 0
     while time.monotonic() < deadline:
-        root = tree(label)
+        try:
+            root = tree(label)
+        except (RuntimeError, subprocess.TimeoutExpired):
+            # WebView/splash startup can briefly have no accessibility root.
+            time.sleep(1)
+            continue
         for node in root.iter("node"):
             bounds = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
             shown = len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]
@@ -87,7 +92,7 @@ try:
     adb("install", "-r", sys.argv[1])
     adb("logcat", "-c")
     adb("shell", "am", "start", "-n", PACKAGE + "/.MainActivity")
-    visible("discover", "Find your next good meal.")
+    visible("discover", "Find your next good meal.", timeout=90)
     screenshot("discover")
     # Exercise a cold-launch share, then the warm-launch draft protection path.
     adb("shell", "am", "force-stop", PACKAGE)
@@ -118,5 +123,10 @@ try:
     assert "FATAL EXCEPTION" not in crashes, crashes
     (OUT / "result.txt").write_text("PASS: installed APK, Discover, cold/warm text shares, draft protection, Back, map and Reels navigation, no native crash. No offers submitted.\n")
 finally:
-    (OUT / "logcat.txt").write_text(adb("logcat", "-d", check=False), encoding="utf-8")
-    (OUT / "crashes.txt").write_text(adb("logcat", "-b", "crash", "-d", check=False), encoding="utf-8")
+    try:
+        screenshot("last-screen")
+        (OUT / "window.txt").write_text(adb("shell", "dumpsys", "window", check=False), encoding="utf-8")
+        (OUT / "logcat.txt").write_text(adb("logcat", "-d", check=False), encoding="utf-8")
+        (OUT / "crashes.txt").write_text(adb("logcat", "-b", "crash", "-d", check=False), encoding="utf-8")
+    except (OSError, subprocess.SubprocessError) as error:
+        (OUT / "diagnostic-error.txt").write_text(str(error), encoding="utf-8")
