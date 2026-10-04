@@ -88,12 +88,17 @@ enum ShareStore {
         }
         return build()
     }
+    /// Real numbers only: a String (or Bool) masquerading as a number is rejected.
+    private static func number(_ value: Any?) -> NSNumber? {
+        guard let value = value, !(value is String), !isBool(value) else { return nil }
+        return value as? NSNumber
+    }
     /// Strict versioned parser: exact keys, bounds, distinctness, finite clock, full JSON size.
     static func isValidContext(_ raw: Any?) -> Bool {
         guard let dict = raw as? [String: Any], Set(dict.keys) == ["version", "textFragments", "registeredTypes", "receivedAt", "truncated"],
-              let version = dict["version"], !isBool(version), (version as? NSNumber)?.intValue == 1, (version as? NSNumber)?.doubleValue == 1,
+              let version = number(dict["version"]), version.doubleValue == 1, version.intValue == 1,
               let fragments = dict["textFragments"] as? [String], let types = dict["registeredTypes"] as? [String],
-              let clockValue = dict["receivedAt"], !isBool(clockValue), let clock = (clockValue as? NSNumber)?.doubleValue, clock.isFinite, clock >= 0,
+              let clock = number(dict["receivedAt"])?.doubleValue, clock.isFinite, clock >= 0,
               let flag = dict["truncated"], isBool(flag),
               fragments.count <= maxFragments, Set(fragments).count == fragments.count, fragments.allSatisfy({ $0.utf8.count <= maxFragmentBytes }),
               fragments.reduce(0, { $0 + $1.utf8.count }) <= maxCombinedBytes,
@@ -160,23 +165,46 @@ enum ShareStore {
     /// Oldest not-yet-routed record; routed item records are retained (for context recovery) until receipt or expiry.
     static func first() -> (URL, String, String, [String: Any]?)? {
         let pending = records().filter { !$0.1.routed }
-        guard let oldest = pending.min(by: { $0.1.savedAt == $1.1.savedAt ? $0.0.lastPathComponent < $1.0.lastPathComponent : $0.1.savedAt < $1.1.savedAt }) else { return nil }
+        guard let oldest = pending.min(by: isOlder) else { return nil }
         return (oldest.0, oldest.1.kind, oldest.1.value, oldest.1.context)
     }
     static func markRouted(_ file: URL) {
         guard let data = try? Data(contentsOf: file), let parsed = record(from: data, now: Date().timeIntervalSince1970) else { return }
         try? write(parsed.value, kind: parsed.kind, savedAt: parsed.savedAt, sourceUrl: parsed.kind == "item" ? parsed.sourceUrl : nil, context: parsed.context, routed: true, to: file)
     }
-    /// Newest stored context for exactly this normalized source, or nil (including old context-less records).
+    /// Deterministic order shared with `first()`: oldest savedAt, ties by file name.
+    static func isOlder(_ a: (URL, Record), _ b: (URL, Record)) -> Bool {
+        a.1.savedAt == b.1.savedAt ? a.0.lastPathComponent < b.0.lastPathComponent : a.1.savedAt < b.1.savedAt
+    }
+    /// The currently oldest pending record for exactly this normalized source. Used by BOTH context lookup and receipt
+    /// cleanup so the context served and the record removed are the same share, and later same-link shares survive.
+    static func oldestMatch(source normalized: String, in entries: [(URL, Record)]) -> (URL, Record)? {
+        entries.filter { $0.1.sourceUrl == normalized }.min(by: isOlder)
+    }
+    /// Stored context for the oldest pending record of exactly this source, or nil (including old context-less records).
     static func context(forSource source: String) -> [String: Any]? {
         guard let normalized = try? normalize(source) else { return nil }
-        let match = records().filter { $0.1.sourceUrl == normalized }.max(by: { $0.1.savedAt < $1.1.savedAt })
-        return match?.1.context
+        return oldestMatch(source: normalized, in: records())?.1.context
     }
-    /// Removes link and item recovery records for a source after the backend receipt.
-    static func discard(source: String) {
-        guard let normalized = try? normalize(source) else { return }
-        for (file, parsed) in records() where parsed.sourceUrl == normalized { try? FileManager.default.removeItem(at: file) }
+    /// Removes only the single consumed (oldest matching) record after the backend receipt; newer shares of the same link stay.
+    @discardableResult static func discard(source: String) -> URL? {
+        guard let normalized = try? normalize(source), let match = oldestMatch(source: normalized, in: records()) else { return nil }
+        try? FileManager.default.removeItem(at: match.0)
+        return match.0
+    }
+    /// Extension status line: derived from the FINAL context (its truncated flag already includes makeContext drops),
+    /// lists every bounded type identifier actually stored, or states how many were omitted. No captions, tokens or video.
+    static func summary(context: [String: Any], offeredDistinctTypes: Int, loadedURL: Bool, loadedText: Bool) -> String {
+        let types = context["registeredTypes"] as? [String] ?? []
+        let omitted = max(0, offeredDistinctTypes - types.count)
+        var text = "Offered \(offeredDistinctTypes) item type\(offeredDistinctTypes == 1 ? "" : "s")"
+        if !types.isEmpty { text += " (" + types.joined(separator: ", ") + ")" }
+        if omitted > 0 { text += "; \(omitted) type identifier\(omitted == 1 ? "" : "s") omitted by bounds" }
+        text += "; loaded " + [loadedURL ? "link" : nil, loadedText ? "text" : nil].compactMap { $0 }.joined(separator: " and ")
+            .replacingEmpty(with: "no link or text")
+        text += ". No video was loaded."
+        if context["truncated"] as? Bool == true { text += " Some shared content was truncated or could not be read." }
+        return text
     }
     static func normalize(_ text: String) throws -> String {
         let detector = try NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
@@ -226,4 +254,5 @@ enum ShareStore {
         return id
     }
 }
+private extension String { func replacingEmpty(with fallback: String) -> String { isEmpty ? fallback : self } }
 enum ShareFailure: Error { case invalid, signIn, network, configuration }

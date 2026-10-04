@@ -47,15 +47,12 @@ import UniformTypeIdentifiers
         }
         var distinctTypes: [String] = []
         for type in types where !distinctTypes.contains(type) { distinctTypes.append(type) }
-        let summary = "Offered \(distinctTypes.count) item type\(distinctTypes.count == 1 ? "" : "s")"
-            + (distinctTypes.isEmpty ? "" : " (" + distinctTypes.prefix(3).joined(separator: ", ") + ")")
-            + "; loaded " + [loadedURL ? "link" : nil, loadedText ? "text" : nil].compactMap { $0 }.joined(separator: " and ").nonEmptyOr("no link or text")
-            + ". No video was loaded." + (lost ? " Some shared content could not be read." : "")
+        let context = ShareStore.makeContext(texts: texts, types: types, receivedAt: Date().timeIntervalSince1970, truncated: lost)
+        let summary = ShareStore.summary(context: context, offeredDistinctTypes: distinctTypes.count, loadedURL: loadedURL, loadedText: loadedText)
         guard let url = try? ShareStore.resolveLink(texts) else {
             status.text = "Share the Reel’s direct Instagram link. Profiles, shortened share links and messages with several different links aren’t supported.\n" + summary
             done.isHidden = false; return
         }
-        let context = ShareStore.makeContext(texts: texts, types: types, receivedAt: Date().timeIntervalSince1970, truncated: lost)
         // Keep a protected recovery copy before any request: an extension can be terminated at any time.
         let recovery: URL
         do { recovery = try ShareStore.enqueue(url, kind: "link", context: context) } catch { status.text = "Could not save locally. Check App Group setup.\n" + summary; done.isHidden = false; return }
@@ -73,5 +70,3 @@ import UniformTypeIdentifiers
     }
     @objc private func close() { extensionContext?.completeRequest(returningItems: nil) }
 }
-
-private extension String { func nonEmptyOr(_ fallback: String) -> String { isEmpty ? fallback : self } }
