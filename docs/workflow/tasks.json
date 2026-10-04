@@ -37,10 +37,10 @@
       "issue": "https://github.com/stickmanned/DishDeals/issues/1",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local checks only; no cloud target authorized",
-      "implementationState": "reviewed, locally integrated at 2ceb3de; coordinator full check PASS 37 Vitest/23 workflow/build",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending runtime agreement/toolchain",
       "phoneAcceptance": "pending William iPhone",
-      "localChecks": "coordinator combined full check PASS at 56f23c3: 100 Vitest/23 workflow/typecheck/lint/build",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone",
       "blocker": "native storage, live backend/JWT setup, real iPhone auth acceptance pending"
     },
     {
@@ -62,10 +62,10 @@
       "issue": "https://github.com/stickmanned/DishDeals/issues/2",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local checks only; no cloud target authorized",
-      "implementationState": "reviewed, locally integrated at 56f23c3",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending runtime agreement/toolchain",
       "phoneAcceptance": "pending William iPhone",
-      "localChecks": "coordinator combined full check PASS at 56f23c3: 100 Vitest/23 workflow/typecheck/lint/build"
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-04B",
@@ -86,10 +86,10 @@
       "issue": "https://github.com/stickmanned/DishDeals/issues/2",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local checks only; no cloud target authorized",
-      "implementationState": "reviewed, locally integrated at 1c5bd8d",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending runtime agreement/toolchain",
       "phoneAcceptance": "pending William iPhone",
-      "localChecks": "coordinator combined full check PASS at 56f23c3: 100 Vitest/23 workflow/typecheck/lint/build"
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-05R",
@@ -110,10 +110,10 @@
       "issue": "https://github.com/stickmanned/DishDeals/issues/3",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local checks only; no cloud target authorized",
-      "implementationState": "reviewed, locally integrated at 56f23c3",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending runtime agreement/toolchain",
       "phoneAcceptance": "pending William iPhone",
-      "localChecks": "coordinator combined full check PASS at 56f23c3: 100 Vitest/23 workflow/typecheck/lint/build"
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-07A",
@@ -132,10 +132,10 @@
       "packet": "docs/tasks/T-07A.md",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "no backend writes; pure logic only",
-      "implementationState": "reviewed locally integrated",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending integration",
       "phoneAcceptance": "pending",
-      "localChecks": "actual worker checks recorded in handoff; native/phone pending"
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-05A",
@@ -156,10 +156,10 @@
       "packet": "docs/tasks/T-05A.md",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local only; no cloud/provider calls",
-      "implementationState": "reviewed, locally integrated at5f26c89",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending integration",
       "phoneAcceptance": "pending",
-      "localChecks": "worker synthetic transport: 84 extraction/91 total Vitest, 23 workflow, typecheck/lint/build; coordinator ownership PASS"
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-06A",
@@ -178,9 +178,10 @@
       "packet": "docs/tasks/T-06A.md",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local only; no cloud/provider calls",
-      "implementationState": "review corrections: unsupported currency/hour/offer/price evidence",
+      "implementationState": "reviewed9dcdc80 locally integrated2011bf9; 11 genuine source candidates, pending CAD/pins/photos",
       "nativeChecks": "pending integration",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "primary source verification; JSON parity/CADnull/ownership PASS"
     },
     {
       "id": "T-09A",
@@ -200,9 +201,10 @@
       "packet": "docs/tasks/T-09A.md",
       "pinnedBaseSha": "56f23c31da4ba78d2883a117574a795034da9836",
       "backendTarget": "none; pure logic",
-      "implementationState": "reviewed, locally integrated atc1c91dd",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending UI integration",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-11A",
@@ -223,10 +225,10 @@
       "packet": "docs/tasks/T-11A.md",
       "pinnedBaseSha": "56f23c31da4ba78d2883a117574a795034da9836",
       "backendTarget": "in-memory convex-test only; no cloud authorization",
-      "implementationState": "reviewed locally integrated at212428b",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending Harry UI bindings",
       "phoneAcceptance": "pending",
-      "localChecks": "worker29 backendtests129total/23workflow/typecheck/lint/build; coordinator ownership PASS; combined check pending"
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-19A",
@@ -247,10 +249,10 @@
       "packet": "docs/tasks/T-19A.md",
       "pinnedBaseSha": "5f26c892647a0336f18e5e4340ea544a7d94f7c0",
       "backendTarget": "none; documentation only",
-      "implementationState": "reviewed locally integrated",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending Harry source/Xcode",
       "phoneAcceptance": "pending",
-      "localChecks": "actual worker checks recorded in handoff; native/phone pending"
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-07D",
@@ -270,10 +272,10 @@
       "packet": "docs/tasks/T-07D.md",
       "pinnedBaseSha": "b55ea3c0d613f0878ca7a5924120416dc74546bf",
       "backendTarget": "none; headless adapter/synthetic replay only",
-      "implementationState": "reviewed, queued for local integration",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending Harry bindings",
       "phoneAcceptance": "pending",
-      "localChecks": "actual worker checks and coordinator ownership PASS; combined check pending"
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-10A",
@@ -295,10 +297,10 @@
       "packet": "docs/tasks/T-10A.md",
       "pinnedBaseSha": "212428b1d85567e9964873c1f56e1989e5ba2fae",
       "backendTarget": "in-memory only; no cloud",
-      "implementationState": "reviewed, queued for local integration",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending Harry/Pinyuan",
       "phoneAcceptance": "pending",
-      "localChecks": "actual worker checks and coordinator ownership PASS; combined check pending"
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-15A",
@@ -318,10 +320,10 @@
       "packet": "docs/tasks/T-15A.md",
       "pinnedBaseSha": "212428b1d85567e9964873c1f56e1989e5ba2fae",
       "backendTarget": "none; no wallet/RPC/provider calls",
-      "implementationState": "reviewed, queued for local integration",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending Harry runtime/wallet UI",
       "phoneAcceptance": "pending real devnet tip",
-      "localChecks": "actual worker checks and coordinator ownership PASS; combined check pending"
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "N-IOS-A",
@@ -383,6 +385,95 @@
       "nativeChecks": "xcodegen2.46.0 + xcodebuild app/embeddedextension PASS; simulator execution pending",
       "phoneAcceptance": "pending signing",
       "localChecks": "source unchanged; nativeartifactverified; docs46b4c69"
+    },
+    {
+      "id": "N-FORM-A",
+      "owner": "Mica",
+      "branch": "t-07-reel-draft-adapter",
+      "worktree": "reel-draft-adapter",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "lib/reels/toDealDraft.ts",
+        "tests/import/reelDraft.test.ts",
+        "docs/handoffs/n-form-a.md"
+      ],
+      "packet": "docs/tasks/N-FORM-A.md",
+      "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
+      "backendTarget": "local synthetic checks only; no cloud/provider",
+      "implementationState": "dispatched",
+      "nativeChecks": "native session/form integration pending",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-AUTH-A",
+      "owner": "Loom",
+      "branch": "t-03-native-session-bridge",
+      "worktree": "native-session-bridge",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "components/reels/ReelIntake.tsx",
+        "components/CanonicalSessionBridge.tsx",
+        "components/ConvexClientProvider.tsx",
+        "lib/nativeSession.ts",
+        "tests/native/sessionBridge.test.ts",
+        "docs/handoffs/n-auth-a.md"
+      ],
+      "packet": "docs/tasks/N-AUTH-A.md",
+      "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
+      "backendTarget": "local synthetic checks only; no cloud/provider",
+      "implementationState": "dispatched",
+      "nativeChecks": "native session/form integration pending",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-04R",
+      "owner": "Cinder",
+      "branch": "t-04-time-rule-review",
+      "worktree": "time-rule-review",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/handoffs/t-04r.md"
+      ],
+      "packet": "docs/tasks/T-04R.md",
+      "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
+      "backendTarget": "local synthetic checks only; no cloud/provider",
+      "implementationState": "dispatched",
+      "nativeChecks": "native session/form integration pending",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-06B-ASSETS",
+      "owner": "Prism",
+      "branch": "t-06-source-menu-assets",
+      "worktree": "source-menu-assets",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "fixtures/source-assets/",
+        "docs/data/source-assets.md",
+        "docs/handoffs/t-06b-assets.md"
+      ],
+      "packet": "docs/tasks/T-06B-ASSETS.md",
+      "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
+      "backendTarget": "public primary-source GET only; no cloud/provider",
+      "implementationState": "dispatched",
+      "nativeChecks": "pending integration",
+      "phoneAcceptance": "pending realuploads/photos/pins"
     }
   ],
   "completedDependencies": {

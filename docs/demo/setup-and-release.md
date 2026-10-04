@@ -148,3 +148,13 @@ Task T-20 retains custom domain preparation. No domain has been purchased or cla
 3. **TLS Verification**:
    - Verify automated SSL/TLS certificate issuance in Vercel dashboard.
    - Confirm automatic HTTP-to-HTTPS redirect.
+
+## Native project now available locally
+
+Reuse Harry's SwiftUI/WKWebView app and UIKit extension in ios/project.yml (published547a74d, integratedworkflow2011bf9). Northstar used official portable XcodeGen2.46.0 (archiveSHA2564d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806; tasklocal/tmp, no globalinstallation). Actual generatedproject/buildcommands andartifactevidence are in [N-BUILD-B handoff](../handoffs/n-build-b.md). Schemes Dinedeals/ReelShare; generic unsignedsimulatorSDKbuildPASS. Simulator execution/signing/phoneacceptance stillpending.
+
+Generate with anavailableverifiedXcodeGen fromrepo: `xcodegen generate --spec ios/project.yml --project ios`. Build: `xcodebuild build -project ios/Dinedeals.xcodeproj -scheme Dinedeals -configuration Debug -destination 'generic/platform=iOS Simulator' -derivedDataPath /tmp/dishdeals-derived-data CODE_SIGNING_ALLOWED=NO`. This doesnotneed installedsimulatorruntime. No testscheme/nativeUItests currentlydefined.
+
+William mustaddhisexistingAppleAccount underXcodeSettingsAccounts andconnect/trustphone/enableDeveloperMode. Current [Apple capabilitytable](https://developer.apple.com/help/account/reference/supported-capabilities-ios/) includesAppGroups+KeychainSharing in freeaccountcolumn; actualprovisioning stillneedscheck. ConfigurebothTeams/capabilities anduniqueAppGroup/KeychainIDs inYAML, publicreachableHTTPSwebsite andcanonicalapprovedbackend URLs. Do not pastekeys/tokens inconfig. Own-device developmentdoesnotneedStorepublication; no purchase/enrollment performed. Device sign/install can proceedbefore simulatorruntime downloadfinishes. Read-onlyCoreDeviceinventory currently0 connecteddevices.
+
+Harry's frontend standaloneworkflow API remainsseparatefromcanonicalpublishedschema; unconfiguredpreview isnotlive data. Canonical signin/profile preservedduringmerge; nativeReels sessionreconciliation underway. Fullpublish/geospatial/map confirmation notimplemented; publishedmapcomponent onlydrawsexistingpins. ScrapeCreators provider retrieval disabled/unapproved; no model/source receipt claimed.

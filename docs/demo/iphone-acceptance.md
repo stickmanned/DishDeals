@@ -68,3 +68,11 @@ Receiving a reel URL alone is receipt evidence, not media access or VLM reel und
 | Slow network/empty/error | Functional states shown, no blank screen; Harry visual polish | Pending |
 
 No App Store/TestFlight/account/purchase/domain action is authorized by this record. See owner-contracts.md for exact source/handshake gaps. Public ad research and synthetic fixtures are not phone/provider evidence.
+
+## Observed local readiness — October3 23:05 Vancouver
+
+Harry native/frontend547a74d incorporated workflow2011bf9, app/extension Swift files untouched. Generic iOS Simulator SDK fullxcodebuild PASS using generatedHarryproject; actualDinedeals.app embedsReelShare.appex. Xcode27.0/SDK27 installed; simulatorruntime execution unrun/downloading. This build is unsigned and usesplaceholderweb/backendconfiguration. CurrentApplecapabilityHTML showsAppGroups+KeychainSharing yesforfreeaccounts; actualPersonalTeam provisioning stilluntested. Williamaccountnotconfigured; read-onlydevicectl lists0 connecteddevices.
+
+Signing/physicaldevice setup mayproceedbefore simulator runtime completes. Requiredhumanstep: addexistingAppleAccount inXcodeSettingsAccounts (no newaccount/purchase byagents); connect/unlock/trustphone, enableDeveloperMode, reviewbothactualtargetTeams/capabilities, configureuniqueIDs/publicHTTPSsite+approvedbackend andbuildappschemeonphone. Teamselection/provisioning/networkhosting/cloudsetup notperformed byagents. CurrentunsignedSDKbuild doesnot provephoneinstallation, Keychain/AppGroups access, WKWebViewsession persistence, mapWebGL/geolocation oractualInstagramUTTypes.
+
+LatestWilliamnavigation: SavedPosts/Reels entry, tap-to-map. Primary share/review/confirmedpin/publish/map acceptance remainsPending. Singlecanonicalsession/explicitoffline-recoveryconsent and reel-to-shared-draft adapter are inboundedimplementation; fullpublish/map UI incomplete. Provider/resolverusage disabled; noactualvideo/VLM result, no genuinecachedextractionfixture, no realphone timing.
