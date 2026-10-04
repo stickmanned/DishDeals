@@ -1,5 +1,5 @@
 {
-  "baseRef": "origin/main",
+  "baseRef": "t-00-agent-workflow",
   "baselineCommit": "356ec1b",
   "worktreeParent": "../DishDeals-worktrees",
   "tasks": [
@@ -895,6 +895,35 @@
       "nativeChecks": "pending UI binding",
       "phoneAcceptance": "pending genuine fixtures/device",
       "localChecks": "11 targeted synthetic tests/typecheck/targeted lint PASS"
+    },
+    {
+      "id": "T-08G-B",
+      "owner": "Loom",
+      "branch": "t-08-durable-geocode-core",
+      "worktree": "durable-geocode",
+      "status": "prepared",
+      "dependencies": [
+        "T-08G-CORE",
+        "T-07B"
+      ],
+      "allowedPaths": [
+        "convex/geocode.ts",
+        "convex/geocodeState.ts",
+        "convex/schema.ts",
+        "convex/convex.config.ts",
+        "convex/_generated/api.d.ts",
+        "convex/_generated/server.d.ts",
+        ".env.example",
+        "tests/backend/geocodeAction.test.ts",
+        "docs/integration/durable-geocode.md",
+        "docs/handoffs/t-08g-b.md"
+      ],
+      "packet": "docs/tasks/T-08G-B.md",
+      "pinnedBaseSha": "e4d9cec3820c58d8557bb9cec68bd26aa1a2b6ae",
+      "backendTarget": "local tests only; no cloud/provider target authorized",
+      "implementationState": "assigned bounded durable wrapper",
+      "nativeChecks": "unrun",
+      "phoneAcceptance": "pending William iPhone"
     }
   ],
   "completedDependencies": {
