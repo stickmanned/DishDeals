@@ -71,7 +71,8 @@ export function AndroidBridge() {
         app.setSourceUrl("");
         app.setPublishedAt("");
         app.setActiveJobId(null);
-        router.push("/post/");
+        // A fresh key also resets a previously open review form to source entry.
+        router.push(`/post/?incoming=${encodeURIComponent(pending.id)}`);
       }
       setPending(null);
     } catch { setError("We couldn’t open the shared text. Please try again."); }

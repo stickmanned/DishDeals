@@ -4,7 +4,7 @@ on:
   pull_request:
     paths: ["android/**", "capacitor.config.ts", "components/**", "app/**", "lib/**", "public/**", "package*.json", "scripts/build-android.mjs", "scripts/android-smoke.py", ".github/workflows/android.yml"]
   push:
-    branches: [main, t-26-android-app]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
