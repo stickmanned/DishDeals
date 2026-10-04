@@ -1,8 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
+import { workflowTables } from "./workflowTables";
 
 export default defineSchema({
+  // Published teammate workflow collections (proper-marmot-82 deployed): preserved so a later sync cannot drop them.
+  ...workflowTables,
   ...authTables, // includes the users table
 
   reelItems: defineTable({

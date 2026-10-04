@@ -40,6 +40,14 @@ type Env = {
   readonly GEOCODE_USAGE_AUTHORIZED?: string;
   readonly GEOCODE_USER_AGENT?: string;
   readonly GEOCODE_ENDPOINT?: string;
+  readonly GEOAPIFY_API_KEY?: string;
+  readonly GEMINI_MODEL?: string;
+  readonly GEMINI_FALLBACK_MODEL?: string;
+  readonly GEMINI_SEARCH_MODEL?: string;
+  readonly GEMINI_WEB_SEARCH_MODEL?: string;
+  readonly GEMINI_COMPARISON_MODEL?: string;
+  readonly WORKFLOW_API_TOKEN?: string;
+  readonly WORKFLOW_PROVIDER_USAGE_AUTHORIZED?: string;
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
 };
