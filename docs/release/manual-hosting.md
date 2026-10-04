@@ -12,16 +12,18 @@ cd /tmp/dishdeals-web-release
 /tmp/dishdeals-vercel project create dishdeals-demo --scope williamwen25-9286s-projects
 /tmp/dishdeals-vercel link --yes --project dishdeals-demo --team team_g0tET84dM6H3GrxWQmUE7TO5
 /tmp/dishdeals-vercel deploy --yes --scope williamwen25-9286s-projects \
-  --build-env NEXT_PUBLIC_CONVEX_URL=https://proper-marmot-82.convex.cloud \
-  --build-env NEXT_PUBLIC_CONVEX_SITE_URL=https://proper-marmot-82.convex.site \
-  --build-env NEXT_PUBLIC_WORKFLOW_CONVEX_URL=https://proper-marmot-82.convex.cloud \
-  --env NEXT_PUBLIC_CONVEX_URL=https://proper-marmot-82.convex.cloud \
-  --env NEXT_PUBLIC_CONVEX_SITE_URL=https://proper-marmot-82.convex.site \
-  --env NEXT_PUBLIC_WORKFLOW_CONVEX_URL=https://proper-marmot-82.convex.cloud
+  --build-env NEXT_PUBLIC_CONVEX_URL=https://proper-marmot-82.ca-central-1.convex.cloud \
+  --build-env NEXT_PUBLIC_CONVEX_SITE_URL=https://proper-marmot-82.ca-central-1.convex.site \
+  --env NEXT_PUBLIC_CONVEX_URL=https://proper-marmot-82.ca-central-1.convex.cloud \
+  --env NEXT_PUBLIC_CONVEX_SITE_URL=https://proper-marmot-82.ca-central-1.convex.site
 ```
 
 The wrapper uses the downloaded Vercel62.2 CLI; it does not contain credentials. If the downloaded temporary CLI is unavailable, use an installed Vercel CLI with the same arguments. Deploy is a preview, not production promotion. The release `.vercelignore` excludes native project/signing, env files, repository metadata and local agent/dependency/build artifacts. The host must run Next/Node; static GitHub Pages is insufficient. Use the project's existing `npm run build` (which builds the map child package), not a static-export build.
 
 Check the resulting HTTPS origin in Safari without Vercel login; a protected preview which redirects to Vercel authentication will not work inside the app's exact-origin WKWebView. Configure public access for this dedicated demo only as appropriate; do not change unrelated projects or share secret bypass links with the app. Source should remain private (do not pass `--public`). Report the bare `https://…vercel.app` origin without path, trailing slash, query or bypass token.
 
-Northstar then validates the origin, configures `REEL_WEB_ORIGIN` and the identifying geocoder User-Agent on the already-authorized development backend. Existing model keys remain server-side. Preserve the ignored human Xcode project's Team; set its `WEBSITE_URL` to this origin and `BACKEND_URL=https://proper-marmot-82.convex.cloud` for app+extension, build and install to William's phone. No XcodeGen regeneration. Runtime/sign-in/provider/map acceptance remains pending until actually tested.
+Northstar then validates the origin, configures `REEL_WEB_ORIGIN` and the identifying geocoder User-Agent on the already-authorized development backend. Existing model keys remain server-side. Preserve the ignored human Xcode project's Team; set its `WEBSITE_URL` to this origin and `BACKEND_URL=https://proper-marmot-82.ca-central-1.convex.cloud` for app+extension, build and install to William's phone. No XcodeGen regeneration. Runtime/sign-in/provider/map acceptance remains pending until actually tested.
+
+Correction for frozen401603c release: omit NEXT_PUBLIC_WORKFLOW_CONVEX_URL from both build and runtime settings. Its historical nested unauthenticated provider shadows the canonical signed-in client. If already set in this dedicated project, remove that variable for the next build/deploy. This temporary configuration preserves canonical /reels,/post,/map; legacy Discover remains its labelled preview. Northstar is fixing shared-session integration separately; do not move the frozen checkout during manual deployment. No secrets involved in these public URL values.
+
+William published https://dishdeals-demo.vercel.app and reports setting REEL_WEB_ORIGIN. Northstar verified public HTTP200, regional cloud /version200 and regional site JWKS200; the unregional site JWKS returns404. Use the regional cloud and site public build/runtime settings shown above. User edited ios/project.yml URLs; ignored existing Xcode project still requires verifying resolved build settings or explicit command overrides, without regeneration or losing Team. Native/provider acceptance not implied by HTTP200.

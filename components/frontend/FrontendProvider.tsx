@@ -21,6 +21,9 @@ import { workflowApi, type WorkflowSource } from "@/lib/frontend/workflow";
 import { emptyDraft, type Draft } from "@/lib/frontend/draft";
 import { Dialog } from "./Dialog";
 import { useRouter } from "next/navigation";
+import { useAuthActions, useConvexAuth as useCanonicalSession } from "@convex-dev/auth/react";
+import { api } from "@/convex/_generated/api";
+import { frontendConnection } from "@/lib/frontendConnection";
 
 type AuthState = {
   isLoading: boolean;
@@ -103,8 +106,10 @@ function Runtime({
   setMode,
   live,
   auth,
+  liveProfile,
 }: {
   children: ReactNode;
+  liveProfile?: Profile;
   mode: "preview" | "live";
   setMode: FrontendState["setMode"];
   live: LiveApi | null;
@@ -184,7 +189,7 @@ function Runtime({
       setEditDrafts({});
     },
     profile:
-      mode === "preview" ? profile : { displayName: "", walletAddress: "" },
+      mode === "preview" ? profile : (liveProfile ?? { displayName: "", walletAddress: "" }),
     savePreviewProfile: setProfile,
     votes,
     votePreview: (id, vote) => setVotes((v) => ({ ...v, [id]: vote })),
@@ -286,6 +291,49 @@ function LiveRuntime(props: Omit<Parameters<typeof Runtime>[0], "live">) {
   return <Runtime {...props} live={live} />;
 }
 
+/** Canonical routes and the legacy feed share the ROOT client; no nested provider shadows it. */
+function CanonicalRuntime({ children, mode, setMode, conflict }: {
+  children: ReactNode;
+  mode: "preview" | "live";
+  setMode: FrontendState["setMode"];
+  conflict: boolean;
+}) {
+  const { signIn, signOut } = useAuthActions();
+  const session = useConvexAuth();
+  const me = useQuery(api.users.me, session.isAuthenticated ? {} : "skip");
+  const auth: AuthAdapter = {
+    useAuth: useCanonicalSession,
+    signOut,
+    async signIn(email, password, create) {
+      const data = new FormData();
+      data.set("email", email);
+      data.set("password", password);
+      data.set("flow", create ? "signUp" : "signIn");
+      await signIn("password", data);
+    },
+  };
+  const props = {
+    children,
+    mode,
+    setMode,
+    auth,
+    liveProfile: { displayName: me?.displayName ?? "", walletAddress: me?.walletAddress ?? "" },
+  };
+  if (conflict) {
+    // Keep canonical route children on their original authenticated client. Never try the foreign target.
+    const unavailable: LiveApi = {
+      deals: [], error: true, authenticated: session.isAuthenticated, authLoading: session.isLoading,
+      connection: null,
+      submit: async () => { throw new Error("The legacy feed target differs from the signed-in app target."); },
+    };
+    return <Runtime {...props} live={unavailable}>
+      <p role="alert">The Discover feed is not configured for this app. Your account, saved Reels and deal map use the signed-in app connection.</p>
+      {children}
+    </Runtime>;
+  }
+  return <LiveRuntime {...props} />;
+}
+
 export function FrontendProvider({
   children,
   auth,
@@ -294,25 +342,23 @@ export function FrontendProvider({
   auth?: AuthAdapter;
 }) {
   const url = process.env.NEXT_PUBLIC_WORKFLOW_CONVEX_URL;
+  const plan = frontendConnection(process.env.NEXT_PUBLIC_CONVEX_URL, url);
   const client = useMemo(
-    () => (url ? new ConvexReactClient(url) : null),
-    [url],
+    () => (plan === "standalone" && url ? new ConvexReactClient(url) : null),
+    [plan, url],
   );
-  const [mode, setMode] = useState<"preview" | "live">(
-    url ? "live" : "preview",
-  );
+  const [mode, setMode] = useState<"preview" | "live">(plan === "preview" ? "preview" : "live");
+  if (plan === "canonical" || plan === "canonical_conflict") {
+    return <CanonicalRuntime mode={mode} setMode={setMode} conflict={plan === "canonical_conflict"}>
+      {children}
+    </CanonicalRuntime>;
+  }
+  // Harry's standalone preview/runtime remains usable when no canonical provider is configured.
   return client ? (
-    <ConvexProviderWithAuth
-      client={client}
-      useAuth={auth?.useAuth ?? unconfiguredAuth}
-    >
-      <LiveRuntime mode={mode} setMode={setMode} auth={auth}>
-        {children}
-      </LiveRuntime>
+    <ConvexProviderWithAuth client={client} useAuth={auth?.useAuth ?? unconfiguredAuth}>
+      <LiveRuntime mode={mode} setMode={setMode} auth={auth}>{children}</LiveRuntime>
     </ConvexProviderWithAuth>
   ) : (
-    <Runtime mode={mode} setMode={setMode} auth={auth} live={null}>
-      {children}
-    </Runtime>
+    <Runtime mode={mode} setMode={setMode} auth={auth} live={null}>{children}</Runtime>
   );
 }
