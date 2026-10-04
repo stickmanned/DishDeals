@@ -1393,7 +1393,7 @@
       "owner": "Cinder",
       "branch": "t-19-regional-release-config",
       "worktree": "regional-release-config",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "N-RELEASE-A"
       ],
@@ -1405,7 +1405,7 @@
         "docs/handoffs/n-config-d.md"
       ],
       "packet": "docs/tasks/N-CONFIG-D.md",
-      "pinnedBaseSha": "6c69d948504b9480739cceee4fe55f4321d6ac5a",
+      "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
       "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
       "implementationState": "demo core readiness bounded slice assigned",
       "nativeChecks": "pending actual simulator",
@@ -1416,7 +1416,7 @@
       "owner": "Mica",
       "branch": "t-17-core-simulator-readiness",
       "worktree": "core-simulator-readiness",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "N-LOAD-A"
       ],
@@ -1425,7 +1425,7 @@
         "docs/handoffs/n-core-sim.md"
       ],
       "packet": "docs/tasks/N-CORE-SIM.md",
-      "pinnedBaseSha": "6c69d948504b9480739cceee4fe55f4321d6ac5a",
+      "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
       "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
       "implementationState": "demo core readiness bounded slice assigned",
       "nativeChecks": "pending actual simulator",
@@ -1436,7 +1436,7 @@
       "owner": "Loom",
       "branch": "t-19-core-backend-readiness",
       "worktree": "core-backend-readiness",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "N-RELEASE-B"
       ],
@@ -1445,7 +1445,7 @@
         "docs/handoffs/n-core-backend.md"
       ],
       "packet": "docs/tasks/N-CORE-BACKEND.md",
-      "pinnedBaseSha": "6c69d948504b9480739cceee4fe55f4321d6ac5a",
+      "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
       "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
       "implementationState": "demo core readiness bounded slice assigned",
       "nativeChecks": "pending actual simulator",
@@ -1456,7 +1456,7 @@
       "owner": "Prism",
       "branch": "t-17-core-auth-write-review",
       "worktree": "core-auth-write-review",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "N-AUTH-C"
       ],
@@ -1465,7 +1465,7 @@
         "docs/handoffs/n-core-review.md"
       ],
       "packet": "docs/tasks/N-CORE-REVIEW.md",
-      "pinnedBaseSha": "6c69d948504b9480739cceee4fe55f4321d6ac5a",
+      "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
       "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
       "implementationState": "demo core readiness bounded slice assigned",
       "nativeChecks": "pending actual simulator",
