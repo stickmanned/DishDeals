@@ -1067,8 +1067,90 @@
       "packet": "docs/tasks/N-REMOTE-B.md",
       "pinnedBaseSha": "475146057701b7f4ea6d7e8e3484b40cd9ba6447",
       "backendTarget": "LOCAL ONLY; no deployment, provider or remote Git authorized",
-      "implementationState": "assigned local published backend compatibility",
+      "implementationState": "reviewed locally integrated25cc20b; published schema/functions/route compatibility retained",
       "nativeChecks": "unrun",
+      "phoneAcceptance": "pending",
+      "localChecks": "Root combined1554Vitest/23workflow/typecheck/lint/build PASS; no cloud/provider/native/phone"
+    },
+    {
+      "id": "N-SHARE-C",
+      "owner": "Cinder",
+      "branch": "t-13-native-supplied-context",
+      "worktree": "native-supplied-context",
+      "status": "prepared",
+      "dependencies": [
+        "N-STORE-A",
+        "N-SOURCE-A"
+      ],
+      "allowedPaths": [
+        "ios/Shared/ShareStore.swift",
+        "ios/ShareExtension/ShareViewController.swift",
+        "ios/App/DinedealsApp.swift",
+        "tests/native/ShareStoreChecks.swift",
+        "docs/integration/native-supplied-context.md",
+        "docs/handoffs/n-share-c.md"
+      ],
+      "packet": "docs/tasks/N-SHARE-C.md",
+      "pinnedBaseSha": "25cc20b65be346b699f7760b9465a461f0465df0",
+      "backendTarget": "LOCAL ONLY; no external writes/provider use",
+      "implementationState": "dependency-ready packet",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-SOURCE-D",
+      "owner": "Loom",
+      "branch": "t-05-native-context-ingestion",
+      "worktree": "native-context-ingestion",
+      "status": "prepared",
+      "dependencies": [
+        "N-SOURCE-C",
+        "N-SOURCE-A",
+        "N-REMOTE-B"
+      ],
+      "allowedPaths": [
+        "convex/schema.ts",
+        "convex/reels.ts",
+        "convex/reelActions.ts",
+        "lib/reels/nativeContext.ts",
+        "lib/reels/contract.ts",
+        "lib/nativeSession.ts",
+        "components/reels/ReelIntake.tsx",
+        "tests/backend/reelNativeContext.test.ts",
+        "tests/import/nativeContext.test.ts",
+        "tests/import/nativeSession.test.ts",
+        "lib/reels/contract.test.ts",
+        "docs/integration/native-context-ingestion.md",
+        "docs/handoffs/n-source-d.md"
+      ],
+      "packet": "docs/tasks/N-SOURCE-D.md",
+      "pinnedBaseSha": "25cc20b65be346b699f7760b9465a461f0465df0",
+      "backendTarget": "LOCAL ONLY; no external writes/provider use",
+      "implementationState": "dependency-ready packet",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-RELEASE-A",
+      "owner": "Mica",
+      "branch": "t-19-native-release-preparation",
+      "worktree": "native-release-preparation",
+      "status": "prepared",
+      "dependencies": [
+        "N-REMOTE-B",
+        "N-IOS"
+      ],
+      "allowedPaths": [
+        "docs/release/",
+        "docs/handoffs/n-release-a.md",
+        "scripts/check-release-config.mjs",
+        "tests/setup/releaseConfig.test.ts"
+      ],
+      "packet": "docs/tasks/N-RELEASE-A.md",
+      "pinnedBaseSha": "25cc20b65be346b699f7760b9465a461f0465df0",
+      "backendTarget": "LOCAL ONLY; no external writes/provider use",
+      "implementationState": "dependency-ready packet",
+      "nativeChecks": "pending",
       "phoneAcceptance": "pending"
     }
   ],
