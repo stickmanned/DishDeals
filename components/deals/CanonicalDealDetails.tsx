@@ -14,6 +14,7 @@ import { useClock } from "@/components/frontend/useClock";
 import { Icon } from "@/components/frontend/Icon";
 import { Dialog } from "@/components/frontend/Dialog";
 import { canEditDeal, submitDealDelete } from "@/lib/dealEdit";
+import { TipQR } from "@/components/TipQR";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -306,6 +307,8 @@ function CanonicalDealDetailsContent({ dealId }: { dealId: Id<"deals"> }) {
               </div>
             )}
           </dl>
+
+          {isAuthenticated && deal.authorWallet && <TipQR recipient={deal.authorWallet} />}
 
           {/* Community feedback / voting */}
           <section className="community-panel">
