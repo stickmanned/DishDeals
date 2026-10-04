@@ -33,6 +33,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          cache: gradle
       - run: npm ci
       - run: npm run build:android
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
@@ -43,8 +44,10 @@ jobs:
       - name: Prepare emulator
         run: |
           # GitHub's Android SDK runner image already has accepted SDK licenses.
-          sdkmanager "emulator" "system-images;android-35;google_apis;x86_64"
-          echo no | avdmanager create avd --force --name dishdeals --package "system-images;android-35;google_apis;x86_64" --device pixel_6
+          SDK_MANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | sort -V | tail -1)
+          test -n "$SDK_MANAGER"
+          "$SDK_MANAGER" "emulator" "system-images;android-35;google_apis;x86_64"
+          echo no | "$(dirname "$SDK_MANAGER")/avdmanager" create avd --force --name dishdeals --package "system-images;android-35;google_apis;x86_64" --device pixel_6
           sudo chmod 666 /dev/kvm
           "$ANDROID_HOME/emulator/emulator" -avd dishdeals -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > emulator.log 2>&1 &
       - name: Test installed app
