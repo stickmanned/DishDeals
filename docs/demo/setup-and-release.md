@@ -6,11 +6,11 @@ This document details verified local commands, stage gates for native iOS verifi
 
 ## 1. Web and Shared Core Verification
 
-All functional core logic (auth, temporal validity, haversine distance, deal draft state, deal selection, and votes backend) is implemented and verified locally via pure unit and workflow tests.
+Reviewed pure functional core modules (`lib/validNow.ts`, `lib/distance.ts`, `lib/dealDraft.ts`, `lib/dealSelection.ts`, `convex/auth.ts`, `convex/profiles.ts`, `convex/votes.ts`) are implemented and verified locally via unit and workflow tests (no full backlog completion implied).
 
 ### Runtime Environment
 - **Node.js**: Exact runtime `v26.7.0` (active environment).
-- **npm**: v10+.
+- **npm**: Exact runtime `v11.19.0` (active environment).
 - **ESLint**: Code linter (`eslint .`). Note: ESLint is configured for linting rules, not automated code formatting.
 - **Build Output**: Current Next.js build (`next build`) produces static prerendered routes (`/`, `/_not-found`, `/profile`, `/signin`); no server-side rendering (SSR) routes are tested or active.
 
@@ -57,15 +57,17 @@ The backend and frontend codebase references the following environment variables
 > **Secret Hygiene**: Variable names are listed for documentation only. Secrets are managed in deployment dashboards and **never committed to Git or `.env*` files**.
 
 ### Backend State Gate
-- Original T-02 development schema sync succeeded (human-confirmed DONE).
-- New T-03+ schema changes (auth tables, profiles, votes) are currently unsynced on cloud deployments.
-- `npx convex dev --once`: Unrun in current worktrees; cloud deployment and database mutations remain pending target-specific human authorization.
+- Original T-02 development schema sync succeeded (human-confirmed DONE); T-02 schema remains unchanged and DONE.
+- New T-03+ backend function code (auth handlers, profile queries/mutations, vote mutations) is not synchronized to cloud deployments.
+- `npx convex dev --once`: Unrun in current worktrees; cloud deployment and backend function synchronization remain pending target-specific human authorization.
 
 ---
 
 ## 3. Native iOS Toolchain and Discovery Gates
 
 Harry owns the frontend implementation and native iOS Instagram Share Extension. His native source repository/branch is pending integration. When source is provided, discovery must be performed using read-only inspection commands without altering system toolchains.
+
+> **Native Framework and Map Rendering Unresolved**: The published MapLibre GL browser component (`components/Map.tsx`) serves as a web reference implementation only; it does not select or commit to MapLibre for native iOS rendering. Native framework selection (e.g. SwiftUI/MapKit vs web container vs React Native) and native runtime rendering remain unresolved pending Harry's native source intake.
 
 ### Read-Only Toolchain Discovery Commands
 ```bash
@@ -106,8 +108,7 @@ Official technical limits for a free Apple ID / Personal Team:
 3. **Up to 3 installed apps per device** concurrently signed with a Personal Team certificate.
 4. **7-Day Provisioning Profile Expiry**: All provisioning profiles expire after 7 days, requiring re-building/re-signing from Xcode to continue running.
 5. **App Groups & Capabilities**:
-   - Cross-process communication between an iOS containing app and a Share Extension requires [Configuring App Groups](https://developer.apple.com/documentation/xcode/configuring-app-groups).
-   - Free Personal Team support for App Groups is restricted/unverified; feasibility must be confirmed in Xcode's automatic signing before assuming shared container access.
+   - If Harry's architecture uses a shared container (`sharedContainerDirectory` / App Groups) for data exchange between the containing iOS app and the Share Extension, verify entitlement compatibility with free Personal Team signing (free teams may restrict App Group entitlements). App Groups is specifically required for shared-container storage, not all cross-process communication universally.
 
 ### Physical Device Onboarding Procedure (Human Steps)
 1. **Connect & Pair Device**:
@@ -121,9 +122,9 @@ Official technical limits for a free Apple ID / Personal Team:
 3. **Configure Xcode Signing**:
    - In Xcode: **Settings** > **Accounts** > Add William's Apple ID.
    - In Project Settings > Select App Target > **Signing & Capabilities**:
-     - Check **Automatically manage signing**.
-     - Select **Team: Personal Team**.
-     - Ensure bundle identifier placeholder is replaced with a valid unique identifier.
+      - Check **Automatically manage signing**.
+      - Select **Team: Personal Team**.
+      - Ensure bundle identifier placeholder is replaced with a valid unique identifier.
    - Repeat for the Share Extension target.
 4. **Deploy to Device**:
    - Select William's physical iPhone in Xcode's run destination bar.
@@ -138,7 +139,7 @@ Task T-20 retains custom domain preparation. No domain has been purchased or cla
 
 ### Domain Setup Checklist (When Authorized)
 1. **Claim Proposed Domain**:
-   - Proposed domain: `dishdeals.tech` (subject to availability and MLH student offer eligibility).
+   - Proposed domain: `dishdeals.tech` (availability UNKNOWN; subject to MLH student offer eligibility).
    - Follow MLH / partner student offer instructions to claim.
 2. **Project-Specific DNS Configuration**:
    - Add domain in Vercel project dashboard (**Settings** > **Domains**).

@@ -11,23 +11,23 @@
 ## Conditional Storyboard
 
 ### Scene 1: Map-Home Opening (0:00 – 0:25)
-- **Visual Action**: App launches directly into the interactive Vancouver map (MapLibre raster/vector tiles). Active local deal pins are visible around the campus area. Toggle between price filters ("Any", "$5", "$10", "$15") demonstrating strict `<` thresholding and "price varies" inclusion. Pins show status countdown badges (or "No expiry listed" with `unknown` validity per plan edge case 2).
+- **Visual Action**: App launches directly into the interactive Vancouver map (MapLibre raster/vector tiles; website reference). Active local deal pins are visible around the campus area. Toggle between price filters ("Any", "$5", "$10", "$15") demonstrating strict `<` thresholding and "price varies" inclusion. Pins show status countdown badges (or "No expiry listed" with `unknown` validity per plan edge case 2).
 - **Narration Cue**: *"Finding local food deals usually means endless scrolling through social feeds and forgetting where or when they're valid. DishDeals turns fleeting food promos into a verified, real-time community map with live Vancouver validity countdowns and strict price filtering."*
 
 ### Scene 2: Real Instagram Share to DishDeals (0:25 – 0:50)
-- **Visual Action**: Switch to Instagram on the physical iPhone. Open a local restaurant promo post. Tap the system share button and select DishDeals from the native iOS Share Sheet.
-- **Technical Note & Blocker Check**:
+- **Visual Action**: Switch to Instagram on the physical iPhone. Open a local restaurant promo post. Observe and record the exact user tap path required by the Instagram UI version on the physical device (no presumed system-share button location or automatic app transition). In the native iOS Share Sheet that appears, select DishDeals.
+- **Acceptance Gate & Blocker**:
   - Distinguish system share sheet from Instagram internal DM.
-  - If the incoming payload provides a URL only without accessible media/text, the script demonstrates the safe unsupported URL blocker and routes to manual/fallback entry. No automated web scraping of Instagram is performed.
+  - If the incoming payload provides a URL only without accessible media/text, the primary Instagram reel acceptance test FAILS/BLOCKS. The script cannot simply route around a URL-only failure to represent a successful dominant demo; genuine user-provided media/caption context is required. No automated web scraping of Instagram is performed.
 - **Narration Cue**: *"When you spot a food deal on Instagram, tap Share to DishDeals. Our native share extension receives the user-supplied post context directly from the system share sheet without unauthorized background scraping."*
 
 ### Scene 3: Multimodal Extraction & Draft Review (0:50 – 1:30)
-- **Visual Action**: Transition into DishDeals editable deal draft. The system performs multimodal extraction via injected Gemini API REST fetch, generating editable fields: restaurant, price CAD, days, hours, and expiry.
+- **Visual Action**: Transition into DishDeals editable deal draft. Multimodal extraction analyzes the post visuals and caption, populating editable fields: restaurant name, price in CAD, valid days, hours, and expiry date.
 - **Technical Note & Caveat**:
   - Model confidence scores are self-assessments (0..1), not calibrated probabilities.
   - **All** extracted fields require explicit human acceptance before publishing, not just low-scoring ones.
-  - Note: In demo environments on unstable networks, pre-computed fixtures (`fixtures/demo/<hash>.json`) serve as an emergency fallback, but are distinct from genuine live extraction.
-- **Narration Cue**: *"Gemini analyzes the promo visuals and caption via structured REST extraction, suggesting the restaurant, price in CAD, valid hours, and expiration date. Every field is an editable suggestion that requires explicit human review."*
+  - Pre-computed fixture hash bypass (`fixtures/demo/<hash>.json`) is UNIMPLEMENTED with no genuine fixture files present; it is a proposed future capability only after T-16 implementation, not an active emergency demo fallback.
+- **Narration Cue**: *"Gemini analyzes the promo image and caption, extracting the restaurant, price in CAD, valid hours, and expiration date. Every extracted field is an editable suggestion that requires explicit human review and confirmation before publishing."*
 
 ### Scene 4: Uncertainty Handling, Late Edits & Location Pin (1:30 – 2:10)
 - **Visual Action**:

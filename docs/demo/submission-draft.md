@@ -45,7 +45,7 @@ We designed **DishDeals** to address this problem: a map-centric utility designe
 
 ## How We Built It
 
-- **Frontend Architecture**: Next.js (App Router), React, Tailwind CSS. Map architecture based on MapLibre GL (raster/vector tiles).
+- **Frontend Architecture**: Next.js (App Router), React, Tailwind CSS. Web browser map architecture based on MapLibre GL (raster/vector tiles); native iOS map rendering and framework selection remain unresolved pending Harry's native source intake.
 - **Backend & Database**: Convex (document schema, relational tables, server actions, Convex Auth password authentication).
 - **AI Integration**: Google Gemini API accessed via structured REST `fetch` requests with strict Zod schema parsing and repair mechanisms.
 - **Pure Functional Core**:
@@ -60,8 +60,8 @@ We designed **DishDeals** to address this problem: a map-centric utility designe
 
 | Component / Feature | Current State | Evidence & Boundaries |
 | :--- | :--- | :--- |
-| **Data Schema & Zod Contracts (T-02)** | **Implemented & Synced** | Canonical schema defined; initial T-02 dev schema sync human-confirmed DONE. |
-| **Auth & Profile Logic (T-03)** | **Implemented (Local)** | Password provider and profile management tested locally via `convex-test`. Cloud sync pending. |
+| **Data Schema & Zod Contracts (T-02)** | **Implemented & Synced** | Canonical schema defined; initial T-02 dev schema sync human-confirmed DONE (schema remains unchanged). |
+| **Auth & Profile Logic (T-03)** | **Implemented (Local)** | Password provider and profile management tested locally via `convex-test`. Cloud function code sync pending. |
 | **Temporal Validity Engine (T-04A)** | **Implemented (Local)** | `validNow` unit-tested across all valid/invalid states, overnight tails, and DST transitions. |
 | **Haversine Distance (T-04B)** | **Implemented (Local)** | `distanceKm` unit-tested across identical, antipodal, and real-world coordinates. |
 | **Extraction Core (T-05A/R)** | **Implemented (Local)** | REST `fetch` implementation, Zod contract reconciliation, and prompt engineering verified. |
@@ -73,7 +73,7 @@ We designed **DishDeals** to address this problem: a map-centric utility designe
 | **Physical iPhone Acceptance** | **Pending Device** | William physical iPhone (iOS 26) testing pending Xcode setup and native build. |
 | **T-15 Solana Micro-Tipping** | **Unimplemented** | T-15 was identified as a parallel stretch track; not implemented in codebase. |
 | **T-16 Demo Hash Fallback** | **Unimplemented** | Runtime SHA-256 fixture bypass is not implemented; no genuine production fixtures exist. |
-| **T-20 Custom Domain & HTTPS** | **Pending Authorization**| Setup instructions prepared in runbook; no domain claimed or DNS modified. |
+| **T-20 Custom Domain & HTTPS** | **Pending Authorization**| Setup instructions prepared in runbook; proposed domain availability UNKNOWN; no domain claimed or DNS modified. |
 
 ---
 
