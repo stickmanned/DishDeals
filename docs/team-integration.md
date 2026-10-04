@@ -1,3 +1,6 @@
+## October4 07:24 — limited public-page source experiment
+William authorizes Gemini URL-context testing on his supplied public post https://www.instagram.com/p/C8AMUvOxv8m/. Loom owns N-INSTAGRAM-PAGE-PROBE: internal-only exact-URL diagnostic, max two actual calls after independent server-key review and backed-up dev sync. This does not authorize a resolver/scraper service, video/audio claims, arbitrary URL retrieval, accounts or automatic production rollout. Actual retrieval metadata determines whether caption/details are available; model interpretations remain unconfirmed. Existing canonical field review/location confirmation/publication remains mandatory. See ADR0005 and the exact task packet.
+
 > Updated 2026-10-03: current assignments and isolated Git workflow are in [agent-workflow.md](agent-workflow.md) and [tasks manifest](workflow/tasks.json). T-01/T-02 are committed in 356ec1b. Earlier first-kickoff sections below are historical; task packets supersede their dispatch instructions. Human UI/map boundaries remain in force.
 
 # DishDeals team integration boundaries

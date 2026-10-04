@@ -1588,7 +1588,7 @@
       "owner": "Loom",
       "branch": "t-10-posts-expiry-backend",
       "worktree": "posts-expiry-backend",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-02"
       ],
@@ -1607,14 +1607,14 @@
       "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",
       "backendTarget": "local implementation only; proper-marmot-82 dev sync separately reviewed",
       "phoneAcceptance": "pending William real iPhone",
-      "implementationState": "assigned bounded implementation"
+      "implementationState": "reviewed locally integrated; combined corrected gate running; live/phone pending"
     },
     {
       "id": "N-POSTS-UI",
       "owner": "Cinder",
       "branch": "t-10-my-posts-section",
       "worktree": "my-posts-section",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-02"
       ],
@@ -1628,14 +1628,14 @@
       "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",
       "backendTarget": "local implementation only; proper-marmot-82 dev sync separately reviewed",
       "phoneAcceptance": "pending William real iPhone",
-      "implementationState": "assigned bounded implementation"
+      "implementationState": "reviewed locally integrated; combined corrected gate running; live/phone pending"
     },
     {
       "id": "N-INSTAGRAM-KIND",
       "owner": "Mica",
       "branch": "t-13-instagram-source-kind",
       "worktree": "instagram-source-kind",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-02"
       ],
@@ -1657,7 +1657,28 @@
       "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",
       "backendTarget": "local implementation only; proper-marmot-82 dev sync separately reviewed",
       "phoneAcceptance": "pending William real iPhone",
-      "implementationState": "assigned bounded implementation"
+      "implementationState": "reviewed locally integrated; combined corrected gate running; live/phone pending"
+    },
+    {
+      "id": "N-INSTAGRAM-PAGE-PROBE",
+      "owner": "Loom",
+      "branch": "t-05-instagram-page-probe",
+      "worktree": "instagram-page-probe",
+      "status": "ready",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "convex/instagramPageProbe.ts",
+        "lib/instagramPageProbe.ts",
+        "tests/extraction/instagramPageProbe.test.ts",
+        "docs/handoffs/n-instagram-page-probe.md"
+      ],
+      "packet": "docs/tasks/N-INSTAGRAM-PAGE-PROBE.md",
+      "pinnedBaseSha": "4341076fca3a6d238d02f9af0cac97cb8dcb86bd",
+      "backendTarget": "local only in implementation; subsequent backed-up dev sync and max2 live Gemini calls separately scheduled",
+      "implementationState": "assigned bounded internal diagnostic",
+      "phoneAcceptance": "not application flow; no phone proof"
     }
   ],
   "completedDependencies": {
