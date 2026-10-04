@@ -39,9 +39,9 @@
       "backendTarget": "local checks only; no cloud target authorized",
       "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
       "nativeChecks": "pending runtime agreement/toolchain",
-      "phoneAcceptance": "pending William iPhone",
+      "phoneAcceptance": "William real iPhone report Oct4: sign-in, profile and tab/relaunch persistence passed",
       "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone",
-      "blocker": "native storage, live backend/JWT setup, real iPhone auth acceptance pending"
+      "blocker": "None for reported auth persistence; other protected feature acceptance tracked separately"
     },
     {
       "id": "T-04A",
@@ -1407,7 +1407,7 @@
       "packet": "docs/tasks/N-CONFIG-D.md",
       "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
       "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
-      "implementationState": "demo core readiness bounded slice assigned",
+      "implementationState": "Reviewed locally integrated c40d1c2; bounded scope complete; full-phone acceptance separate",
       "nativeChecks": "pending actual simulator",
       "phoneAcceptance": "pending William iPhone"
     },
@@ -1447,7 +1447,7 @@
       "packet": "docs/tasks/N-CORE-BACKEND.md",
       "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
       "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
-      "implementationState": "demo core readiness bounded slice assigned",
+      "implementationState": "Reviewed locally integrated 3f6f10d; bounded scope complete; full-phone acceptance separate",
       "nativeChecks": "pending actual simulator",
       "phoneAcceptance": "pending William iPhone"
     },
@@ -1467,9 +1467,35 @@
       "packet": "docs/tasks/N-CORE-REVIEW.md",
       "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
       "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
-      "implementationState": "demo core readiness bounded slice assigned",
+      "implementationState": "Reviewed locally integrated d30629e; bounded scope complete; full-phone acceptance separate",
       "nativeChecks": "pending actual simulator",
       "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "N-SOURCE-TEXT",
+      "owner": "Loom",
+      "branch": "t-05-shared-text-extraction",
+      "worktree": "shared-text-extraction",
+      "status": "prepared",
+      "dependencies": [
+        "N-CORE-BACKEND",
+        "N-CORE-REVIEW"
+      ],
+      "allowedPaths": [
+        "lib/reels/sharedText.ts",
+        "convex/reelActions.ts",
+        "convex/reelWorkflow.ts",
+        "convex/reels.ts",
+        "tests/reels/sharedText.test.ts",
+        "tests/reels/sharedTextBackend.test.ts",
+        "docs/handoffs/n-source-text.md"
+      ],
+      "packet": "docs/tasks/N-SOURCE-TEXT.md",
+      "pinnedBaseSha": "54627863d4722d59888bec1668305e1ff8d46a03",
+      "backendTarget": "NONE; local source/tests only, no cloud/provider invocation",
+      "implementationState": "New bounded supplied-text implementation; private-source contract pinned in packet",
+      "nativeChecks": "Native capture reused unchanged",
+      "phoneAcceptance": "pending actual supplied caption and live extraction; URL receipt is not media"
     }
   ],
   "completedDependencies": {
