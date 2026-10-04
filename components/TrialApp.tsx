@@ -11,6 +11,7 @@ import type { Outcome, WorkflowInput } from "@/lib/workflow/contracts";
 import type { SearchResult } from "@/lib/workflow/search-contracts";
 import type { ComparisonInput, ComparisonResult } from "@/lib/workflow/compare-contracts";
 import { prepareTrialImage } from "@/lib/trial-image";
+import { WebFindings } from "./frontend/WebFindings";
 
 function errorMessage(error: unknown) {
   if (error instanceof ConvexError) {
@@ -93,6 +94,7 @@ function Dashboard({ authenticated }: { authenticated: boolean }) {
     {!authenticated && <small>Sign in or continue as guest to use search, comparison and submissions.</small>}</form>
     {error && <p role="alert">{error}</p>}
     {searchResult && <div className="results"><p>{searchResult.message} <span className="badge">{searchResult.mode === "gemini" ? "Gemini assisted" : "Basic search"}</span></p>
+      {searchResult.webDiscovery && <WebFindings findings={searchResult.webDiscovery} />}
       {searchResult.warnings.map(w => <p key={w}>{w}</p>)}{searchResult.recommendations.map(r => <article key={r.dealId}><h3>{r.restaurant.name}</h3><p>{r.pitch}</p>
         <ul>{r.caveats.map((c, i) => <li key={i}>{c}</li>)}</ul><a href={r.cta.url} target="_blank" rel="noreferrer">{r.cta.label}</a>
         {r.sourceUrl && <a href={r.sourceUrl} target="_blank" rel="noreferrer">Offer source</a>}

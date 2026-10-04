@@ -60,3 +60,18 @@ it("enforces search limits independently from ingestion limits", async () => {
   expect(response.status).toBe(429);
   expect((await response.json()).error).toBe("RATE_LIMITED");
 });
+it("automatically searches the web for an empty authenticated query without adding offers to the database", async () => {
+  const t = setup(); vi.stubEnv("GEMINI_API_KEY", "fake-secret");
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(modelResponse({ keywords: ["Haidilao"], excludeKeywords: [], city: null,
+    maxPrice: null, currency: null, maxDistanceKm: null, requiresOrigin: false, availableNow: false, sortBy: "relevance", unsupportedNeeds: [] }))
+    .mockResolvedValueOnce(Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "No verified offer. Visit the official Haidilao website." }] },
+      groundingMetadata: { webSearchQueries: ["Haidilao Vancouver"], groundingChunks: [{ web: { uri: "https://www.haidilao.com/", title: "Haidilao official" } }],
+        groundingSupports: [{ groundingChunkIndices: [0] }], searchEntryPoint: { renderedContent: '<a href="https://www.google.com/search?q=haidilao">Haidilao</a>' } } }] }));
+  vi.stubGlobal("fetch", fetcher);
+  const result = await t.withIdentity({ subject: "alice" }).action(api.workflow.search.find, { inputJson: JSON.stringify({ query: "海底捞", language: "en" }) });
+  expect(result.recommendations).toEqual([]);
+  expect(result.webDiscovery?.sources[0].title).toBe("Haidilao official");
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(await t.run(ctx => ctx.db.query("workflowDeals").collect())).toEqual([]);
+  expect(await t.run(ctx => ctx.db.query("workflowJobs").collect())).toEqual([]);
+});

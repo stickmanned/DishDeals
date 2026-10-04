@@ -1834,6 +1834,23 @@ img {
   font-size: 14px;
 }
 
+.search-field { min-width: 0; }
+.search-hint { font-size: 13px; margin-top: 10px; }
+.search-summary { margin-block: 16px; }
+.web-findings { padding: 24px; margin-block: 20px; min-width: 0; }
+.web-findings h2 { font-size: 26px; margin-block: 8px 12px; }
+.web-answer { white-space: pre-wrap; overflow-wrap: anywhere; margin-block: 20px; line-height: 1.7; }
+.web-sources ul { padding-left: 22px; margin-block: 12px; }
+.web-sources li { margin-block: 8px; overflow-wrap: anywhere; }
+.web-sources a { text-decoration: underline; }
+.web-suggestions { margin-top: 18px; overflow-x: auto; }
+@media (max-width: 700px) {
+  .search-row { flex-wrap: wrap; }
+  .search-row .search-field { flex-basis: 100%; }
+  .search-row > .button { flex: 1; }
+  .web-findings { padding: 20px 16px; }
+}
+
 .workflow-tools main { max-width: 1100px; margin: auto; }
 .workflow-tools section { margin: 24px 0; padding: 24px; background: var(--surface, #fff); border: 1px solid var(--border, #dedbd7); border-radius: 16px; }
 .workflow-tools header, .workflow-tools .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }

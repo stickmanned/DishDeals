@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { dealSchema, placeSchema } from "./contracts";
+import type { WebDiscovery } from "./web-discovery";
 export const searchInputSchema = z.object({
   query: z.string().trim().min(1).max(1000), language: z.enum(["zh", "en"]).default("zh"),
   origin: z.object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) }).strict().optional(),
@@ -37,4 +38,5 @@ export type Recommendation = SearchCandidate & { pitch: string; whyGo: string[];
 export type SearchResult = {
   mode: "gemini" | "basic"; scope: "published_deals"; intent: SearchIntent;
   recommendations: Recommendation[]; message: string; warnings: string[]; totalMatches: number;
+  webDiscovery?: WebDiscovery;
 };
