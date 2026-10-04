@@ -14,6 +14,7 @@ import bridgeSource from "../../components/CanonicalSessionBridge.tsx?raw";
 import providerSource from "../../components/ConvexClientProvider.tsx?raw";
 
 const REEL = "https://www.instagram.com/reel/AbCdE12345/";
+const POST = "https://www.instagram.com/p/AbCdE12345/";
 const fakeWindow = () => {
   const posted: object[] = [];
   return {
@@ -98,7 +99,8 @@ describe("sessionMessageFor (what the root bridge tells native)", () => {
 
 describe("recoveredLink (prefill candidate only)", () => {
   it("normalizes tracking and /p variants", () => {
-    expect(recoveredLink("https://instagram.com/p/AbCdE12345/?igsh=zzz#frag")).toBe(REEL);
+    expect(recoveredLink("https://instagram.com/p/AbCdE12345/?igsh=zzz#frag")).toBe(POST);
+    expect(recoveredLink("https://instagram.com/reels/AbCdE12345/?igsh=zzz#frag")).toBe(REEL);
     expect(recoveredLink(REEL)).toBe(REEL);
   });
   it.each([undefined, "", "hello", "https://www.instagram.com/someuser/", "https://www.instagram.com/share/AbCdE12345/", "https://user:pw@www.instagram.com/reel/AbCdE12345/", "http://www.instagram.com/reel/AbCdE12345/", "https://evil.example/reel/AbCdE12345/"])(
@@ -112,10 +114,20 @@ describe("saveReelLink (receipt only after a verified server save)", () => {
     const post = vi.fn(() => "sent" as const);
     const submit = vi.fn(async () => ({ itemId: "item1", duplicate: false }));
     const out = await saveReelLink("https://instagram.com/p/AbCdE12345/?igsh=x", 7, submit, post);
+    expect(submit).toHaveBeenCalledWith({ text: POST, retentionDays: 7 });
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith({ type: "received", sourceUrl: POST });
+    expect(out).toEqual({ itemId: "item1", receipt: "sent" });
+  });
+
+  it("submits the normalized reel link then reports exactly one receipt", async () => {
+    const post = vi.fn(() => "sent" as const);
+    const submit = vi.fn(async () => ({ itemId: "item2", duplicate: false }));
+    const out = await saveReelLink("https://instagram.com/reels/AbCdE12345/?igsh=x", 7, submit, post);
     expect(submit).toHaveBeenCalledWith({ text: REEL, retentionDays: 7 });
     expect(post).toHaveBeenCalledTimes(1);
     expect(post).toHaveBeenCalledWith({ type: "received", sourceUrl: REEL });
-    expect(out).toEqual({ itemId: "item1", receipt: "sent" });
+    expect(out).toEqual({ itemId: "item2", receipt: "sent" });
   });
 
   it("a duplicate (already saved) result is still a verified receipt", async () => {
