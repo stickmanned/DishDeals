@@ -4,10 +4,11 @@ import type { WorkflowId } from "@convex-dev/workflow";
 import { mutation, query, internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import schema from "./schema";
+import schema, { nativeContextValidator } from "./schema";
 import { reelWorkflow } from "./reelWorkflow";
 import { normalizeInstagramUrl, reelDraft, reelExtraction } from "../lib/reels/contract";
 import { SAVE_ERRORS, bump, checkSave, planFinish, withinDraftLimit } from "../lib/reels/draftRevision";
+import { NATIVE_CONTEXT_REJECTED, parseNativeContext } from "../lib/reels/nativeContext";
 const day = 86400000;
 async function owner(ctx: QueryCtx | MutationCtx) {
   const id = await getAuthUserId(ctx);
@@ -52,18 +53,23 @@ async function erase(ctx: MutationCtx, item: NonNullable<Awaited<ReturnType<type
   if (item.videoId) await ctx.storage.delete(item.videoId);
   await ctx.db.delete(item._id);
 }
-export const submit = mutation({ args: { text: v.string(), retentionDays: v.optional(v.number()) },
+export const submit = mutation({ args: { text: v.string(), retentionDays: v.optional(v.number()), nativeContext: v.optional(nativeContextValidator) },
   returns: v.object({ itemId: v.id("reelItems"), duplicate: v.boolean() }),
   handler: async (ctx, args) => {
     const ownerId = await owner(ctx); const sourceUrl = normalizeInstagramUrl(args.text);
     const retentionDays = args.retentionDays ?? 7;
     if (![1, 7, 30].includes(retentionDays)) throw new ConvexError("Choose 1, 7, or 30 days.");
+    // Strict bounded check even though the runtime validator passed; a rejection never echoes the content.
+    const parsed = args.nativeContext === undefined ? null : parseNativeContext(args.nativeContext, Date.now());
+    if (parsed && !parsed.ok) throw new ConvexError(NATIVE_CONTEXT_REJECTED);
+    // A duplicate returns the existing item untouched: its first context and manual state are immutable.
     const existing = await ctx.db.query("reelItems").withIndex("by_owner_url", q => q.eq("ownerId", ownerId).eq("sourceUrl", sourceUrl)).unique();
     if (existing && existing.expiresAt > Date.now()) return { itemId: existing._id, duplicate: true };
     if (existing) await erase(ctx, existing);
     await rateLimit(ctx, ownerId);
     const now = Date.now(), expiresAt = now + retentionDays * day;
-    const itemId = await ctx.db.insert("reelItems", { ownerId, sourceUrl, status: "queued", generation: 1, attempts: 1, updatedAt: now, expiresAt });
+    // The context is saved in the same insert as the item, so a receipt can only follow a stored context.
+    const itemId = await ctx.db.insert("reelItems", { ownerId, sourceUrl, status: "queued", generation: 1, attempts: 1, updatedAt: now, expiresAt, ...(parsed?.ok ? { nativeContext: parsed.value } : {}) });
     // Link-only: nothing is enqueued. The user attaches their own recording (POST /reel-source); the legacy resolver is never started here.
     await ctx.scheduler.runAt(expiresAt, internal.reels.expire, { itemId, expiresAt });
     return { itemId, duplicate: false };
@@ -113,7 +119,15 @@ export const saveDraft = mutation({ args: { itemId: v.id("reelItems"), draftJson
   await ctx.db.patch(itemId, { draftJson: JSON.stringify(drafts), draftRevision: check.nextRevision, draftEdited: true, updatedAt: Date.now() }); return null;
 } });
 const jobArgs = { itemId: v.id("reelItems"), generation: v.number() };
+// The workflow journal keeps step results, so the general work item omits the private supplied text;
+// only the extraction action reads it, through workSource.
 export const workItem = internalQuery({ args: jobArgs, returns: v.union(schema.doc("reelItems"), v.null()), handler: async (ctx, args) => {
+  const item = await ctx.db.get(args.itemId);
+  if (!item || item.generation !== args.generation || item.expiresAt <= Date.now()) return null;
+  const { nativeContext: _private, ...rest } = item; void _private;
+  return rest;
+} });
+export const workSource = internalQuery({ args: jobArgs, returns: v.union(schema.doc("reelItems"), v.null()), handler: async (ctx, args) => {
   const item = await ctx.db.get(args.itemId); return item && item.generation === args.generation && item.expiresAt > Date.now() ? item : null;
 } });
 export const markRetrieving = internalMutation({ args: jobArgs, returns: v.null(), handler: async (ctx, args) => {

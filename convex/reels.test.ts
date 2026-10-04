@@ -63,11 +63,31 @@ test("retention extension fences old expiry; current expiry deletes", async () =
   await t.mutation(internal.reels.expire, { itemId, expiresAt: current.expiresAt });
   expect(await alice.query(api.reels.list, {})).toEqual([]);
 });
-test("disabled paid usage saves a clear failure without external calls", async () => {
-  const { t, alice } = await sessions(); const { itemId } = await alice.mutation(api.reels.submit, { text });
-  vi.stubEnv("REEL_PROVIDER_USAGE_AUTHORIZED", "false");
-  expect(await t.action(internal.reelActions.retrieve, { itemId, generation: 1 })).toBe(false);
-  expect(await alice.query(api.reels.get, { itemId })).toMatchObject({ status: "failed", error: { code: "CONFIGURATION" } });
+test("the legacy link resolver is permanently disabled: fails closed with no network, whatever the stale resolver environment says", async () => {
+  const { t, alice } = await sessions();
+  const net = vi.spyOn(globalThis, "fetch");
+  for (const authorized of ["false", "true"]) {
+    const { itemId } = await alice.mutation(api.reels.submit, { text: `https://www.instagram.com/reel/Disabled${authorized}/` });
+    for (const [key, value] of Object.entries({ REEL_PROVIDER_USAGE_AUTHORIZED: authorized, SCRAPECREATORS_API_KEY: "stale-resolver-key", GEMINI_API_KEY: "test", GEMINI_REEL_MODEL: "test-model" })) vi.stubEnv(key, value);
+    expect(await t.action(internal.reelActions.retrieve, { itemId, generation: 1 })).toBe(false);
+    const item = await alice.query(api.reels.get, { itemId });
+    expect(item).toMatchObject({ status: "failed", error: { code: "UNAVAILABLE" } });
+    expect(item.error!.message).toContain("Attach your own recording");
+    expect(item.videoId).toBeUndefined();
+  }
+  expect(net).not.toHaveBeenCalled();
+});
+test("a retried link-only item through the durable workflow reaches no resolver with a stale resolver environment", async () => {
+  const { t, alice } = await sessions();
+  const net = vi.spyOn(globalThis, "fetch");
+  for (const [key, value] of Object.entries({ REEL_PROVIDER_USAGE_AUTHORIZED: "true", SCRAPECREATORS_API_KEY: "stale-resolver-key", GEMINI_API_KEY: "test", GEMINI_REEL_MODEL: "test-model" })) vi.stubEnv(key, value);
+  const { itemId } = await alice.mutation(api.reels.submit, { text });
+  await t.mutation(internal.reels.fail, { itemId, generation: 1, code: "X", message: "m" });
+  await alice.mutation(api.reels.retry, { itemId });
+  for (let i = 0; i < 30; i++) { vi.advanceTimersByTime(200); await t.finishInProgressScheduledFunctions(); }
+  expect(await alice.query(api.reels.get, { itemId })).toMatchObject({ status: "failed", generation: 2, error: { code: "UNAVAILABLE" } });
+  expect(net).not.toHaveBeenCalled();
+  expect(sdk.generateContent).not.toHaveBeenCalled();
 });
 test("link-only submit starts no workflow and no resolver; a supplied recording starts the durable workflow, which fails closed while the media gate is off", async () => {
   const { t, alice } = await sessions();
