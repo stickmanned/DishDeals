@@ -26,12 +26,27 @@ test("requires real auth and refuses every other owner's read/write", async () =
   await expect(bob.mutation(api.reels.saveDraft, { itemId, draftJson: "[]", expectedGeneration: 1, expectedRevision: 0 })).rejects.toThrow("Item not found");
   expect(await bob.query(api.reels.list, {})).toEqual([]);
 });
-test("transactionally deduplicates tracking, hostname and /p aliases per owner", async () => {
+test("transactionally deduplicates tracking per owner and keeps /p vs /reel independent", async () => {
   const { alice, bob } = await sessions();
-  const results = await Promise.all([alice.mutation(api.reels.submit, { text }), alice.mutation(api.reels.submit, { text: "https://instagram.com/p/AbCdEf123/" })]);
-  expect(results[0].itemId).toBe(results[1].itemId);
-  expect(results.map(r => r.duplicate).sort()).toEqual([false, true]);
-  expect((await bob.mutation(api.reels.submit, { text })).itemId).not.toBe(results[0].itemId);
+  // Same post tracking deduplicates to same item
+  const post1 = "https://instagram.com/p/AbCdEf123/?igsh=track1";
+  const post2 = "https://m.instagram.com/p/AbCdEf123/?igsh=track2";
+  const postResults = await Promise.all([alice.mutation(api.reels.submit, { text: post1 }), alice.mutation(api.reels.submit, { text: post2 })]);
+  expect(postResults[0].itemId).toBe(postResults[1].itemId);
+  expect(postResults.map(r => r.duplicate).sort()).toEqual([false, true]);
+
+  // Same reel tracking and alias deduplicates to same item
+  const reel1 = text;
+  const reel2 = "https://instagram.com/reels/AbCdEf123/";
+  const reelResults = await Promise.all([alice.mutation(api.reels.submit, { text: reel1 }), alice.mutation(api.reels.submit, { text: reel2 })]);
+  expect(reelResults[0].itemId).toBe(reelResults[1].itemId);
+  expect(reelResults.map(r => r.duplicate).sort()).toEqual([false, true]);
+
+  // /p vs /reel for the same shortcode are independent IDs
+  expect(postResults[0].itemId).not.toBe(reelResults[0].itemId);
+
+  // Bob's submit is independent from Alice
+  expect((await bob.mutation(api.reels.submit, { text })).itemId).not.toBe(reelResults[0].itemId);
 });
 test("rejects active retries, permits failed retries, fences stale completions", async () => {
   const { t, alice } = await sessions(); const { itemId } = await alice.mutation(api.reels.submit, { text });

@@ -93,7 +93,17 @@ describe("requestShareContext (listener first, then ask native)", () => {
     expect(await requestShareContext(REEL, { win: w.win, post: () => "not_sent" }).result).toEqual({ status: "unavailable" });
     expect(w.count()).toBe(0);
     expect(await requestShareContext(REEL, { win: {} }).result).toEqual({ status: "unavailable" });
-    expect(await requestShareContext("https://www.instagram.com/p/AbCdE12345/", { win: w.win, post: () => "sent" }).result).toEqual({ status: "unavailable" });
+    expect(await requestShareContext("https://www.instagram.com/p/AbCdE12345/?igsh=x", { win: w.win, post: () => "sent" }).result).toEqual({ status: "unavailable" });
+    expect(await requestShareContext("https://instagram.com/p/AbCdE12345", { win: w.win, post: () => "sent" }).result).toEqual({ status: "unavailable" });
+    expect(w.count()).toBe(0);
+  });
+  it("resolves exact context when requested for a canonical /p/ post link", async () => {
+    const w = fakeWindow();
+    const POST = "https://www.instagram.com/p/AbCdE12345/";
+    const { result } = requestShareContext(POST, { win: w.win, post: () => "sent", nowMs: () => NOW });
+    expect(w.count()).toBe(1);
+    w.dispatch({ sourceUrl: POST, nativeContext: context() });
+    expect(await result).toEqual({ status: "ready", context: context() });
     expect(w.count()).toBe(0);
   });
   it("cancel removes the listener and the timer so nothing fires after unmount", async () => {
@@ -110,12 +120,19 @@ describe("shareContextForSave (consent gate)", () => {
   const ready: ShareContextOutcome = { status: "ready", context: context() };
   it("sends the validated context only when the saved text is the same recovered link", () => {
     expect(shareContextForSave(REEL, REEL, ready)).toEqual({ action: "send", context: context() });
-    expect(shareContextForSave("https://instagram.com/p/AbCdE12345/?igsh=x", REEL, ready)).toEqual({ action: "send", context: context() });
+    expect(shareContextForSave("https://instagram.com/reels/AbCdE12345/?igsh=x", REEL, ready)).toEqual({ action: "send", context: context() });
+    const POST = "https://www.instagram.com/p/AbCdE12345/";
+    expect(shareContextForSave(POST, POST, ready)).toEqual({ action: "send", context: context() });
+    expect(shareContextForSave("https://instagram.com/p/AbCdE12345/?igsh=x", POST, ready)).toEqual({ action: "send", context: context() });
   });
-  it("never attaches the recovered context to a different link or without a recovery", () => {
+  it("never attaches the recovered context to a different link or cross-kind", () => {
+    const POST = "https://www.instagram.com/p/AbCdE12345/";
     expect(shareContextForSave(OTHER, REEL, ready)).toEqual({ action: "none" });
     expect(shareContextForSave("not a link", REEL, ready)).toEqual({ action: "none" });
     expect(shareContextForSave(REEL, null, ready)).toEqual({ action: "none" });
+    expect(shareContextForSave("https://instagram.com/p/AbCdE12345/?igsh=x", REEL, ready)).toEqual({ action: "none" });
+    expect(shareContextForSave(POST, REEL, ready)).toEqual({ action: "none" });
+    expect(shareContextForSave(REEL, POST, ready)).toEqual({ action: "none" });
   });
   it("waits while native has not answered and blocks on an unusable answer: neither saves the link as if complete", () => {
     expect(shareContextForSave(REEL, REEL, { status: "pending" })).toEqual({ action: "wait" });

@@ -6,7 +6,7 @@
   - **Branch:** `t-13-instagram-source-kind`
   - **Worktree:** `/Users/william/Code/DishDeals-worktrees/instagram-source-kind`
   - **Pinned Base SHA:** `dcdda819e97de9c371726dd7ba33585912afe7d5`
-  - **Head SHA:** `def16cace69f3f808e385a2f7921e8d1aeb3fe0b`
+  - **Head SHA:** `d1fb016b162a5d1556e0a4a32b5e3d25a2b565bc`
 - **Scope and Writable Paths:**
   - `lib/reels/contract.ts`
   - `ios/Shared/ShareStore.swift`
@@ -16,6 +16,9 @@
   - `tests/import/postSource.test.ts`
   - `tests/import/reelPublicEntry.test.tsx`
   - `lib/reels/contract.test.ts`
+  - `convex/reels.test.ts` *(Rootgate acceptance amendment approved)*
+  - `tests/import/nativeSession.test.ts` *(Rootgate acceptance amendment approved)*
+  - `tests/native/sessionBridge.test.ts` *(Rootgate acceptance amendment approved)*
   - `docs/handoffs/n-instagram-kind.md`
 
 - **Problem & Architectural Contract:**
@@ -41,14 +44,14 @@
   3. `ios/ShareExtension/ShareViewController.swift`:
      - Updated initial copy to generic `"Received. Saving your Instagram link privately…"`.
      - Updated error and resolved status receipt to distinguish `"post"` vs `"Reel"` (or `"post or Reel"`).
-     - Directs user to review and publish publicly (`"Open Dinedeals to review your \(itemLabel) and publish publicly"`), never claiming automatic public publication.
+     - Directs user to review and publish publicly (`"Saved \(itemLabel) privately. Open Dinedeals to review and publish publicly.\n"`), never claiming automatic public publication.
      - Preserved integrated contrast fix and all payload/storage/lifecycle logic.
   4. `components/reels/ReelIntake.tsx`:
      - Imported `instagramSourceKind`.
      - Derived source kind dynamically to update heading, form label, original link (`Original Post` vs `Original Reel` vs `Original Post or Reel`), error messages, and save history badges.
      - Safe fallback `"post or Reel"` / `"Posts/Reels"` for unclassified or historical rows.
   5. `tests/native/ShareStoreChecks.swift`:
-     - Added assertions verifying `/p/` canonical preservation, `/reels/` normalization, ambiguity rejection when `/p/` and `/reel/` are mixed, and `sourceKind` validation including credentials, custom port, HTTP, and substring attack rejection.
+     - Added assertions verifying `/p/` canonical preservation, `/reels/` normalization, ambiguity rejection when `/p/` and `/reel/` are mixed, and extensive `sourceKind` validation including credentials, custom port, HTTP, and substring attack rejection (98 tests passed).
   6. `tests/native/ShareReceiptContrastChecks.swift`:
      - Verified contrast compliance (Light Mode 19.69:1, Dark Mode 21.00:1) with updated `ShareViewController`.
   7. `tests/import/postSource.test.ts`:
@@ -57,21 +60,31 @@
      - Added test verifying distinct copy and links for Instagram Post vs Reel vs unknown sources in `ReelIntake`.
   9. `lib/reels/contract.test.ts`:
      - Added tests for `/p/` preservation, `/reels/` normalization, and `instagramSourceKind` validation edge cases.
+  10. `convex/reels.test.ts`:
+      - Reconciled deduplication test to explicitly verify same-post tracking dedup, same-reel tracking dedup, and `/p/` vs `/reel/` independent IDs for the same shortcode per owner, preserving Bob vs Alice authorization boundaries.
+  11. `tests/import/nativeSession.test.ts`:
+      - Tested truly noncanonical link for immediate unavailable status, added test asserting canonical `/p/` request resolves exact context, and enforced cross-kind context isolation (`/p/` and `/reel/` cannot share recovered context).
+  12. `tests/native/sessionBridge.test.ts`:
+      - Reconciled `recoveredLink` and `saveReelLink` to expect canonical `/p/` preservation and verify distinct receipt reporting for post vs reel links.
 
 - **Checks Actually Run & Results:**
-  1. `lib/reels/contract.test.ts`: 10 tests passed (including dedicated suite for malformed/relative/foreign URL edge cases).
+  1. `lib/reels/contract.test.ts`: 10 tests passed.
   2. `tests/import/postSource.test.ts`: 14 tests passed.
   3. `tests/import/reelPublicEntry.test.tsx`: 10 tests passed.
-  4. Full Vitest run (3 suites, 34 tests): **All 34 passed** (410ms).
-  5. Native Foundation suite (`ShareStoreChecks.swift`): **98 passed** (including relative URLs, foreign domains, substring attacks, credentials, and ports).
-  6. Native Simulator suite (`ShareReceiptContrastChecks.swift` on iPhone 18 Pro `22E6EF8B-CC88-4109-870C-6C924AF613D6`):
-     - Light Mode: `bg=#FBF7F2 text=#000000 ratio=19.69:1` (>= 4.5:1)
-     - Dark Mode: `bg=#000000 text=#FFFFFF ratio=21.00:1` (>= 4.5:1)
-     - **ALL CONTRAST ASSERTIONS PASSED**.
-  7. `npm run typecheck`: **Exit code 0**.
-  8. `npm run lint`: **Exit code 0** (0 problems, 0 errors, 0 warnings).
+  4. Core kind test suites: **All 34 passed**.
+  5. `convex/reels.test.ts`: 10 tests passed.
+  6. `tests/import/nativeSession.test.ts`: 21 tests passed.
+  7. `tests/native/sessionBridge.test.ts`: 52 tests passed.
+  8. Full Vitest combined run (6 suites, 117 tests): **All 117 passed** (754ms).
+  9. Native Foundation suite (`ShareStoreChecks.swift`): **98 passed**.
+  10. Native Simulator suite (`ShareReceiptContrastChecks.swift` on iPhone 18 Pro `22E6EF8B-CC88-4109-870C-6C924AF613D6`):
+      - Light Mode: `bg=#FBF7F2 text=#000000 ratio=19.69:1` (>= 4.5:1)
+      - Dark Mode: `bg=#000000 text=#FFFFFF ratio=21.00:1` (>= 4.5:1)
+      - **ALL CONTRAST ASSERTIONS PASSED**.
+  11. `npm run typecheck`: **Exit code 0**.
+  12. `npm run lint`: **Exit code 0** (0 problems, 0 errors, 0 warnings).
 
 - **Stop Condition:**
-  - One bounded ticket complete.
+  - Acceptance reconciliation complete.
   - Scoped local commit on `t-13-instagram-source-kind`.
   - No remote push, no PR publication, no deployment, no schema changes.
