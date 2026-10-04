@@ -28,6 +28,8 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: Dinedeals
+        NSCameraUsageDescription: Dinedeals uses the camera so you can take a photo of a deal to post.
+        NSPhotoLibraryUsageDescription: Dinedeals needs access to your photos so you can choose a deal image to post.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
