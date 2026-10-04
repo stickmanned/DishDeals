@@ -60,12 +60,12 @@ npm run typecheck && npm run lint && npm test
 **D. Provider, model and geocoding usage.** UNRESOLVED pricing and authorization. Every flag stays unset or not `"true"` until it is separately approved, and each is its own decision. Names are taken from `convex/convex.config.ts`:
 | area | model / config names | separate gate | state |
 | --- | --- | --- | --- |
-| Reel analysis | `GEMINI_REEL_MODEL` (primary), `REEL_WEB_ORIGIN` | `REEL_PROVIDER_USAGE_AUTHORIZED` (reel fetch; also needs `SCRAPECREATORS_API_KEY`) and `REEL_MEDIA_USAGE_AUTHORIZED` (video analysis) | off |
+| Reel analysis | `GEMINI_REEL_MODEL` (primary), `REEL_WEB_ORIGIN` | `REEL_MEDIA_USAGE_AUTHORIZED` (video analysis only); legacy resolver permanently retired, keep `REEL_PROVIDER_USAGE_AUTHORIZED` false | off |
 | Image extraction | `GEMINI_IMAGE_MODEL` (primary), `GEMINI_IMAGE_FALLBACK_MODEL` (optional) | `IMAGE_PROVIDER_USAGE_AUTHORIZED` | off |
 | Geocoding | `GEOCODE_USER_AGENT` (contact; required by code), `GEOCODE_ENDPOINT` (optional) | `GEOCODE_USAGE_AUTHORIZED` | off |
 | Preserved teammate workflow | `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, `GEMINI_SEARCH_MODEL`, `GEMINI_WEB_SEARCH_MODEL`, `GEMINI_COMPARISON_MODEL` | `WORKFLOW_PROVIDER_USAGE_AUTHORIZED` | off unless separately approved; there is no resolver |
 
-Model identifiers must be checked against Google's current official model list/docs at approval time. That was **not** done here (no network or provider call), so no identifier in this repo is verified as currently supported. Use existing keys only, set server-side with `npx convex env set NAME` using interactive entry (value never in shell history or logs), set a spend ceiling, and allow no overages. The geocode contact/endpoint must be one the human is willing to identify to the geocoding service.
+Northstar verified the current official [Gemini 3.8 Flash documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash): stable gemini-3.8-flash supports image/video/audio inputs and structured output. Account availability remains untested; retain explicit configured model names. Use existing keys only, set server-side with `npx convex env set NAME` using interactive entry (value never in shell history or logs), allow no paid overages or billing-setting changes; use existing account limits. The geocode contact/endpoint must be one the human is willing to identify to the geocoding service.
 
 ## Human Xcode steps (after A–C; no xcodegen)
 1. Open the existing project. Do not regenerate it; keep the working Team on both targets (Dinedeals, ReelShare).
@@ -89,3 +89,6 @@ App and extension `BackendURL` must be identical, and the two URLs must pass the
 Redirect nothing that prints env values. Use `--names-only`; never run `env list/get` without it; do not `cat` env or backup files; keep export zips and env files out of the repo and out of chat.
 
 Handoff, commands and results: [`docs/handoffs/n-release-a.md`](../handoffs/n-release-a.md).
+
+## October 4 authorization amendment
+William explicitly authorized the scoped DishDeals demo hosting on the existing connected Vercel account and backed-up additive development sync to proper-marmot-82, plus existing-provider screenshot/recording extraction and configured geocoding usage. No production release, new accounts, purchases, paid overages, Instagram resolver, unrelated-host changes or destructive data restore are authorized. Root combined checks must pass before sync. The connected Vercel account has no DishDeals project; existing cbss-3dpc-website is unrelated and must remain untouched.

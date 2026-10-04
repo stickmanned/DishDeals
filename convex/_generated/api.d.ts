@@ -21,6 +21,7 @@ import type * as reels from "../reels.js";
 import type * as reelActions from "../reelActions.js";
 import type * as reelSource from "../reelSource.js";
 import type * as reelWorkflow from "../reelWorkflow.js";
+import type * as seed from "../seed.js";
 import type * as test from "../test.js";
 import type * as trial from "../trial.js";
 import type * as workflow_ai from "../workflow/ai.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   reelActions: typeof reelActions;
   reelSource: typeof reelSource;
   reelWorkflow: typeof reelWorkflow;
+  seed: typeof seed;
   test: typeof test;
   trial: typeof trial;
   "workflow/ai": typeof workflow_ai;
