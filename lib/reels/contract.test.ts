@@ -21,3 +21,11 @@ test("rejects unsupported facts, invalid schedules/dates, contradictory offers a
   expect(() => validateExtraction({ ...output, evidence: [{ ...output.evidence[0], timestampSeconds: 99 }] }, "", 12)).toThrow();
   expect(() => validateExtraction({ ...output, evidence: [{ ...output.evidence[0], channel: "caption" }] }, "different caption", 12)).toThrow();
 });
+test("typed source constraints need source-supported evidence and an ISO start date (synthetic)", () => {
+  const caption = "Starts June 15, 2026 for members";
+  const constraint = { draftIndex: 0, code: "FUTURE_START", detail: "Starts June 15", startsOn: "2026-06-15", channel: "caption", quote: "Starts June 15, 2026", timestampSeconds: null };
+  expect(validateExtraction({ ...output, constraints: [constraint] }, caption, 12).constraints).toHaveLength(1);
+  expect(validateExtraction({ ...output }, caption, 12).constraints).toBeUndefined();
+  for (const bad of [{ draftIndex: 1 }, { startsOn: null }, { startsOn: "2026-13-01" }, { code: "OTHER" }, { quote: "Starts next week" }, { channel: "visual" }])
+    expect(() => validateExtraction({ ...output, constraints: [{ ...constraint, ...bad }] }, caption, 12)).toThrow();
+});
