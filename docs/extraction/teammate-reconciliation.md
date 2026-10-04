@@ -16,9 +16,9 @@ This report performs a static source audit and contract reconciliation of teamma
 ### Key Conclusions:
 1. **Teammate Backend Value**: Teammate branch `feature/deal-extraction` implements a structured extraction pipeline using Gemini REST endpoints and Geoapify place lookup in `ai-workflow/`. Its prompt instructions, regex sanitization, and structured JSON schemas provide valuable foundational logic.
 2. **Incompatible Standalone Architecture**: Teammate code operates as an isolated standalone backend (`ai-workflow/`) with its own schema (`jobs`, `deals`, `limits`), custom job-polling tables, and separate HTTP endpoints. Merging it wholesale would break the canonical Convex schema ([convex/schema.ts](../../convex/schema.ts)) and client data flow.
-3. **Genuine Confidence Incompatibility**: Teammate's extraction schema produces a single scalar `confidence: number (0..1)` representing a model self-assessment over the extraction. The canonical schema ([lib/dealSchema.ts](../../lib/dealSchema.ts)) strictly requires four field-level scores: `{ restaurant, priceCad, hours, expiresOn }`. **Global confidence cannot be mechanically distributed to the four fields, and defaulting to 0.5 is strictly forbidden**. The extraction prompt must be updated to elicit per-field self-assessment scores directly, while preserving overall rejection filtering for unpromising inputs.
+3. **Genuine Confidence Incompatibility**: Teammate's extraction schema produces a single scalar `confidence: number (0..1)`. The canonical schema ([lib/dealSchema.ts](../../lib/dealSchema.ts)) strictly requires four field-level scores: `{ restaurant, priceCad, hours, expiresOn }`. **Global confidence cannot be mechanically distributed to the four fields, and defaulting to 0.5 is strictly forbidden**. The extraction prompt must be updated to elicit per-field self-assessment scores directly. Arbitrary global-confidence rejection thresholds must not be preserved: tentative autocomplete suggestions are permitted for partially clear information, and `isDeal: false` is reserved strictly for actual evidence that no offer exists. Low self-assessment scores alone route to the editable review form rather than hard rejection.
 4. **No-Instagram-Scraping Rule**: Teammate code includes URL handling via Gemini's `url_context` tool and HTTP page retrieval. The DishDeals rule forbids server-side Instagram scraping because Instagram aggressively detects and blocks automated requests and changes layouts. For Instagram deals, URL input is stored solely as reference provenance on the deal record in Convex; extraction must process user-supplied screenshots or caption text.
-5. **Verified Model Availability**: Inspection of the primary source [Google Models Documentation](https://ai.google.dev/gemini-api/docs/models) confirms that `gemini-3.8-flash` ("Our most intelligent Flash model, engineered for long-horizon software engineering, autonomous agents, and complex enterprise workflows... Stable") and `gemini-3.5-flash-lite` ("Our fastest, most cost-effective 3.5 model for high-throughput execution... Stable") are officially listed as stable models. Teammate code in `ai-workflow/.env.example` configured `GEMINI_MODEL=gemini-2.5-flash`. No live provider calls were run or assumed.
+5. **Verified Model Availability**: Official primary documentation at [Google Models Documentation](https://ai.google.dev/gemini-api/docs/models) lists both `gemini-3.8-flash` (flagship Flash model for agents and software engineering) and `gemini-3.5-flash-lite` (high-throughput, cost-efficient model) as current stable models. Teammate code in `ai-workflow/.env.example` configured `GEMINI_MODEL=gemini-2.5-flash`. No live provider calls were run or assumed.
 6. **Native Sharing & Frontend Boundaries**: Harry owns native Instagram sharing and frontend UI. His sharing branch remains unpushed and unavailable. The runtime environment (native iOS Swift/Obj-C, React Native/Expo, or web Share Target) is undecided. Extraction logic must remain headless, pure, and decoupled from client runtime choices.
 
 ---
@@ -85,7 +85,7 @@ Teammate extraction schema defines:
 ```typescript
 confidence: z.number().min(0).max(1)
 ```
-This is a single global scalar representing model self-assessment over the whole extraction.
+This is a single global scalar representing an overall score over the whole extraction.
 
 In contrast, canonical DishDeals requires:
 ```typescript
@@ -102,8 +102,8 @@ confidence: z.object({
    - It over-flags the reliable restaurant name, creating unnecessary human review friction.
    - It under-flags the doubtful expiry date, allowing unverified data into the database.
 2. **Prohibition of Default 0.5**: Defaulting missing or unmeasured field scores to `0.5` is arbitrary. In UI logic (such as `ConfidenceField`), 0.5 triggers ambiguity warnings on fields that were completely clear, destroying user trust.
-3. **Model Self-Assessment vs Probability**: These scores are subjective model self-assessments, not calibrated statistical probabilities or ground-truth evidence certainty.
-4. **Preserving Global Rejection**: Teammate's overall confidence threshold and rejection logic are valuable for screening out spam, landscape photos, or non-deal food pictures before generating draft cards. This rejection gate should be preserved, while eliciting the four per-field self-assessment scores directly in the prompt for valid deals.
+3. **Model Self-Assessment vs Probability**: Real model scores are subjective self-assessments, not calibrated statistical probabilities or ground-truth evidence certainty.
+4. **No Arbitrary Global Rejection Thresholds**: Teammate code discarded extractions falling below an arbitrary global confidence score. Under project direction, tentative suggestions are explicitly permitted for partially clear offers. An extraction must only return `isDeal: false` when there is concrete evidence of no offer (e.g. food reviews without discounts, receipt photos, or non-deal media). When an offer is detected but confidence is low or information is partial, it must route to the editable deal review form for human confirmation rather than being discarded by an arbitrary threshold.
 
 ---
 
@@ -141,9 +141,9 @@ The canonical DishDeals specification forbids server-side Instagram scraping bec
 ### Model Verification from Primary Sources
 1. **Primary Documentation Review**:
    Visiting the official Google AI documentation at [Google Models Documentation](https://ai.google.dev/gemini-api/docs/models) confirms:
-   - **`gemini-3.8-flash`**: Officially listed as stable: *"Our most intelligent Flash model, engineered for long-horizon software engineering, autonomous agents, and complex enterprise workflows... Stable"*.
-   - **`gemini-3.5-flash-lite`**: Officially listed as stable: *"Our fastest, most cost-effective 3.5 model for high-throughput execution... Stable"*.
-   Both models cited in the project plan are official stable models.
+   - **`gemini-3.8-flash`**: Officially listed as stable (flagship model for agentic software workflows and multimodal understanding).
+   - **`gemini-3.5-flash-lite`**: Officially listed as stable (optimized for cost efficiency and high throughput).
+   Both models cited in the project plan are confirmed stable in the primary documentation.
 2. **Teammate Configuration**:
    Teammate branch `feature/deal-extraction` (`91b957a`) configured `GEMINI_MODEL=gemini-2.5-flash` in `ai-workflow/.env.example`.
 3. **SDK vs Direct REST**:
