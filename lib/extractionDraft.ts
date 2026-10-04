@@ -8,7 +8,13 @@
  * - Type-only import of ExtractOutcome: server extraction logic and API keys
  *   never enter client/native runtimes.
  * - Envelope enforcement: No bare result-only path is exposed; ExtractOutcome
- *   must be fully formed with manualReview and consistent requiresBlockingReview.
+ *   must be fully formed with exact envelope keys, non-empty model, consistent
+ *   isDeal/deals relationship, and valid manualReview with matching
+ *   requiresBlockingReview.
+ * - Strict schema derivation: Derives strict Zod schemas from canonical Deal
+ *   and DealResult (including root, deal, and confidence objects) to strictly
+ *   reject unsupported fields (e.g. startDate, raw cadEvidence, unexpected
+ *   confidence keys) rather than silently dropping them.
  * - Weekday validation: DealResult validDays is validated and narrowed using
  *   the canonical isCanonicalWeekday helper.
  * - Confidence preservation: Only the four canonical confidence keys
@@ -17,10 +23,14 @@
  * - Sidecar propagation: All sidecar review notes (FUTURE_START,
  *   UNSUPPORTED_CONSTRAINT, CURRENCY_UNVERIFIED) along with originalAmount and
  *   dealIndex are carried into respective draft review issues.
+ * - Strict note contract: Enforces blocking: true for FUTURE_START and
+ *   UNSUPPORTED_CONSTRAINT, blocking: false for CURRENCY_UNVERIFIED, and
+ *   finite non-negative number for originalAmount.
  * - Reuses dealDraftReducer and createDraftsFromOffers without duplicating
  *   business logic or schemas.
  */
 
+import { z } from "zod";
 import type { ExtractOutcome, ManualReviewNote as CoreManualReviewNote } from "./extractCore";
 import {
   createDraft,
@@ -32,7 +42,7 @@ import {
   type DealOffer,
   type Weekday,
 } from "./dealDraft";
-import { DealResult } from "./dealSchema";
+import { Deal, DealResult } from "./dealSchema";
 
 export class ExtractionDraftAdapterError extends Error {
   constructor(message: string) {
@@ -41,29 +51,56 @@ export class ExtractionDraftAdapterError extends Error {
   }
 }
 
+const EXACT_ENVELOPE_KEYS = [
+  "result",
+  "manualReview",
+  "requiresBlockingReview",
+  "model",
+] as const;
+
 const ALLOWED_MANUAL_REVIEW_CODES = [
   "FUTURE_START",
   "UNSUPPORTED_CONSTRAINT",
   "CURRENCY_UNVERIFIED",
 ] as const;
 
-const ALLOWED_CONFIDENCE_KEYS = [
-  "restaurant",
-  "priceCad",
-  "hours",
-  "expiresOn",
+const ALLOWED_NOTE_KEYS = [
+  "dealIndex",
+  "code",
+  "blocking",
+  "detail",
+  "originalAmount",
 ] as const;
+
+/**
+ * Strict validators derived directly from canonical Deal and DealResult.
+ * Unlike the permissive canonical schemas which strip unknown properties,
+ * these strict schemas fail validation if unexpected fields (e.g., startDate,
+ * unmodeled confidence dimensions, or image claims) are supplied.
+ */
+export const StrictConfidence = Deal.shape.confidence.strict();
+export const StrictDeal = Deal.extend({
+  confidence: StrictConfidence,
+}).strict();
+export const StrictDealResult = DealResult.extend({
+  deals: z.array(StrictDeal),
+}).strict();
 
 /**
  * Validates that an object conforms strictly to the ExtractOutcome envelope.
  * Throws ExtractionDraftAdapterError if:
- * - The object is null, undefined, or malformed
- * - DealResult schema parsing fails
+ * - The object is null, undefined, or not a plain object
+ * - The envelope has missing, extra, or unexpected keys
+ * - model is missing, not a string, or empty/whitespace-only
+ * - StrictDealResult schema validation fails (including any unexpected deal/confidence keys)
+ * - isDeal does not match (deals.length > 0)
  * - manualReview is not an array or contains invalid notes
+ * - Note code is invalid, or has unexpected keys
+ * - Note blocking flag violates contract (true for FUTURE_START/UNSUPPORTED_CONSTRAINT, false for CURRENCY_UNVERIFIED)
+ * - note.originalAmount is not a finite non-negative number
  * - requiresBlockingReview is not boolean or contradicts sidecar notes
  * - Any note dealIndex is out of bounds (negative or >= deals.length)
  * - Any weekday in validDays is not a canonical weekday
- * - Any unknown confidence keys are present
  */
 export function validateExtractOutcome(outcome: unknown): asserts outcome is ExtractOutcome {
   if (typeof outcome !== "object" || outcome === null) {
@@ -71,18 +108,50 @@ export function validateExtractOutcome(outcome: unknown): asserts outcome is Ext
   }
 
   const raw = outcome as Record<string, unknown>;
+  const envelopeKeys = Object.keys(raw);
+
+  // Exact envelope keys check
+  for (const k of envelopeKeys) {
+    if (!EXACT_ENVELOPE_KEYS.includes(k as (typeof EXACT_ENVELOPE_KEYS)[number])) {
+      throw new ExtractionDraftAdapterError(
+        `ExtractOutcome envelope has unexpected key: "${k}".`
+      );
+    }
+  }
+  for (const k of EXACT_ENVELOPE_KEYS) {
+    if (!(k in raw)) {
+      throw new ExtractionDraftAdapterError(
+        `ExtractOutcome envelope is missing required key: "${k}".`
+      );
+    }
+  }
+
+  // Model validation
+  if (typeof raw.model !== "string" || raw.model.trim().length === 0) {
+    throw new ExtractionDraftAdapterError(
+      "ExtractOutcome.model must be a non-empty string."
+    );
+  }
 
   if (!raw.result || typeof raw.result !== "object") {
     throw new ExtractionDraftAdapterError("ExtractOutcome must contain a valid result object.");
   }
 
-  const parsedResult = DealResult.safeParse(raw.result);
+  // Strict DealResult validation rejecting any unexpected root, deal, or confidence keys
+  const parsedResult = StrictDealResult.safeParse(raw.result);
   if (!parsedResult.success) {
     throw new ExtractionDraftAdapterError(
       `Invalid DealResult in ExtractOutcome: ${parsedResult.error.message}`
     );
   }
   const result = parsedResult.data;
+
+  // Consistency between isDeal and deals.length
+  if (result.isDeal !== (result.deals.length > 0)) {
+    throw new ExtractionDraftAdapterError(
+      `ExtractOutcome.result has inconsistent isDeal (${result.isDeal}) and deals length (${result.deals.length}).`
+    );
+  }
 
   if (!Array.isArray(raw.manualReview)) {
     throw new ExtractionDraftAdapterError("ExtractOutcome.manualReview must be an array.");
@@ -110,6 +179,15 @@ export function validateExtractOutcome(outcome: unknown): asserts outcome is Ext
       throw new ExtractionDraftAdapterError(`ManualReviewNote at index ${i} must be an object.`);
     }
 
+    const noteKeys = Object.keys(note);
+    for (const k of noteKeys) {
+      if (!ALLOWED_NOTE_KEYS.includes(k as (typeof ALLOWED_NOTE_KEYS)[number])) {
+        throw new ExtractionDraftAdapterError(
+          `ManualReviewNote at index ${i} has unexpected key: "${k}".`
+        );
+      }
+    }
+
     if (!ALLOWED_MANUAL_REVIEW_CODES.includes(note.code as (typeof ALLOWED_MANUAL_REVIEW_CODES)[number])) {
       throw new ExtractionDraftAdapterError(
         `ManualReviewNote at index ${i} has invalid code: "${note.code}".`
@@ -120,6 +198,22 @@ export function validateExtractOutcome(outcome: unknown): asserts outcome is Ext
       throw new ExtractionDraftAdapterError(
         `ManualReviewNote at index ${i} must have boolean blocking field.`
       );
+    }
+
+    // Enforce strict blocking rules per code
+    if (note.code === "CURRENCY_UNVERIFIED") {
+      if (note.blocking !== false) {
+        throw new ExtractionDraftAdapterError(
+          `ManualReviewNote at index ${i} ("CURRENCY_UNVERIFIED") must have blocking: false, got: ${note.blocking}.`
+        );
+      }
+    } else {
+      // FUTURE_START or UNSUPPORTED_CONSTRAINT
+      if (note.blocking !== true) {
+        throw new ExtractionDraftAdapterError(
+          `ManualReviewNote at index ${i} ("${note.code}") must have blocking: true, got: ${note.blocking}.`
+        );
+      }
     }
 
     if (typeof note.detail !== "string" || note.detail.trim().length === 0) {
@@ -139,18 +233,22 @@ export function validateExtractOutcome(outcome: unknown): asserts outcome is Ext
       );
     }
 
-    if (
-      note.originalAmount !== undefined &&
-      typeof note.originalAmount !== "number" &&
-      typeof note.originalAmount !== "string"
-    ) {
-      throw new ExtractionDraftAdapterError(
-        `ManualReviewNote at index ${i} has invalid originalAmount.`
-      );
+    // Validate originalAmount per CoreManualReviewNote contract: finite non-negative number only
+    if (note.originalAmount !== undefined) {
+      if (
+        typeof note.originalAmount !== "number" ||
+        !Number.isFinite(note.originalAmount) ||
+        Number.isNaN(note.originalAmount) ||
+        note.originalAmount < 0
+      ) {
+        throw new ExtractionDraftAdapterError(
+          `ManualReviewNote at index ${i} has invalid originalAmount: ${note.originalAmount}. Must be a finite non-negative number.`
+        );
+      }
     }
   }
 
-  // Validate canonical weekdays and confidence keys for each deal
+  // Validate canonical weekdays for each deal
   for (let d = 0; d < result.deals.length; d++) {
     const deal = result.deals[d];
 
@@ -159,16 +257,6 @@ export function validateExtractOutcome(outcome: unknown): asserts outcome is Ext
         throw new ExtractionDraftAdapterError(
           `Deal at index ${d} has non-canonical weekday: "${day}".`
         );
-      }
-    }
-
-    if (deal.confidence && typeof deal.confidence === "object") {
-      for (const k of Object.keys(deal.confidence)) {
-        if (!ALLOWED_CONFIDENCE_KEYS.includes(k as (typeof ALLOWED_CONFIDENCE_KEYS)[number])) {
-          throw new ExtractionDraftAdapterError(
-            `Deal at index ${d} has unexpected confidence key: "${k}".`
-          );
-        }
       }
     }
   }

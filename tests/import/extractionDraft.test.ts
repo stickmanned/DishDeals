@@ -233,6 +233,217 @@ describe("extractionDraft adapter (T-07D)", () => {
       );
     });
 
+    it("rejects envelope with missing, empty, or non-string model (missingmodel)", () => {
+      const base = makeValidSyntheticOutcome();
+
+      // Missing model key
+      const missingModel = {
+        result: base.result,
+        manualReview: base.manualReview,
+        requiresBlockingReview: base.requiresBlockingReview,
+      };
+      expect(() => validateExtractOutcome(missingModel)).toThrow(/missing required key: "model"/);
+
+      // Empty or whitespace model
+      expect(() => validateExtractOutcome({ ...base, model: "" })).toThrow(/non-empty string/);
+      expect(() => validateExtractOutcome({ ...base, model: "   " })).toThrow(/non-empty string/);
+
+      // Non-string model
+      expect(() =>
+        validateExtractOutcome({ ...base, model: 123 as unknown as string })
+      ).toThrow(/non-empty string/);
+    });
+
+    it("rejects envelope with unexpected envelope keys", () => {
+      const base = makeValidSyntheticOutcome();
+      expect(() => validateExtractOutcome({ ...base, unexpectedProp: true })).toThrow(
+        /unexpected key: "unexpectedProp"/
+      );
+    });
+
+    it("rejects deal with unexpected keys like startDate (unexpectedconfidence/startDate key)", () => {
+      const base = makeValidSyntheticOutcome();
+      const dealWithStartDate = {
+        ...base.result.deals[0],
+        startDate: "2026-11-01",
+      };
+      const outcome = {
+        ...base,
+        result: {
+          isDeal: true,
+          deals: [dealWithStartDate],
+        },
+      };
+      expect(() => validateExtractOutcome(outcome)).toThrow(ExtractionDraftAdapterError);
+    });
+
+    it("rejects deal with unexpected confidence dimension keys", () => {
+      const base = makeValidSyntheticOutcome();
+      const dealWithExtraConfidence = {
+        ...base.result.deals[0],
+        confidence: {
+          ...base.result.deals[0].confidence,
+          extraMetric: 0.8,
+        },
+      };
+      const outcome = {
+        ...base,
+        result: {
+          isDeal: true,
+          deals: [dealWithExtraConfidence],
+        },
+      };
+      expect(() => validateExtractOutcome(outcome)).toThrow(ExtractionDraftAdapterError);
+    });
+
+    it("rejects inconsistent isDeal and deals pairing (falseisDealwithdeals)", () => {
+      const base = makeValidSyntheticOutcome();
+
+      // isDeal: false with deals present
+      const falseWithDeals = {
+        ...base,
+        result: {
+          isDeal: false,
+          deals: base.result.deals,
+        },
+      };
+      expect(() => validateExtractOutcome(falseWithDeals)).toThrow(/inconsistent isDeal/);
+
+      // isDeal: true with empty deals
+      const trueWithEmptyDeals = {
+        ...base,
+        result: {
+          isDeal: true,
+          deals: [],
+        },
+      };
+      expect(() => validateExtractOutcome(trueWithEmptyDeals)).toThrow(/inconsistent isDeal/);
+    });
+
+    it("rejects manualReview note with invalid originalAmount (invalidamount)", () => {
+      const base = makeValidSyntheticOutcome();
+
+      // string originalAmount
+      const stringAmount = {
+        ...base,
+        manualReview: [
+          {
+            dealIndex: 0,
+            code: "CURRENCY_UNVERIFIED" as const,
+            blocking: false,
+            detail: "Unverified price",
+            originalAmount: "10.00" as unknown as number,
+          },
+        ],
+        requiresBlockingReview: false,
+      };
+      expect(() => validateExtractOutcome(stringAmount)).toThrow(/invalid originalAmount/);
+
+      // NaN originalAmount
+      const nanAmount = {
+        ...base,
+        manualReview: [
+          {
+            dealIndex: 0,
+            code: "CURRENCY_UNVERIFIED" as const,
+            blocking: false,
+            detail: "Unverified price",
+            originalAmount: Number.NaN,
+          },
+        ],
+        requiresBlockingReview: false,
+      };
+      expect(() => validateExtractOutcome(nanAmount)).toThrow(/invalid originalAmount/);
+
+      // Infinity originalAmount
+      const infAmount = {
+        ...base,
+        manualReview: [
+          {
+            dealIndex: 0,
+            code: "CURRENCY_UNVERIFIED" as const,
+            blocking: false,
+            detail: "Unverified price",
+            originalAmount: Number.POSITIVE_INFINITY,
+          },
+        ],
+        requiresBlockingReview: false,
+      };
+      expect(() => validateExtractOutcome(infAmount)).toThrow(/invalid originalAmount/);
+
+      // Negative originalAmount
+      const negAmount = {
+        ...base,
+        manualReview: [
+          {
+            dealIndex: 0,
+            code: "CURRENCY_UNVERIFIED" as const,
+            blocking: false,
+            detail: "Unverified price",
+            originalAmount: -10,
+          },
+        ],
+        requiresBlockingReview: false,
+      };
+      expect(() => validateExtractOutcome(negAmount)).toThrow(/invalid originalAmount/);
+    });
+
+    it("rejects manualReview note with wrong blocking flag for its code (wrongblockingflag)", () => {
+      const base = makeValidSyntheticOutcome();
+
+      // FUTURE_START must have blocking: true
+      const futureNonBlocking = {
+        ...base,
+        manualReview: [
+          {
+            dealIndex: 0,
+            code: "FUTURE_START" as const,
+            blocking: false,
+            detail: "Starts later",
+          },
+        ],
+        requiresBlockingReview: false,
+      };
+      expect(() => validateExtractOutcome(futureNonBlocking)).toThrow(
+        /must have blocking: true/
+      );
+
+      // UNSUPPORTED_CONSTRAINT must have blocking: true
+      const constraintNonBlocking = {
+        ...base,
+        manualReview: [
+          {
+            dealIndex: 0,
+            code: "UNSUPPORTED_CONSTRAINT" as const,
+            blocking: false,
+            detail: "Must show ID",
+          },
+        ],
+        requiresBlockingReview: false,
+      };
+      expect(() => validateExtractOutcome(constraintNonBlocking)).toThrow(
+        /must have blocking: true/
+      );
+
+      // CURRENCY_UNVERIFIED must have blocking: false
+      const currencyBlocking = {
+        ...base,
+        manualReview: [
+          {
+            dealIndex: 0,
+            code: "CURRENCY_UNVERIFIED" as const,
+            blocking: true,
+            detail: "Unverified currency",
+            originalAmount: 10,
+          },
+        ],
+        requiresBlockingReview: true,
+      };
+      expect(() => validateExtractOutcome(currencyBlocking)).toThrow(
+        /must have blocking: false/
+      );
+    });
+
     it("does not expose a bare DealResult convenience path", () => {
       // Ensure all draft conversion requires full ExtractOutcome envelope
       const rawDealResult = makeValidSyntheticOutcome().result;
