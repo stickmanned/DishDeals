@@ -729,9 +729,10 @@
       "packet": "docs/tasks/N-MAP-B.md",
       "pinnedBaseSha": "44133042340c5d4a140453a63aa445edc163e637",
       "backendTarget": "local source/tests only; no cloud",
-      "implementationState": "dispatched to Cinder; new cpy source reconciliation required",
+      "implementationState": "worker quota stopped with preserved uncommitted work; Northstar review/recovery",
       "nativeChecks": "pending runtime/WKWebView",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "externalBlocker": "Gemini CLI confirmed quota error, no model switch/recruit; preserve work"
     },
     {
       "id": "T-09C",
@@ -765,7 +766,7 @@
       "implementationState": "db5de05 reviewed locally integrated84415d9",
       "nativeChecks": "pending native form/map",
       "phoneAcceptance": "pending",
-      "localChecks": "worker900Vitest/23workflow/typecheck/lint/build PASS; combined root pending"
+      "localChecks": "Root npm run check PASS983Vitest/23workflow/typecheck/lint/build at84415d9 (synthetic actual component)"
     },
     {
       "id": "N-FORM-B",
@@ -795,9 +796,10 @@
       "packet": "docs/tasks/N-FORM-B.md",
       "pinnedBaseSha": "33b894d40f7e1075c6579a297657c227dc3e4f65",
       "backendTarget": "local synthetic checks only; no cloud",
-      "implementationState": "dispatched to Mica independent canonical form/manual private save",
+      "implementationState": "worker quota stopped with preserved uncommitted work; Northstar review/recovery",
       "nativeChecks": "pending rendered map/form",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "externalBlocker": "Gemini CLI confirmed quota error, no model switch/recruit; preserve work"
     },
     {
       "id": "N-SOURCE-C",
@@ -821,9 +823,10 @@
       "packet": "docs/tasks/N-SOURCE-C.md",
       "pinnedBaseSha": "33b894d40f7e1075c6579a297657c227dc3e4f65",
       "backendTarget": "synthetic parser/model transport only; no provider/cloud",
-      "implementationState": "dispatched to Prism source-evidence constraints",
+      "implementationState": "worker quota stopped with preserved uncommitted work; Northstar review/recovery",
       "nativeChecks": "pending actual media/extraction",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "externalBlocker": "Gemini CLI confirmed quota error, no model switch/recruit; preserve work"
     },
     {
       "id": "T-07B",
@@ -862,6 +865,32 @@
       "implementationState": "dispatched Loom owned image/extraction",
       "nativeChecks": "pending actual image decoding/file picker",
       "phoneAcceptance": "pending real screenshot/flyer"
+    },
+    {
+      "id": "T-16A",
+      "owner": "Northstar",
+      "branch": "t-00-agent-workflow",
+      "worktree": "workflow",
+      "status": "prepared",
+      "dependencies": [
+        "T-05A",
+        "T-07D"
+      ],
+      "allowedPaths": [
+        "lib/demoCache.ts",
+        "tests/import/demoCache.test.ts",
+        "fixtures/demo/README.md",
+        "docs/handoffs/t-16a.md",
+        "docs/tasks/T-16A.md",
+        "docs/workflow/"
+      ],
+      "packet": "docs/tasks/T-16A.md",
+      "pinnedBaseSha": "b9adbf9693372d73d80d5fe69ae818f32d7ecfa4",
+      "implementationState": "cache helper locally implemented; actual fixtures/UI pending",
+      "backendTarget": "none, no provider",
+      "nativeChecks": "pending UI binding",
+      "phoneAcceptance": "pending genuine fixtures/device",
+      "localChecks": "11 targeted synthetic tests/typecheck/targeted lint PASS"
     }
   ],
   "completedDependencies": {
