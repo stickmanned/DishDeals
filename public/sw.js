@@ -302,7 +302,10 @@ function cancelReceive(state) {
       /* already committing or finished; the commit path removes any ghost record */
     }
   }
-  if (state.db) {
+  /* With a transaction in flight the connection must stay open: its complete/abort/error handler closes it, and
+   * the commit handler may still need it to delete a ghost record (a closing connection refuses new transactions).
+   * Only a connection with no transaction yet is closed here. */
+  if (state.db && !state.tx) {
     try {
       state.db.close();
     } catch {

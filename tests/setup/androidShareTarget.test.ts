@@ -40,6 +40,7 @@ class FakeIdb {
   opens: { name: string; version: number }[] = [];
   closes = 0;
   transactions = 0;
+  refusedOnClosed = 0; // transactions attempted on a closed connection (real IndexedDB throws InvalidStateError)
   aborts = 0;
   failWrite = false;
   failOpen = false;
@@ -71,6 +72,7 @@ class FakeIdb {
   };
 
   private makeDb() {
+    let closed = false;
     return {
       objectStoreNames: { contains: (n: string) => n === SHARE_STORE && this.hasStore },
       createObjectStore: (n: string, o: { keyPath: string }) => {
@@ -82,8 +84,13 @@ class FakeIdb {
       },
       close: () => {
         this.closes += 1;
+        closed = true;
       },
       transaction: (n: string) => {
+        if (closed) {
+          this.refusedOnClosed += 1;
+          throw new Error("InvalidStateError: the database connection is closing");
+        }
         if (n !== SHARE_STORE || !this.hasStore) throw new Error("NotFoundError");
         this.transactions += 1;
         return this.makeTx();
@@ -545,6 +552,7 @@ describe("the deadline cancels receipt for good", () => {
   const noGhost = (idb: FakeIdb) => {
     expect(idb.rows.size).toBe(0);
     expect(idb.closes).toBeGreaterThanOrEqual(idb.opens.length); // every connection that was opened got closed
+    expect(idb.refusedOnClosed).toBe(0); // and nothing ever tried to use a closed connection
   };
 
   it("a signature read that finishes after the deadline writes nothing and opens no database", async () => {
@@ -621,6 +629,7 @@ describe("the deadline cancels receipt for good", () => {
     gate.resolve();
     await sleep();
     noGhost(idb);
+    expect(idb.closes).toBe(1); // closed once, by the aborted transaction's handler
   });
 
   it("a write queued before the deadline is aborted and rolled back", async () => {
@@ -665,9 +674,12 @@ describe("the deadline cancels receipt for good", () => {
     expect(idb.rows.size).toBe(1);
     worker.fireTimer();
     expect(errorCode(await pending)).toBe("timeout");
+    expect(idb.closes).toBe(0); // the connection stays open while the transaction may still commit
     gate.resolve(); // the commit lands after the timeout...
     await sleep(40);
-    noGhost(idb); // ...and the worker removed what it had just written
+    noGhost(idb); // ...and the worker removed what it had just written, on the still-open connection
+    expect(idb.closes).toBe(1); // then closed it exactly once
+    expect(idb.transactions).toBe(2); // the write transaction plus the one cleanup delete
   });
 
   it("a write that completed before the deadline fires is not discarded by it", async () => {
