@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  meCore,
   upsertProfileCore,
   validateDisplayName,
   type ProfileDb,
@@ -62,5 +63,31 @@ describe("upsertProfileCore wallet handling", () => {
     const { db, rows } = fakeDb();
     await expect(upsertProfileCore(db, uid, { displayName: "x" })).rejects.toThrow();
     expect(rows).toHaveLength(0);
+  });
+});
+
+describe("meCore canonical shape", () => {
+  it("is null when signed out", async () => {
+    const { db } = fakeDb();
+    expect(await meCore(db, null)).toBeNull();
+  });
+  it("is null when signed in without a profile", async () => {
+    const { db } = fakeDb();
+    expect(await meCore(db, uid)).toBeNull();
+  });
+  it("is flat {userId, displayName} with no wallet key when unset", async () => {
+    const { db } = fakeDb();
+    await upsertProfileCore(db, uid, { displayName: "Sam" });
+    expect(await meCore(db, uid)).toStrictEqual({ userId: uid, displayName: "Sam" });
+  });
+  it("includes walletAddress when set, and only the profile owner's data", async () => {
+    const { db } = fakeDb();
+    await upsertProfileCore(db, uid, { displayName: "Sam", walletAddress: "W1" });
+    await upsertProfileCore(db, "other" as Id<"users">, { displayName: "Alex" });
+    expect(await meCore(db, uid)).toStrictEqual({
+      userId: uid,
+      displayName: "Sam",
+      walletAddress: "W1",
+    });
   });
 });

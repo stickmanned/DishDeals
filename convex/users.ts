@@ -1,29 +1,21 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { upsertProfileCore } from "../lib/profile";
+import { mutation, query, type QueryCtx } from "./_generated/server";
+import { meCore, upsertProfileCore, type ProfileDb } from "../lib/profile";
+
+function profileDb(ctx: QueryCtx): Pick<ProfileDb, "getProfileByUser"> {
+  return {
+    getProfileByUser: (id) =>
+      ctx.db
+        .query("profiles")
+        .withIndex("by_user", (q) => q.eq("userId", id))
+        .unique(),
+  };
+}
 
 export const me = query({
   args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (userId === null) return null;
-    const user = await ctx.db.get(userId);
-    const profile = await ctx.db
-      .query("profiles")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .unique();
-    return {
-      userId,
-      email: user?.email,
-      profile: profile
-        ? {
-            displayName: profile.displayName,
-            walletAddress: profile.walletAddress,
-          }
-        : null,
-    };
-  },
+  handler: async (ctx) => meCore(profileDb(ctx), await getAuthUserId(ctx)),
 });
 
 export const upsertProfile = mutation({

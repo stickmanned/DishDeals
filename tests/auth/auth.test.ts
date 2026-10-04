@@ -4,20 +4,22 @@ import type { Id } from "../../convex/_generated/dataModel";
 
 function recordingDb() {
   const calls: string[] = [];
+  const inserted: Array<{ userId: Id<"users">; displayName: string }> = [];
   const db: ProfileDb = {
     async getProfileByUser() {
       calls.push("get");
       return null;
     },
-    async insertProfile() {
+    async insertProfile(row) {
       calls.push("insert");
+      inserted.push(row);
       return "p1" as Id<"profiles">;
     },
     async patchProfile() {
       calls.push("patch");
     },
   };
-  return { db, calls };
+  return { db, calls, inserted };
 }
 
 describe("signed-out rejection", () => {
@@ -35,9 +37,10 @@ describe("signed-out rejection", () => {
 
 describe("authenticated identity", () => {
   it("writes the profile under the derived user id", async () => {
-    const { db, calls } = recordingDb();
+    const { db, calls, inserted } = recordingDb();
     const id = await upsertProfileCore(db, "u9" as Id<"users">, { displayName: "Sam" });
     expect(id).toBe("p1");
+    expect(inserted).toEqual([{ userId: "u9", displayName: "Sam" }]);
     expect(calls).toEqual(["get", "insert"]);
   });
   it("requireUserId passes the id through", () => {

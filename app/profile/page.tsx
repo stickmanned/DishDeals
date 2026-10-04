@@ -32,17 +32,16 @@ function ProfileView() {
       </main>
     );
   }
-  if (me === undefined || me === null) {
+  if (me === undefined) {
     return <main><p role="status">Loading profile…</p></main>;
   }
   return (
     <main>
       <h1>Profile</h1>
-      <p>{me.email}</p>
       <ProfileForm
-        key={me.profile?.displayName ?? "new"}
-        displayName={me.profile?.displayName ?? ""}
-        walletAddress={me.profile?.walletAddress ?? ""}
+        key={me?.displayName ?? "new"}
+        displayName={me?.displayName ?? ""}
+        walletAddress={me?.walletAddress ?? ""}
       />
     </main>
   );

@@ -60,3 +60,26 @@ export async function upsertProfileCore(
     ...(wallet !== undefined ? { walletAddress: wallet } : {}),
   });
 }
+
+export type MeResult = {
+  userId: Id<"users">;
+  displayName: string;
+  walletAddress?: string;
+};
+
+// Canonical users.me shape: flat, or null when signed out or no profile yet.
+export async function meCore(
+  db: Pick<ProfileDb, "getProfileByUser">,
+  userId: Id<"users"> | null,
+): Promise<MeResult | null> {
+  if (userId === null) return null;
+  const profile = await db.getProfileByUser(userId);
+  if (!profile) return null;
+  return {
+    userId,
+    displayName: profile.displayName,
+    ...(profile.walletAddress !== undefined
+      ? { walletAddress: profile.walletAddress }
+      : {}),
+  };
+}
