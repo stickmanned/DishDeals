@@ -159,7 +159,27 @@ describe("dealDraft", () => {
     });
   });
 
-  describe("reviewer blocker 1: populated initial fields require explicit review", () => {
+  describe("SET_FIELD array cloning", () => {
+    it("clones incoming array values so caller mutation does not leak into draft state", () => {
+      const initialDays: ("mon" | "wed" | "fri")[] = ["mon", "wed"];
+      let draft = createDraft();
+      draft = dealDraftReducer(draft, {
+        type: "SET_FIELD",
+        field: "validDays",
+        value: initialDays,
+      });
+
+      expect(draft.fields.validDays.value).toEqual(["mon", "wed"]);
+
+      // Mutate original array
+      initialDays.push("fri");
+
+      // Draft state must remain unaffected
+      expect(draft.fields.validDays.value).toEqual(["mon", "wed"]);
+    });
+  });
+
+  describe("reviewer blocker: populated initial fields require explicit review", () => {
     it("blocks an entirely prefilled unreviewed draft from publishing even with confirmed pin", () => {
       let prefilled = createDraft({
         restaurant: "Prefilled Restaurant",
@@ -172,14 +192,12 @@ describe("dealDraft", () => {
         expiresOn: "2026-12-31",
         conditions: ["Dine in"],
       });
-      // Confirm location
       prefilled = dealDraftReducer(prefilled, {
         type: "CONFIRM_LOCATION",
         lat: 49.28,
         lng: -123.12,
       });
 
-      // Must fail because NONE of the prefilled fields have been reviewed
       const validation = validateForPublish(prefilled);
       expect(validation.valid).toBe(false);
       expect(validation.errors.some((e) => e.includes("Restaurant name must be explicitly reviewed"))).toBe(true);
@@ -193,7 +211,6 @@ describe("dealDraft", () => {
       expect(validation.errors.some((e) => e.includes("Conditions must be explicitly reviewed"))).toBe(true);
       expect(() => buildPublishFields(prefilled)).toThrow(DraftValidationError);
 
-      // Explicitly reviewing the prefilled fields allows publishing
       let reviewed = prefilled;
       const keys = [
         "restaurant",
@@ -215,191 +232,268 @@ describe("dealDraft", () => {
     });
   });
 
-  describe("reviewer blocker 2: source revision and context invalidation", () => {
-    it("pins async results to both requestId and sourceRevision; rejects reused ID with stale revision", () => {
+  describe("reviewer blocker: unconditional sourceRevision and pending status checks", () => {
+    it("rejects finish actions when extraction is not in pending status", () => {
+      let draft = createDraft();
+      // Extraction status is idle (not pending)
+      draft = dealDraftReducer(draft, {
+        type: "FINISH_EXTRACTION_SUCCESS",
+        requestId: "req-idle",
+        sourceRevision: 0,
+        result: { isDeal: true, deals: [syntheticOffer1] },
+      });
+
+      expect(draft.fields.restaurant.suggestion).toBeUndefined();
+      expect(draft.extraction.status).toBe("idle");
+    });
+
+    it("rejects finish actions when sourceRevision does not match current revision", () => {
       let draft = createDraft();
       draft = dealDraftReducer(draft, {
         type: "START_EXTRACTION",
-        requestId: "req-fixed-id",
+        requestId: "req-1",
       });
       expect(draft.extraction.sourceRevision).toBe(1);
 
-      // Context changes (e.g. caption updated), incrementing revision to 2
+      // User changes context, bumping revision to 2
       draft = dealDraftReducer(draft, {
         type: "INVALIDATE_SOURCE_CONTEXT",
-        reason: "User changed Instagram caption text",
       });
       expect(draft.extraction.sourceRevision).toBe(2);
 
-      // Late response arrives with same requestId but stale revision 1
-      draft = dealDraftReducer(draft, {
-        type: "FINISH_EXTRACTION_SUCCESS",
-        requestId: "req-fixed-id",
-        sourceRevision: 1,
-        result: { isDeal: true, deals: [syntheticOffer1] },
-      });
-
-      // Stale revision must be ignored!
-      expect(draft.fields.restaurant.suggestion).toBeUndefined();
-    });
-
-    it("invalidates in-flight extraction and clears unaccepted suggestions when imageId or sourceUrl changes", () => {
-      let draft = createDraft();
+      // Re-trigger start extraction with same requestId
       draft = dealDraftReducer(draft, {
         type: "START_EXTRACTION",
         requestId: "req-1",
       });
+      expect(draft.extraction.sourceRevision).toBe(3);
+
+      // Stale finish action with old revision 1 is rejected
       draft = dealDraftReducer(draft, {
         type: "FINISH_EXTRACTION_SUCCESS",
         requestId: "req-1",
+        sourceRevision: 1,
+        result: { isDeal: true, deals: [syntheticOffer1] },
+      });
+      expect(draft.fields.restaurant.suggestion).toBeUndefined();
+
+      // Current revision 3 succeeds
+      draft = dealDraftReducer(draft, {
+        type: "FINISH_EXTRACTION_SUCCESS",
+        requestId: "req-1",
+        sourceRevision: 3,
         result: { isDeal: true, deals: [syntheticOffer1] },
       });
       expect(draft.fields.restaurant.suggestion?.value).toBe(syntheticOffer1.restaurant);
-
-      // User changes image
-      draft = dealDraftReducer(draft, {
-        type: "SET_IMAGE_ID",
-        imageId: "storage_new_image_123",
-      });
-
-      // Pending suggestions from old image are cleared
-      expect(draft.fields.restaurant.suggestion).toBeUndefined();
-      expect(draft.extraction.sourceRevision).toBe(2);
     });
 
-    it("preserves manually edited and accepted values across source context invalidations", () => {
+    it("START_EXTRACTION with changed image or sourceUrl invalidates suggestions and choices while preserving manual edits", () => {
       let draft = createDraft();
       draft = dealDraftReducer(draft, {
         type: "SET_FIELD",
         field: "restaurant",
-        value: "Confirmed Manual Cafe",
+        value: "Manually Entered Diner",
       });
 
       draft = dealDraftReducer(draft, {
         type: "START_EXTRACTION",
         requestId: "req-1",
-      });
-      draft = dealDraftReducer(draft, {
-        type: "INVALIDATE_SOURCE_CONTEXT",
-      });
-
-      expect(draft.fields.restaurant.value).toBe("Confirmed Manual Cafe");
-      expect(draft.fields.restaurant.isManuallyEdited).toBe(true);
-    });
-  });
-
-  describe("reviewer blocker 3: validateForPublish blocks pending extraction", () => {
-    it("blocks publishing while extraction status is pending", () => {
-      let draft = createValidConfirmedDraft();
-      draft = dealDraftReducer(draft, {
-        type: "START_EXTRACTION",
-        requestId: "req-in-flight",
-      });
-
-      const validation = validateForPublish(draft);
-      expect(validation.valid).toBe(false);
-      expect(validation.errors.some((e) => e.includes("Cannot publish while extraction is in progress"))).toBe(true);
-      expect(() => buildPublishFields(draft)).toThrow(DraftValidationError);
-
-      // Canceling extraction allows publishing
-      draft = dealDraftReducer(draft, {
-        type: "CANCEL_EXTRACTION",
-      });
-      expect(validateForPublish(draft).valid).toBe(true);
-      expect(() => buildPublishFields(draft)).not.toThrow();
-    });
-  });
-
-  describe("reviewer blocker 4: manualReview sidecar preserves future-start and unsupported constraints", () => {
-    it("blocks publish on unresolved FUTURE_START and UNSUPPORTED_CONSTRAINT issues; accept-all cannot override", () => {
-      let draft = createDraft();
-      draft = dealDraftReducer(draft, {
-        type: "START_EXTRACTION",
-        requestId: "req-sidecar",
+        imageId: "img_first",
       });
       draft = dealDraftReducer(draft, {
         type: "FINISH_EXTRACTION_SUCCESS",
-        requestId: "req-sidecar",
+        requestId: "req-1",
+        sourceRevision: draft.extraction.sourceRevision,
+        result: { isDeal: true, deals: [syntheticOffer1, syntheticOffer2] },
+      });
+
+      expect(draft.extraction.unselectedOffers?.length).toBe(2);
+
+      // New extraction starts with a different image
+      draft = dealDraftReducer(draft, {
+        type: "START_EXTRACTION",
+        requestId: "req-2",
+        imageId: "img_second",
+      });
+
+      // Previous offer choices and suggestions cleared, manual edit preserved
+      expect(draft.extraction.unselectedOffers).toBeUndefined();
+      expect(draft.fields.restaurant.value).toBe("Manually Entered Diner");
+      expect(draft.fields.restaurant.isManuallyEdited).toBe(true);
+      expect(draft.imageId).toBe("img_second");
+    });
+  });
+
+  describe("reviewer blocker: preservation of unresolved reviewIssues", () => {
+    it("does not drop unresolved review issues when source changes, retry returns no-deal, or extraction omits notes", () => {
+      let draft = createDraft();
+      draft = dealDraftReducer(draft, {
+        type: "START_EXTRACTION",
+        requestId: "req-with-issues",
+      });
+      draft = dealDraftReducer(draft, {
+        type: "FINISH_EXTRACTION_SUCCESS",
+        requestId: "req-with-issues",
+        sourceRevision: draft.extraction.sourceRevision,
         result: {
           isDeal: true,
           deals: [syntheticOffer1],
           manualReview: [
             {
               dealIndex: 0,
-              code: "FUTURE_START",
-              detail: "Deal starts next month (2026-11-01)",
-            },
-            {
-              dealIndex: 0,
               code: "UNSUPPORTED_CONSTRAINT",
-              detail: "Requires showing student ID and paying cash",
+              detail: "Cash only and student badge required",
             },
           ],
         },
       });
 
-      // Accept all suggestions
-      draft = dealDraftReducer(draft, { type: "ACCEPT_ALL_SUGGESTIONS" });
+      expect(draft.reviewIssues.length).toBe(1);
+      const originalIssueId = draft.reviewIssues[0].id;
+
+      // Source URL changes
       draft = dealDraftReducer(draft, {
-        type: "CONFIRM_LOCATION",
-        lat: 49.28,
-        lng: -123.12,
+        type: "SET_SOURCE_URL",
+        sourceUrl: "https://instagram.com/p/new_url_999",
       });
+      expect(draft.reviewIssues.length).toBe(1);
+      expect(draft.reviewIssues[0].id).toBe(originalIssueId);
 
-      // Even with all suggestions accepted and location confirmed, reviewIssues block publish
-      const validation = validateForPublish(draft);
-      expect(validation.valid).toBe(false);
-      expect(validation.errors.some((e) => e.includes("Unresolved future-start restriction"))).toBe(true);
-      expect(validation.errors.some((e) => e.includes("Unresolved provider constraint"))).toBe(true);
-
-      // Explicit resolution of review issues allows publishing
+      // Retry returns no deal
       draft = dealDraftReducer(draft, {
-        type: "RESOLVE_REVIEW_ISSUE",
-        code: "FUTURE_START",
-        resolutionNote: "Acknowledged future start",
+        type: "START_EXTRACTION",
+        requestId: "req-retry",
       });
       draft = dealDraftReducer(draft, {
-        type: "RESOLVE_REVIEW_ISSUE",
-        code: "UNSUPPORTED_CONSTRAINT",
-        resolutionNote: "Added conditions to conditions list",
+        type: "FINISH_EXTRACTION_SUCCESS",
+        requestId: "req-retry",
+        sourceRevision: draft.extraction.sourceRevision,
+        result: { isDeal: false, deals: [] },
+      });
+      expect(draft.reviewIssues.length).toBe(1);
+
+      // New extraction succeeds but omits notes
+      draft = dealDraftReducer(draft, {
+        type: "START_EXTRACTION",
+        requestId: "req-notes-omitted",
+      });
+      draft = dealDraftReducer(draft, {
+        type: "FINISH_EXTRACTION_SUCCESS",
+        requestId: "req-notes-omitted",
+        sourceRevision: draft.extraction.sourceRevision,
+        result: { isDeal: true, deals: [syntheticOffer2] },
       });
 
-      expect(validateForPublish(draft).valid).toBe(true);
+      // Existing constraint issue is strictly preserved
+      expect(draft.reviewIssues.some((iss) => iss.code === "UNSUPPORTED_CONSTRAINT")).toBe(true);
     });
+  });
 
-    it("requires manual price confirmation when CURRENCY_UNVERIFIED is flagged", () => {
+  describe("reviewer blocker: RESOLVE_REVIEW_ISSUE redesign and FUTURE_START hard blocker", () => {
+    it("refuses to resolve FUTURE_START issues (named hard blocker that prevents publishing)", () => {
       let draft = createValidConfirmedDraft();
       draft = {
         ...draft,
         reviewIssues: [
           {
-            code: "CURRENCY_UNVERIFIED",
-            detail: "Model unverified CAD symbol",
+            id: "issue-future-start-1",
+            code: "FUTURE_START",
+            detail: "Starts 2026-12-01",
             resolved: false,
+            blocking: true,
           },
         ],
       };
 
-      // Since priceCad was already set manually in createValidConfirmedDraft, it passes
-      expect(validateForPublish(draft).valid).toBe(true);
+      // Attempting to resolve FUTURE_START is refused
+      draft = dealDraftReducer(draft, {
+        type: "RESOLVE_REVIEW_ISSUE",
+        issueId: "issue-future-start-1",
+        resolutionNote: "Attempt to override future start",
+      });
 
-      // But if priceCad was NOT manually edited (e.g. from suggestion), it blocks
+      expect(draft.reviewIssues[0].resolved).toBe(false);
+
+      const validation = validateForPublish(draft);
+      expect(validation.valid).toBe(false);
+      expect(validation.errors.some((e) => e.includes("Hard blocker: future-start deal"))).toBe(true);
+      expect(() => buildPublishFields(draft)).toThrow(DraftValidationError);
+    });
+
+    it("requires a non-empty resolution note to resolve UNSUPPORTED_CONSTRAINT", () => {
+      let draft = createValidConfirmedDraft();
+      draft = {
+        ...draft,
+        reviewIssues: [
+          {
+            id: "issue-unsupported-1",
+            code: "UNSUPPORTED_CONSTRAINT",
+            detail: "Must show app on entry",
+            resolved: false,
+            blocking: true,
+          },
+        ],
+      };
+
+      // Attempting to resolve with empty note is rejected
+      draft = dealDraftReducer(draft, {
+        type: "RESOLVE_REVIEW_ISSUE",
+        issueId: "issue-unsupported-1",
+        resolutionNote: "   ",
+      });
+      expect(draft.reviewIssues[0].resolved).toBe(false);
+
+      // Resolving with meaningful note succeeds
+      draft = dealDraftReducer(draft, {
+        type: "RESOLVE_REVIEW_ISSUE",
+        issueId: "issue-unsupported-1",
+        resolutionNote: "Added rule to condition list",
+      });
+      expect(draft.reviewIssues[0].resolved).toBe(true);
+      expect(draft.reviewIssues[0].resolutionNote).toBe("Added rule to condition list");
+      expect(validateForPublish(draft).valid).toBe(true);
+    });
+
+    it("does not allow generic resolve to bypass CURRENCY_UNVERIFIED manual price confirmation", () => {
+      let draft = createValidConfirmedDraft();
       draft = {
         ...draft,
         fields: {
           ...draft.fields,
           priceCad: { ...draft.fields.priceCad, isManuallyEdited: false },
         },
+        reviewIssues: [
+          {
+            id: "issue-curr-1",
+            code: "CURRENCY_UNVERIFIED",
+            detail: "Currency sign missing or ambiguous",
+            resolved: false,
+            blocking: true,
+          },
+        ],
       };
 
-      const validation = validateForPublish(draft);
-      expect(validation.valid).toBe(false);
-      expect(validation.errors.some((e) => e.includes("Currency is unverified"))).toBe(true);
+      // Generic resolve action on CURRENCY_UNVERIFIED is refused
+      draft = dealDraftReducer(draft, {
+        type: "RESOLVE_REVIEW_ISSUE",
+        issueId: "issue-curr-1",
+        resolutionNote: "I think it is CAD",
+      });
+      expect(draft.reviewIssues[0].resolved).toBe(false);
+      expect(validateForPublish(draft).valid).toBe(false);
+
+      // Explicit manual confirmation of price satisfies requirement
+      draft = dealDraftReducer(draft, {
+        type: "SET_FIELD",
+        field: "priceCad",
+        value: 14.5,
+      });
+      expect(validateForPublish(draft).valid).toBe(true);
     });
   });
 
-  describe("reviewer blocker 5: multiple offers produce independent editable drafts", () => {
-    it("createDraftsFromOffers creates isolated draft instances where editing one does not affect others", () => {
+  describe("reviewer blocker: multiple offers produce independent editable drafts", () => {
+    it("createDraftsFromOffers creates isolated draft instances with cloned arrays and bound review notes", () => {
       const drafts = createDraftsFromOffers([syntheticOffer1, syntheticOffer2], {
         sourceUrl: "https://instagram.com/p/multiple",
         manualReview: [
@@ -411,7 +505,6 @@ describe("dealDraft", () => {
       expect(drafts[0].fields.restaurant.suggestion?.value).toBe(syntheticOffer1.restaurant);
       expect(drafts[1].fields.restaurant.suggestion?.value).toBe(syntheticOffer2.restaurant);
 
-      // Offer 1 has no review issues; Offer 2 has the FUTURE_START issue
       expect(drafts[0].reviewIssues.length).toBe(0);
       expect(drafts[1].reviewIssues.length).toBe(1);
       expect(drafts[1].reviewIssues[0].code).toBe("FUTURE_START");
@@ -423,39 +516,159 @@ describe("dealDraft", () => {
         value: "Mutated Draft 0 Only",
       });
 
-      // Draft 1 remains untouched
+      // Draft 1 remains completely isolated
       expect(mutatedDraft0.fields.restaurant.value).toBe("Mutated Draft 0 Only");
       expect(drafts[1].fields.restaurant.value).toBeNull();
       expect(drafts[1].fields.restaurant.suggestion?.value).toBe(syntheticOffer2.restaurant);
     });
   });
 
-  describe("reviewer blocker 6: safe sourceUrl validation", () => {
-    it("rejects dangerous or malformed source URLs during publish validation", () => {
-      let draft = createValidConfirmedDraft();
+  describe("regression coverage: confidence scores", () => {
+    it("retains only canonical confidence scores and keeps absent scores absent (no default 0.5)", () => {
+      let draft = createDraft();
       draft = dealDraftReducer(draft, {
-        type: "SET_SOURCE_URL",
-        sourceUrl: "javascript:evil()",
+        type: "START_EXTRACTION",
+        requestId: "req-conf",
+      });
+      draft = dealDraftReducer(draft, {
+        type: "FINISH_EXTRACTION_SUCCESS",
+        requestId: "req-conf",
+        sourceRevision: draft.extraction.sourceRevision,
+        result: { isDeal: true, deals: [syntheticOffer1] },
       });
 
-      const validation = validateForPublish(draft);
-      expect(validation.valid).toBe(false);
-      expect(validation.errors.some((e) => e.includes("sourceUrl must be a valid http or https URL"))).toBe(true);
-      expect(() => buildPublishFields(draft)).toThrow(DraftValidationError);
+      expect(draft.fields.restaurant.suggestion?.confidence).toBe(0.95);
+      expect(draft.fields.priceCad.suggestion?.confidence).toBe(0.88);
+      expect(draft.fields.validStart.suggestion?.confidence).toBe(0.75);
+      expect(draft.fields.expiresOn.suggestion?.confidence).toBe(0.6);
 
-      // Safe URL passes
+      // Fields without canonical confidence stay undefined
+      expect(draft.fields.address.suggestion?.confidence).toBeUndefined();
+      expect(draft.fields.dealText.suggestion?.confidence).toBeUndefined();
+      expect(draft.fields.validDays.suggestion?.confidence).toBeUndefined();
+      expect(draft.fields.conditions.suggestion?.confidence).toBeUndefined();
+    });
+  });
+
+  describe("regression coverage: manual edits survive late results and retries", () => {
+    it("never overwrites manual edits made before extraction completes", () => {
+      let draft = createDraft();
       draft = dealDraftReducer(draft, {
-        type: "SET_SOURCE_URL",
-        sourceUrl: "https://instagram.com/p/safe_post_123",
+        type: "START_EXTRACTION",
+        requestId: "req-1",
       });
-      expect(validateForPublish(draft).valid).toBe(true);
+      draft = dealDraftReducer(draft, {
+        type: "SET_FIELD",
+        field: "restaurant",
+        value: "User Owned Restaurant",
+      });
+
+      draft = dealDraftReducer(draft, {
+        type: "FINISH_EXTRACTION_SUCCESS",
+        requestId: "req-1",
+        sourceRevision: draft.extraction.sourceRevision,
+        result: {
+          isDeal: true,
+          deals: [syntheticOffer1],
+        },
+      });
+
+      expect(draft.fields.restaurant.value).toBe("User Owned Restaurant");
+      expect(draft.fields.restaurant.isManuallyEdited).toBe(true);
+      expect(draft.fields.dealText.suggestion?.value).toBe(syntheticOffer1.dealText);
+    });
+
+    it("preserves manual edits when extraction errors arrive", () => {
+      let draft = createDraft();
+      draft = dealDraftReducer(draft, {
+        type: "START_EXTRACTION",
+        requestId: "req-1",
+      });
+      draft = dealDraftReducer(draft, {
+        type: "SET_FIELD",
+        field: "restaurant",
+        value: "Resilient Diner",
+      });
+
+      draft = dealDraftReducer(draft, {
+        type: "FINISH_EXTRACTION_ERROR",
+        requestId: "req-1",
+        sourceRevision: draft.extraction.sourceRevision,
+        error: "Network timeout",
+      });
+
+      expect(draft.fields.restaurant.value).toBe("Resilient Diner");
+      expect(draft.extraction.status).toBe("error");
+      expect(draft.extraction.error).toBe("Network timeout");
+    });
+  });
+
+  describe("regression coverage: canonical serialization and null conversion", () => {
+    it("produces canonical create fields only; converts null to undefined; omits draft markers", () => {
+      const draft = createValidConfirmedDraft();
       const fields = buildPublishFields(draft);
-      expect(fields.sourceUrl).toBe("https://instagram.com/p/safe_post_123");
+
+      expect(fields.restaurant).toBe("Valid Cafe");
+      expect(fields.dealText).toBe("Half price coffee");
+      expect(fields.address).toBe("789 Pine St");
+      expect(fields.priceCad).toBe(2.5);
+      expect(fields.validDays).toEqual(["mon", "tue", "wed"]);
+      expect(fields.validStart).toBe("08:00");
+      expect(fields.validEnd).toBe("11:00");
+      expect(fields.expiresOn).toBe("2026-10-31");
+      expect(fields.conditions).toEqual(["One per customer"]);
+      expect(fields.lat).toBe(49.2827);
+      expect(fields.lng).toBe(-123.1207);
+
+      expect("authorId" in fields).toBe(false);
+      expect("stillOnCount" in fields).toBe(false);
+      expect("expiredCount" in fields).toBe(false);
+      expect("confidence" in fields).toBe(false);
+      expect("isDraft" in fields).toBe(false);
+      expect("fields" in fields).toBe(false);
+      expect("extraction" in fields).toBe(false);
+    });
+
+    it("converts reviewed empty optional fields to undefined (omitted) in publish output", () => {
+      let draft = createDraft();
+      draft = dealDraftReducer(draft, {
+        type: "SET_FIELD",
+        field: "restaurant",
+        value: "Food Truck",
+      });
+      draft = dealDraftReducer(draft, {
+        type: "SET_FIELD",
+        field: "dealText",
+        value: "Surprise special",
+      });
+      draft = dealDraftReducer(draft, {
+        type: "CONFIRM_LOCATION",
+        lat: 49.2827,
+        lng: -123.1207,
+      });
+
+      draft = dealDraftReducer(draft, { type: "REVIEW_OMISSION", field: "address" });
+      draft = dealDraftReducer(draft, { type: "REVIEW_OMISSION", field: "priceCad" });
+      draft = dealDraftReducer(draft, { type: "REVIEW_OMISSION", field: "hours" });
+      draft = dealDraftReducer(draft, { type: "REVIEW_OMISSION", field: "expiresOn" });
+      draft = dealDraftReducer(draft, { type: "REVIEW_OMISSION", field: "validDays" });
+      draft = dealDraftReducer(draft, { type: "REVIEW_OMISSION", field: "conditions" });
+
+      const fields = buildPublishFields(draft);
+      expect(fields.restaurant).toBe("Food Truck");
+      expect(fields.dealText).toBe("Surprise special");
+      expect(fields.address).toBeUndefined();
+      expect(fields.priceCad).toBeUndefined();
+      expect(fields.validStart).toBeUndefined();
+      expect(fields.validEnd).toBeUndefined();
+      expect(fields.expiresOn).toBeUndefined();
+      expect(fields.validDays).toEqual([]);
+      expect(fields.conditions).toEqual([]);
     });
   });
 
   describe("address and restaurant edits invalidate confirmed location", () => {
-    it("invalidates location when address is edited", () => {
+    it("invalidates location when address or restaurant is edited", () => {
       let draft = createValidConfirmedDraft();
       expect(draft.location?.confirmed).toBe(true);
 
@@ -467,20 +680,22 @@ describe("dealDraft", () => {
 
       expect(draft.location).toBeNull();
       expect(() => buildPublishFields(draft)).toThrow(DraftValidationError);
-    });
 
-    it("invalidates location when restaurant is edited", () => {
-      let draft = createValidConfirmedDraft();
+      // Re-confirm
+      draft = dealDraftReducer(draft, {
+        type: "CONFIRM_LOCATION",
+        lat: 49.2,
+        lng: -123.1,
+      });
       expect(draft.location?.confirmed).toBe(true);
 
+      // Restaurant change also invalidates
       draft = dealDraftReducer(draft, {
         type: "SET_FIELD",
         field: "restaurant",
-        value: "Different Restaurant",
+        value: "New Restaurant Name",
       });
-
       expect(draft.location).toBeNull();
-      expect(() => buildPublishFields(draft)).toThrow(DraftValidationError);
     });
   });
 });

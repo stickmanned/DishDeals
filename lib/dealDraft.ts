@@ -63,13 +63,19 @@ export interface ManualReviewNote {
   dealIndex?: number;
   code: ManualReviewCode;
   detail: string;
+  originalAmount?: string | number;
+  blocking?: boolean;
 }
 
 export interface ReviewIssue {
+  id: string;
+  dealIndex?: number;
   code: ManualReviewCode;
   detail: string;
   resolved: boolean;
   resolutionNote?: string;
+  originalAmount?: string | number;
+  blocking: boolean;
 }
 
 export interface DealOffer {
@@ -83,6 +89,7 @@ export interface DealOffer {
   expiresOn: string | null;
   conditions: string[];
   confidence?: ConfidenceScores;
+  originalAmount?: string | number;
 }
 
 export interface ExtractionState {
@@ -289,7 +296,7 @@ export type DealDraftAction =
   | {
       type: "FINISH_EXTRACTION_SUCCESS";
       requestId: string;
-      sourceRevision?: number;
+      sourceRevision: number;
       result: {
         isDeal: boolean;
         deals: DealOffer[];
@@ -299,7 +306,7 @@ export type DealDraftAction =
   | {
       type: "FINISH_EXTRACTION_ERROR";
       requestId: string;
-      sourceRevision?: number;
+      sourceRevision: number;
       error: string;
     }
   | {
@@ -328,8 +335,8 @@ export type DealDraftAction =
     }
   | {
       type: "RESOLVE_REVIEW_ISSUE";
-      code: ManualReviewCode;
-      resolutionNote?: string;
+      issueId: string;
+      resolutionNote: string;
     }
   | {
       type: "INVALIDATE_SOURCE_CONTEXT";
@@ -409,6 +416,31 @@ function clearPendingSuggestions(draft: DealDraft): DealDraftFields {
   };
 }
 
+function mergeReviewIssues(
+  existing: ReviewIssue[],
+  notes: ManualReviewNote[] | undefined,
+  offerIndex: number
+): ReviewIssue[] {
+  if (!notes || notes.length === 0) return existing;
+  const filtered = notes.filter((n) => n.dealIndex === undefined || n.dealIndex === offerIndex);
+  const updated = [...existing];
+  for (const n of filtered) {
+    const found = updated.find((iss) => iss.code === n.code && iss.detail === n.detail);
+    if (!found) {
+      updated.push({
+        id: `issue-${n.code}-${n.dealIndex ?? offerIndex}-${updated.length}`,
+        dealIndex: n.dealIndex ?? offerIndex,
+        code: n.code,
+        detail: n.detail,
+        resolved: false,
+        originalAmount: n.originalAmount,
+        blocking: n.blocking ?? true,
+      });
+    }
+  }
+  return updated;
+}
+
 /**
  * Creates independent editable DealDraft instances for each offer in an extraction result.
  * Clones arrays, binds offer-specific manualReview notes, and ensures edits to one draft
@@ -436,10 +468,14 @@ export function createDraftsFromOffers(
     if (options?.manualReview) {
       const issues: ReviewIssue[] = options.manualReview
         .filter((n) => n.dealIndex === undefined || n.dealIndex === index)
-        .map((n) => ({
+        .map((n, i) => ({
+          id: `issue-${n.code}-${index}-${i}`,
+          dealIndex: index,
           code: n.code,
           detail: n.detail,
           resolved: false,
+          originalAmount: n.originalAmount,
+          blocking: n.blocking ?? true,
         }));
       draft = { ...draft, reviewIssues: issues };
     }
@@ -450,14 +486,18 @@ export function createDraftsFromOffers(
 export function dealDraftReducer(state: DealDraft, action: DealDraftAction): DealDraft {
   switch (action.type) {
     case "START_EXTRACTION": {
+      const nextRevision = state.extraction.sourceRevision + 1;
+      // Invalidate pending suggestions and offer choices from previous runs, preserving manual edits
+      const clearedFields = clearPendingSuggestions(state);
       return {
         ...state,
+        fields: clearedFields,
         imageId: action.imageId !== undefined ? action.imageId : state.imageId,
         sourceUrl: action.sourceUrl !== undefined ? action.sourceUrl : state.sourceUrl,
         extraction: {
           status: "pending",
           currentRequestId: action.requestId,
-          sourceRevision: state.extraction.sourceRevision + 1,
+          sourceRevision: nextRevision,
           error: undefined,
           unselectedOffers: undefined,
           selectedOfferIndex: undefined,
@@ -481,12 +521,11 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
     }
 
     case "FINISH_EXTRACTION_SUCCESS": {
-      // Ignore superseded, late, or canceled extractions by requestId and sourceRevision
+      // Must be pending and match both currentRequestId and sourceRevision unconditionally
       if (
+        state.extraction.status !== "pending" ||
         action.requestId !== state.extraction.currentRequestId ||
-        (action.sourceRevision !== undefined &&
-          action.sourceRevision !== state.extraction.sourceRevision) ||
-        state.extraction.status === "canceled"
+        action.sourceRevision !== state.extraction.sourceRevision
       ) {
         return state;
       }
@@ -534,18 +573,12 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
         conditions: [...deal.conditions],
       });
 
-      // Bind manualReview issues for deal 0
-      const issues: ReviewIssue[] = (action.result.manualReview || [])
-        .filter((n) => n.dealIndex === undefined || n.dealIndex === 0)
-        .map((n) => ({
-          code: n.code,
-          detail: n.detail,
-          resolved: false,
-        }));
+      // Merge manualReview issues for deal 0, never dropping existing unresolved issues
+      const mergedIssues = mergeReviewIssues(state.reviewIssues, action.result.manualReview, 0);
 
       return {
         ...next,
-        reviewIssues: issues,
+        reviewIssues: mergedIssues,
         extraction: {
           ...state.extraction,
           status: "success",
@@ -569,17 +602,13 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
         conditions: [...selectedOffer.conditions],
       });
 
-      // Bind manualReview issues for the selected offer index
-      if (state.extraction.pendingManualReview) {
-        const issues: ReviewIssue[] = state.extraction.pendingManualReview
-          .filter((n) => n.dealIndex === undefined || n.dealIndex === action.offerIndex)
-          .map((n) => ({
-            code: n.code,
-            detail: n.detail,
-            resolved: false,
-          }));
-        next = { ...next, reviewIssues: issues };
-      }
+      // Bind manualReview issues for the selected offer index, merging with existing
+      const mergedIssues = mergeReviewIssues(
+        state.reviewIssues,
+        state.extraction.pendingManualReview,
+        action.offerIndex
+      );
+      next = { ...next, reviewIssues: mergedIssues };
 
       return {
         ...next,
@@ -592,10 +621,9 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
 
     case "FINISH_EXTRACTION_ERROR": {
       if (
+        state.extraction.status !== "pending" ||
         action.requestId !== state.extraction.currentRequestId ||
-        (action.sourceRevision !== undefined &&
-          action.sourceRevision !== state.extraction.sourceRevision) ||
-        state.extraction.status === "canceled"
+        action.sourceRevision !== state.extraction.sourceRevision
       ) {
         return state;
       }
@@ -623,13 +651,16 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
         }
       }
 
+      // Clone array values to prevent external mutation leaks
+      const nextValue = Array.isArray(action.value) ? [...action.value] : action.value;
+
       return {
         ...state,
         location: nextLocation,
         fields: {
           ...state.fields,
           [fieldKey]: {
-            value: action.value,
+            value: nextValue,
             isManuallyEdited: true,
             isReviewed: true,
             suggestion: undefined,
@@ -650,13 +681,17 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
         }
       }
 
+      const nextValue = Array.isArray(field.suggestion.value)
+        ? [...field.suggestion.value]
+        : field.suggestion.value;
+
       return {
         ...state,
         location: nextLocation,
         fields: {
           ...state.fields,
           [fieldKey]: {
-            value: field.suggestion.value,
+            value: nextValue,
             isManuallyEdited: false,
             isReviewed: true,
             suggestion: undefined,
@@ -777,11 +812,31 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
     }
 
     case "RESOLVE_REVIEW_ISSUE": {
+      const target = state.reviewIssues.find((iss) => iss.id === action.issueId);
+      if (!target) return state;
+
+      // FUTURE_START cannot be resolved through this adapter (named hard blocker until date/runtime agreement)
+      if (target.code === "FUTURE_START") {
+        return state;
+      }
+
+      // UNSUPPORTED_CONSTRAINT requires a non-empty resolution note
+      if (target.code === "UNSUPPORTED_CONSTRAINT") {
+        if (!action.resolutionNote || action.resolutionNote.trim().length === 0) {
+          return state;
+        }
+      }
+
+      // CURRENCY_UNVERIFIED cannot be resolved via generic action; requires manual price confirmation
+      if (target.code === "CURRENCY_UNVERIFIED") {
+        return state;
+      }
+
       return {
         ...state,
         reviewIssues: state.reviewIssues.map((issue) =>
-          issue.code === action.code
-            ? { ...issue, resolved: true, resolutionNote: action.resolutionNote }
+          issue.id === action.issueId
+            ? { ...issue, resolved: true, resolutionNote: action.resolutionNote.trim() }
             : issue
         ),
       };
@@ -801,7 +856,7 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
           selectedOfferIndex: undefined,
           pendingManualReview: undefined,
         },
-        reviewIssues: [],
+        // Preserve unresolved reviewIssues: accepted fields must not bypass known constraints
       };
     }
 
@@ -833,7 +888,7 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
           selectedOfferIndex: undefined,
           pendingManualReview: undefined,
         },
-        reviewIssues: [],
+        // Preserve unresolved reviewIssues: accepted fields must not bypass known constraints
       };
     }
 
@@ -853,7 +908,7 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
           selectedOfferIndex: undefined,
           pendingManualReview: undefined,
         },
-        reviewIssues: [],
+        // Preserve unresolved reviewIssues: accepted fields must not bypass known constraints
       };
     }
 
@@ -872,7 +927,7 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
  * - In-progress extraction blocking
  * - Required review state on ALL fields (initial, derived, or omitted)
  * - Safe sourceUrl validation
- * - Unresolved manual review issues (FUTURE_START, UNSUPPORTED_CONSTRAINT, CURRENCY_UNVERIFIED)
+ * - Unresolved manual review issues (FUTURE_START hard blocker, UNSUPPORTED_CONSTRAINT, CURRENCY_UNVERIFIED)
  * - Pending unaccepted suggestions
  * - Unselected multi-deal offers
  * - Strict formats (24h time, real calendar date, finite nonnegative price, coords)
@@ -919,23 +974,25 @@ export function validateForPublish(draft: DealDraft): {
     errors.push("Multiple extracted deals detected; an offer must be selected before publishing.");
   }
 
-  // 5. Unresolved manualReview issues from sidecar
+  // 5. Unresolved / blocking review issues from sidecar
   for (const issue of draft.reviewIssues) {
-    if (!issue.resolved) {
-      if (issue.code === "FUTURE_START") {
+    if (issue.code === "FUTURE_START") {
+      // Named hard blocker: never allowed to publish through this adapter
+      errors.push(
+        `Hard blocker: future-start deal (${issue.detail}) cannot publish until supported canonical date/runtime agreement.`
+      );
+    } else if (issue.code === "UNSUPPORTED_CONSTRAINT") {
+      if (!issue.resolved) {
         errors.push(
-          `Unresolved future-start restriction: ${issue.detail}. Future-start constraints must be explicitly reviewed before publish.`
+          `Unresolved provider constraint: ${issue.detail}. Must be explicitly resolved with a non-empty resolution note.`
         );
-      } else if (issue.code === "UNSUPPORTED_CONSTRAINT") {
+      }
+    } else if (issue.code === "CURRENCY_UNVERIFIED") {
+      // Must be manually confirmed via SET_FIELD (or reviewed omission)
+      if (!draft.fields.priceCad.isManuallyEdited) {
         errors.push(
-          `Unresolved provider constraint: ${issue.detail}. Unsupported provider constraints must be explicitly resolved before publish.`
+          `Currency is unverified (${issue.detail}); price must be manually confirmed or explicitly omitted.`
         );
-      } else if (issue.code === "CURRENCY_UNVERIFIED") {
-        if (!draft.fields.priceCad.isManuallyEdited) {
-          errors.push(
-            `Currency is unverified (${issue.detail}); price must be manually confirmed or explicitly omitted.`
-          );
-        }
       }
     }
   }
