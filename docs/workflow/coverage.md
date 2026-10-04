@@ -22,7 +22,7 @@ October 3, 2026. T-01 and T-02: **DONE by William confirmation**, code reused. T
 | T-18 | Slow network never blank; matches human design | Functional states in native; Harry polish | Functional worker TBD / Harry | 09,10 | Pending |
 | T-19 | Clean-clone setup; logged-out <=3m video | Native build/signing/share docs and adapted demo script | Cinder preparation / William | Phase 2 | T-19A runbook/script/submission preparation released; recording/review/submission pending |
 | T-20 | Claimed domain loads HTTPS app | Retain website/domain path alongside installed iOS app | William / docs worker TBD | 01 | Instructions only; no domain/hosting action authorized |
-| T-21 | Full-screen map pins match feed filter | Map is primary home now; same filter contract, no second map | Pinyuan / Harry | 04,09,N-IOS (replaces stretch gate) | Published browser component only; integration/device evidence pending |
+| T-21 | Full-screen map pins match feed filter | Latest William revision: Saved Posts/Reels entry, tap-to-map; same filter contract, no second map | Pinyuan / Harry | 04,09,N-IOS (replaces stretch gate) | Published browser component only; integration/device evidence pending |
 
 ## Added integration tasks (original numbering preserved)
 
@@ -67,3 +67,5 @@ T-15A secondary pure protocol preparation: valid SOL transfer URI and explicit d
 Toolchain milestone October3 22:37 Vancouver: xcode-select points /Applications/Xcode.app/Contents/Developer; xcodebuild-version Xcode27.0 build27A266a, iOS/iOS Simulator27 SDKs installed. Root sandbox simctl failed service/log access; authorized Maestri Workspace Ops read-only simctl succeeds with empty runtimes/devices, not an Xcode installation failure. William confirms simulator download still ongoing. No system switch/install/download initiated. Actual app/extension compilation still pending Harry source; simulator execution waits runtime; signing/real iPhone acceptance separately pending.
 
 Harry source now received547a74d, SwiftUI/WKWebView + UIKit extension. N-IOS-A Loom/N-BUILD-A Cinder inspect independently in owned worktrees. Signing not configured. ScrapeCreators retrieval unauthorized/disabled; genuine reel understanding still blocked on supported authorized media path. Map-home agreement with Harry/Pinyuan pending.
+
+Navigation updated by William after Harry source intake: Saved Posts/Reels entry, tap-to-map. Earlier map-home initial-route requirement superseded; published-marker/location confirmation acceptance retained.

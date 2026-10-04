@@ -88,3 +88,5 @@ Latest reply: William confirms Harry owns native Instagram sharing in a separate
 ### Published native source received
 
 Harry owns native sharing and frontend, now published `t-20-reel-sharing` at `547a74d` (William confirmed). Reuse SwiftUI/WKWebView app + UIKit share extension, as recorded in ADR0002. App/extension compile, auth/shared storage, map home and confirmed pin/publish interface remain integration gates. Pinyuan's published browser map requires compatibility agreement; no second map. Harry's assignment name T-20 Reel sharing does not renumber original T-20 domain task. Native work is tracked N-IOS/N-SHARE/N-FORM/N-BUILD/N-PHONE and adapted T-13. ScrapeCreators resolver/provider usage is disabled and unauthorized; no real extraction/device evidence. William signing setup not configured.
+
+Latest navigation instruction from William: reuse Harry's Saved Posts/Reels app, switch to map when tapped. This takes precedence over earlier map-initial-home wording, while retaining real publish-to-map and original full-screen filtered-map acceptance. Harry/Pinyuan supply the map route/component; agents do not create a substitute.

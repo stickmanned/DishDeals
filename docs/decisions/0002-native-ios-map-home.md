@@ -49,3 +49,7 @@ Harry's canonical auth/profile/deal/vote tables preserved; additive reel staging
 Reel video understanding uses ScrapeCreators resolver/download + Gemini video. This resolver is NOT authorized under William's no-scraping/unapproved-resolver instruction and provider billing/deployment boundaries. Keep usage disabled. URL receipt alone cannot establish source-supported extraction. Supported original media/caption/images and owner-agreed ingestion must resolve this blocker; screenshot fallback does not close reel-share acceptance.
 
 William reports signing not configured; own-device Personal Team testing preferred, AppGroups/Keychain capability compatibility unresolved. Simulator runtime downloading; SDK compilation inspection need not wait. N-IOS-A Loom read-only contracts and N-BUILD-A Cinder actual SDK checks are separate bounded packets; neither may edit Harry's native implementation.
+
+## Latest navigation revision — William October3
+
+William explicitly directs: "go with harry's app with the saved posts/reels, the design should switch to a map when tapped." This supersedes earlier map-as-initial-home wording for navigation. Reuse existing Saved Posts/Reels entry and provide tap-to-map using Pinyuan's map; published canonical deals still require confirmed location and map display. No duplicate map. Full T-21 filtered map acceptance retained; earlier map-home decision is historical. Real-device dominant share→source-supported extraction→review→confirmed location→publish→map acceptance is unchanged.
