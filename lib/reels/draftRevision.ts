@@ -21,8 +21,17 @@ export function readDraftVersion(item: DraftVersionFields): DraftVersion | null 
   return { generation: item.generation, revision, edited };
 }
 
-/** n + 1, or `null` if the result would leave the safe integer range. */
-export const bump = (n: number): number | null => (n < Number.MAX_SAFE_INTEGER ? n + 1 : null);
+/**
+ * n + 1, or `null` when n is not a safe nonnegative integer (corrupt: never
+ * repaired by incrementing) or the result would leave the safe integer range.
+ */
+export const bump = (n: unknown): number | null =>
+  isSafeCount(n) && n < Number.MAX_SAFE_INTEGER ? n + 1 : null;
+
+/** Draft size limit, measured in UTF-8 bytes (not JavaScript string length). */
+export const MAX_DRAFT_BYTES = 60000;
+export const utf8ByteLength = (text: string): number => new TextEncoder().encode(text).length;
+export const withinDraftLimit = (text: string): boolean => utf8ByteLength(text) <= MAX_DRAFT_BYTES;
 
 export type SaveCheck =
   | { ok: true; version: DraftVersion; nextRevision: number }
@@ -78,11 +87,16 @@ export function versionStatus(
     : "changed";
 }
 
-/** Version this editor expects after its OWN successful save (never from props). */
-export const afterOwnSave = (expected: { generation: number; revision: number }) => ({
-  generation: expected.generation,
-  revision: expected.revision + 1,
-});
+/**
+ * Version this editor expects after its OWN successful save (never from
+ * props). `null` if the current expectation is invalid or would overflow, in
+ * which case the caller must not guess a version.
+ */
+export function afterOwnSave(expected: { generation: number; revision: number }): { generation: number; revision: number } | null {
+  const revision = bump(expected.revision);
+  if (!isSafeCount(expected.generation) || revision === null) return null;
+  return { generation: expected.generation, revision };
+}
 
 export const SAVE_ERRORS = {
   invalid_expected: "The draft version is invalid.",

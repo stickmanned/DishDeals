@@ -7,7 +7,7 @@ import { internal } from "./_generated/api";
 import schema from "./schema";
 import { reelWorkflow } from "./reelWorkflow";
 import { normalizeInstagramUrl, reelDraft, reelExtraction } from "../lib/reels/contract";
-import { SAVE_ERRORS, bump, checkSave, planFinish } from "../lib/reels/draftRevision";
+import { SAVE_ERRORS, bump, checkSave, planFinish, withinDraftLimit } from "../lib/reels/draftRevision";
 const day = 86400000;
 async function owner(ctx: QueryCtx | MutationCtx) {
   const id = await getAuthUserId(ctx);
@@ -92,7 +92,7 @@ export const saveDraft = mutation({ args: { itemId: v.id("reelItems"), draftJson
   let existing: unknown;
   try { existing = item.draftJson === undefined ? undefined : JSON.parse(item.draftJson); } catch { throw new ConvexError("This draft is corrupt."); }
   if (!Array.isArray(existing) || existing.length < 1) throw new ConvexError("No draft is ready.");
-  if (draftJson.length > 60000) throw new ConvexError("Draft is too large.");
+  if (!withinDraftLimit(draftJson)) throw new ConvexError("Draft is too large.");
   const drafts = reelDraft.array().min(1).max(10).parse(JSON.parse(draftJson));
   await ctx.db.patch(itemId, { draftJson: JSON.stringify(drafts), draftRevision: check.nextRevision, draftEdited: true, updatedAt: Date.now() }); return null;
 } });

@@ -143,7 +143,51 @@ describe("overflow and corrupted counters fail atomically", () => {
   });
 });
 
+describe("retry never advances a corrupt counter", () => {
+  const corruptValues = [-1, -0.5, 0.5, 2.5, NaN, Infinity];
+  const failed = async (patch: Record<string, number>) => {
+    const s = await setup(); await s.ready();
+    await save(s.alice as never, s.itemId, [draft({ restaurant: "Mine" })], 1, 1);
+    await s.t.mutation(internal.reels.fail, { itemId: s.itemId, generation: 1, code: "X", message: "m" });
+    await s.t.run(ctx => ctx.db.patch(s.itemId, patch));
+    return s;
+  };
+  const snapshot = (s: Awaited<ReturnType<typeof setup>>) =>
+    s.t.run(async ctx => ({ item: await ctx.db.get("reelItems", s.itemId), limits: await ctx.db.query("reelLimits").collect() }));
+  const same = (a: unknown, b: unknown) => expect(JSON.stringify(a, (_, v) => (typeof v === "number" && !Number.isFinite(v) ? String(v) : v))).toBe(JSON.stringify(b, (_, v) => (typeof v === "number" && !Number.isFinite(v) ? String(v) : v)));
+  it.each(corruptValues)("corrupt generation %s: retry rejects and nothing changes", async bad => {
+    const s = await failed({ generation: bad });
+    const before = await snapshot(s);
+    await expect(s.alice.mutation(api.reels.retry, { itemId: s.itemId })).rejects.toThrow();
+    same(await snapshot(s), before);
+  });
+  it.each(corruptValues.filter(v => v < 5))("corrupt attempts %s: retry rejects and nothing changes", async bad => {
+    const s = await failed({ attempts: bad });
+    const before = await snapshot(s);
+    await expect(s.alice.mutation(api.reels.retry, { itemId: s.itemId })).rejects.toThrow("cannot be retried");
+    same(await snapshot(s), before);
+  });
+  it("a healthy item still retries (control)", async () => {
+    const s = await failed({});
+    await s.alice.mutation(api.reels.retry, { itemId: s.itemId });
+    expect(await s.item()).toMatchObject({ generation: 2, attempts: 2, status: "queued" });
+  });
+});
+
 describe("strict shape and size", () => {
+  it("measures the 60 KB limit in UTF-8 bytes, not string length", async () => {
+    const s = await setup(); await s.ready();
+    // Valid per schema: 3 offers x (2000-char deal + 20 x 300-char conditions) of 3-byte characters.
+    const heavy = (ch: string) => Array.from({ length: 3 }, () => draft({ dealText: ch.repeat(2000), conditions: Array.from({ length: 20 }, () => ch.repeat(300)) }));
+    const multi = JSON.stringify(heavy("€")), ascii = JSON.stringify(heavy("a"));
+    expect(multi.length).toBeLessThan(60000); // would pass a length check
+    expect(new TextEncoder().encode(multi).length).toBeGreaterThan(60000);
+    const before = await s.item();
+    await expect(s.alice.mutation(api.reels.saveDraft, { itemId: s.itemId, draftJson: multi, expectedGeneration: 1, expectedRevision: 1 })).rejects.toThrow("too large");
+    expect(await s.item()).toEqual(before);
+    await s.alice.mutation(api.reels.saveDraft, { itemId: s.itemId, draftJson: ascii, expectedGeneration: 1, expectedRevision: 1 });
+    expect((await s.item())!.draftRevision).toBe(2);
+  });
   it("rejects bad shapes and sizes with no change", async () => {
     const s = await setup(); await s.ready();
     const before = await s.item();

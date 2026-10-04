@@ -1,7 +1,7 @@
 // Pure rules only (no Convex, no React). Synthetic inputs.
 import { describe, expect, it } from "vitest";
 import {
-  afterOwnSave, bump, checkSave, isSafeCount, planFinish, readDraftVersion, versionStatus,
+  MAX_DRAFT_BYTES, afterOwnSave, bump, checkSave, isSafeCount, planFinish, readDraftVersion, utf8ByteLength, versionStatus, withinDraftLimit,
 } from "../../lib/reels/draftRevision";
 
 const MAX = Number.MAX_SAFE_INTEGER;
@@ -13,6 +13,9 @@ describe("isSafeCount / bump", () => {
     expect(bump(0)).toBe(1);
     expect(bump(MAX - 1)).toBe(MAX);
     expect(bump(MAX)).toBeNull();
+  });
+  it.each([-1, -0.5, 0.5, 1.5, NaN, Infinity, -Infinity, MAX + 2, "1", null, undefined])("bump never increments the invalid counter %s", n => {
+    expect(bump(n)).toBeNull();
   });
 });
 
@@ -82,5 +85,34 @@ describe("editor version helpers", () => {
   });
   it("advances only the revision after an own save", () => {
     expect(afterOwnSave({ generation: 4, revision: 7 })).toEqual({ generation: 4, revision: 8 });
+    expect(afterOwnSave({ generation: 0, revision: 0 })).toEqual({ generation: 0, revision: 1 });
+    expect(afterOwnSave({ generation: 1, revision: MAX - 1 })).toEqual({ generation: 1, revision: MAX });
+  });
+  it("afterOwnSave returns null instead of guessing on overflow or invalid input", () => {
+    expect(afterOwnSave({ generation: 1, revision: MAX })).toBeNull();
+    expect(afterOwnSave({ generation: 1, revision: -1 })).toBeNull();
+    expect(afterOwnSave({ generation: 1, revision: 1.5 })).toBeNull();
+    expect(afterOwnSave({ generation: 1, revision: NaN })).toBeNull();
+    expect(afterOwnSave({ generation: -1, revision: 1 })).toBeNull();
+    expect(afterOwnSave({ generation: NaN, revision: 1 })).toBeNull();
+  });
+});
+
+describe("draft size limit is measured in UTF-8 bytes", () => {
+  it("counts multi-byte characters by bytes, not string length", () => {
+    expect(utf8ByteLength("a")).toBe(1);
+    expect(utf8ByteLength("é")).toBe(2);
+    expect(utf8ByteLength("€")).toBe(3);
+    expect(utf8ByteLength("😀")).toBe(4);
+  });
+  it("accepts exactly the limit and rejects one byte more", () => {
+    expect(withinDraftLimit("é".repeat(MAX_DRAFT_BYTES / 2))).toBe(true);
+    expect(withinDraftLimit("é".repeat(MAX_DRAFT_BYTES / 2) + "a")).toBe(false);
+    expect(withinDraftLimit("a".repeat(MAX_DRAFT_BYTES))).toBe(true);
+  });
+  it("a string far under the length limit can exceed the byte limit", () => {
+    const text = "€".repeat(25000); // 25,000 characters, 75,000 bytes
+    expect(text.length).toBeLessThan(MAX_DRAFT_BYTES);
+    expect(withinDraftLimit(text)).toBe(false);
   });
 });

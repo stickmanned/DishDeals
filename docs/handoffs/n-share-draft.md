@@ -13,7 +13,7 @@ Checkout `/Users/william/Code/DishDeals-worktrees/reel-draft-guards`, branch `t-
 - `convex/reels.ts`: `saveDraft`, `retry`, `finish` changed; all other functions and guards untouched.
 - `components/reels/ReelIntake.tsx`: editor and wording changes (below).
 - `convex/reels.test.ts`: the two existing `saveDraft` calls updated for the new required args (no other change).
-- `tests/backend/reelDraftRevisions.test.ts` (new, 26 tests), `tests/import/draftRevision.test.ts` (new, 39 tests), this handoff.
+- `tests/backend/reelDraftRevisions.test.ts` (new, 38 tests), `tests/import/draftRevision.test.ts` (new, 54 tests), this handoff. (An earlier version of this handoff reported 26 and 39 and a combined 65; those figures were wrong and are replaced here with the actual suite output.)
 
 ## Backend contract
 - `reels.saveDraft({itemId, draftJson, expectedGeneration, expectedRevision}) -> null`. Owner is derived server-side (`getAuthUserId` plus `ownerId` check); extra client user args are refused. In order: owner/expiry; expected numbers must be safe nonnegative integers ("invalid"); stored generation/revision must be valid ("corrupt"); `expectedGeneration` and `expectedRevision` must equal the stored values or the save is rejected as stale; revision overflow at `MAX_SAFE_INTEGER` is rejected. An existing private draft (stored `draftJson` parsing to at least one offer) is required, in any status except when none exists (queued/failed/extracting etc. are allowed so edits survive retries; no deal is ever written). Strict `ReelDraft` 1..10 and the 60 KB bound are kept; the "same number of offers as the model" rule is removed. On success: `draftJson` replaced, `draftRevision + 1`, `draftEdited = true`. All checks run before the single patch in one transaction, so concurrent same-version saves yield exactly one winner.
@@ -30,8 +30,14 @@ Checkout `/Users/william/Code/DishDeals-worktrees/reel-draft-guards`, branch `t-
 ## Checks run in the checkout
 - `npm ci --prefer-offline --no-audit --no-fund` (no package change).
 - `npx tsc --noEmit`, `npx eslint .`: clean.
-- `npx vitest run tests/backend/reelDraftRevisions.test.ts tests/import/draftRevision.test.ts convex/reels.test.ts`: 65 passed (includes the 9 existing reels tests).
-- `npm run check`: exit 0 (23 test files, 561 vitest tests, 23 workflow tests, `next build`).
-- Mutation spot checks each failed tests: removing the stale check, retry clearing the draft, finish always replacing, dropping overflow, not incrementing revision.
+- Targeted suites, each run separately: `tests/backend/reelDraftRevisions.test.ts` 38 passed; `tests/import/draftRevision.test.ts` 54 passed; `convex/reels.test.ts` 9 passed (101 total across the three).
+- `npm run check`: exit 0 (full repo: 23 test files, 588 vitest tests, 23 workflow tests, `next build`). These full-check counts are separate from the targeted counts above.
+- Mutation spot checks each failed tests: removing the stale check, retry clearing the draft, finish always replacing, dropping overflow, not incrementing revision, `bump` accepting negative/fractional counters (14 failures), and a length-based instead of byte-based size check (1 failure).
 - `node /tmp/dishdeals-owner-check.mjs N-SHARE-DRAFT`: see commit reply.
 - Not run: `convex dev`/codegen, any cloud target, browser/render checks, native, phone. `convex/_generated` was not edited; `reelItems` types come from the schema. Existing Convex-generated docs for these functions will refresh on the first authorized codegen.
+
+## Review corrections (second commit)
+- `bump(n)` now requires `isSafeCount(n)` before incrementing, so a negative, fractional, NaN or infinite stored generation or attempts counter returns `null` and `retry` rejects ("cannot be retried") instead of advancing it. Counters are never repaired. Missing `draftRevision` / `draftEdited` still default to 0 / false (legacy). New actual-wrapper `retry` tests (generation: -1, -0.5, 0.5, 2.5, NaN, Infinity; attempts: the same values below the 5-attempt cap) assert the item and `reelLimits` are unchanged and no state advances, plus a healthy-item control.
+- The 60 KB draft limit is measured in UTF-8 bytes (`MAX_DRAFT_BYTES`, `utf8ByteLength`, `withinDraftLimit` in `lib/reels/draftRevision.ts`; used by `saveDraft`). Regression: three schema-valid offers of 3-byte characters have a JSON string shorter than 60,000 characters but more than 60,000 bytes and are rejected ("too large") with no change, while the same shape in ASCII saves. Pure tests cover exact-limit and limit-plus-one byte boundaries.
+- `afterOwnSave` now validates its input and returns `null` on an invalid expectation or revision overflow instead of guessing; the editor handles `null` by keeping its current expectation and telling the user to reload the latest draft. Pure tests cover valid, boundary and null cases.
+- Guidelines re-read for this correction: the Convex generated guidelines (function registration and calling, validators, mutations as transactions) and the installed Next client-component guide; no applicable rule changed the implementation.
