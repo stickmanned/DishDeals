@@ -34,6 +34,9 @@ type Env = {
   readonly GEMINI_REEL_MODEL?: string;
   readonly REEL_MEDIA_USAGE_AUTHORIZED?: string;
   readonly REEL_WEB_ORIGIN?: string;
+  readonly IMAGE_PROVIDER_USAGE_AUTHORIZED?: string;
+  readonly GEMINI_IMAGE_MODEL?: string;
+  readonly GEMINI_IMAGE_FALLBACK_MODEL?: string;
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
 };
