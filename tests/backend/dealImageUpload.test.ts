@@ -227,7 +227,7 @@ describe("registration", () => {
 describe("private registry helpers have no public entry point", () => {
   it("the public API exposes no register or claim function", async () => {
     const keys = Object.keys(await import("../../convex/deals")).sort();
-    expect(keys).toEqual(["create", "generateUploadUrl", "get", "listNearby", "listRecent", "remove", "update"]);
+    expect(keys).toEqual(["create", "generateUploadUrl", "get", "listMine", "listNearby", "listRecent", "remove", "removeExpired", "sweepExpired", "update"]);
     const uploads = await import("../../convex/dealUploads");
     // everything registered there is internal: none of it appears under the public `api`
     expect(Object.keys((api as unknown as Record<string, object>).dealUploads ?? {})).toEqual([]);
@@ -325,7 +325,7 @@ describe("hourly bounded cleanup", () => {
 
   it("is registered as a real hourly cron beside only the preserved published workflow expiry cron", () => {
     const registered = (crons as unknown as { crons: Record<string, unknown> }).crons;
-    expect(Object.keys(registered).sort()).toEqual(["Remove expired deals from realtime maps", "clean expired deal image uploads"]);
+    expect(Object.keys(registered).sort()).toEqual(["Remove expired deals from realtime maps", "clean canonical published deals after retention", "clean expired deal image uploads"]);
     expect(JSON.stringify(registered["clean expired deal image uploads"])).toContain("dealUploads");
     expect(JSON.stringify(registered["Remove expired deals from realtime maps"])).toContain("workflow");
   });
