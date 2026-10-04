@@ -23,6 +23,8 @@ import {
   ImageDraftFlow,
   isFormEdited,
   isRunning,
+  savedDealMapHref,
+  sessionNotice,
   MAX_CAPTION_CHARS,
   MAX_FORMS,
   MAX_TEXT_CHARS,
@@ -95,6 +97,7 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
   const hasWork =
     snap.source.file !== null || snap.offers.length > 0 || snap.forms.some((f) => f.saved !== null || isFormEdited(f.draft));
   const ready = session.isAuthenticated && !!me;
+  const notice = sessionNotice({ isLoading: session.isLoading, isAuthenticated: session.isAuthenticated, profile: me === undefined ? undefined : me !== null });
 
   // Once there is work on the page it stays mounted even if the session blips; only publishing needs a session.
   if (!ready && !hasWork) return <Gate loading={session.isLoading || (session.isAuthenticated && me === undefined)} signedIn={session.isAuthenticated} />;
@@ -102,13 +105,22 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
   return (
     <div className="narrow-page post-canonical">
       <Header />
-      {!ready && !session.isLoading && me !== undefined && (
+      {notice === "signed_out" && (
         <p role="alert" className="field-error">
-          Your session ended. Your work is kept here.{" "}
+          You are signed out. Your work is kept here.{" "}
           <Link href="/signin?next=/post" target="_blank" rel="noreferrer">
             Sign in again in a new tab
           </Link>{" "}
           to publish.
+        </p>
+      )}
+      {notice === "no_profile" && (
+        <p role="alert" className="field-error">
+          Publishing needs a profile. Your work is kept here.{" "}
+          <Link href="/profile" target="_blank" rel="noreferrer">
+            Create your profile in a new tab
+          </Link>
+          , then publish.
         </p>
       )}
       <SourcePanel flow={flow} snap={snap} />
@@ -119,7 +131,7 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
         searchLocation={searchLocation}
         onSaved={(formKey, id) => {
           const others = flow.getSnapshot().forms.filter((f) => f.key !== formKey && !f.saved && isFormEdited(f.draft));
-          if (others.length === 0) router.push(`/deal/${id}`);
+          if (others.length === 0) router.push(savedDealMapHref(id));
         }}
       />
     </div>
@@ -391,7 +403,7 @@ function FormsPanel({
             <div className="panel success-page" role="status">
               <h3>Deal {i + 1} is published.</h3>
               <p>
-                <Link href={`/deal/${f.saved.id}`}>View the saved deal</Link> · <Link href="/map">See it on the map</Link>
+                <Link href={savedDealMapHref(f.saved.id)}>See it on the map</Link> · <Link href={`/deal/${f.saved.id}`}>View the deal</Link>
               </p>
             </div>
           ) : (

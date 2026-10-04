@@ -235,11 +235,39 @@ const UPLOAD_FAILURES: Record<Extract<ImageUploadOutcome, { ok: false }>["reason
   unexpected: { code: "UPLOAD_UNCONFIRMED", message: "The upload could not be confirmed. Try again.", retryable: true },
 };
 
-function publishMessage(error: unknown): string {
+/**
+ * Publish failures show fixed copy only. The few server strings that `deals.create` and the image claim throw
+ * on purpose are matched exactly and replaced with our own wording; every other message, object payload or
+ * thrown Error (validation text, request ids, provider or backend internals) becomes the generic line.
+ */
+const PUBLISH_FAILURES: ReadonlyMap<string, string> = new Map([
+  ["Not signed in", "Your session expired. Sign in again to publish."],
+  ["Create your profile before publishing.", "Create your profile before publishing."],
+  ["That image is not available to you.", "The attached image could not be used. Remove it or choose another, then publish again."],
+  ["That image is missing, too large, or not a supported image.", "The attached image could not be used. Remove it or choose another, then publish again."],
+]);
+export const GENERIC_PUBLISH_FAILURE = "Could not publish. Your edits are kept; check your connection and try again.";
+
+export function publishMessage(error: unknown): string {
   const data = (error as { data?: unknown } | null)?.data;
-  const text = typeof data === "string" ? data : typeof errorData(error)?.message === "string" ? (errorData(error)!.message as string) : "";
-  if (text.trim() && text.length <= 200) return text.trim();
-  return "Could not publish. Your edits are kept; check your connection and try again.";
+  return (typeof data === "string" && PUBLISH_FAILURES.get(data.trim())) || GENERIC_PUBLISH_FAILURE;
+}
+
+/** Where a saved deal is shown: the map route selects and fits the deal given by `deal`. */
+export function savedDealMapHref(id: string): string {
+  return `/map?deal=${encodeURIComponent(id)}`;
+}
+
+export type SessionNotice = "none" | "signed_out" | "no_profile";
+
+/**
+ * What to tell a user who still has work on the page. Signed out and missing profile are different
+ * problems; loading states say nothing. Publishing is always re-authorized by the backend.
+ */
+export function sessionNotice(state: { isLoading: boolean; isAuthenticated: boolean; profile: boolean | undefined }): SessionNotice {
+  if (state.isLoading) return "none";
+  if (!state.isAuthenticated) return "signed_out";
+  return state.profile === false ? "no_profile" : "none";
 }
 
 function blankForm(key: string): FormEntry {

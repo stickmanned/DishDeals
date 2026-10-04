@@ -5,6 +5,10 @@ import {
   boundedJpegUpload,
   checkSourceFile,
   classifyExtractError,
+  GENERIC_PUBLISH_FAILURE,
+  publishMessage,
+  savedDealMapHref,
+  sessionNotice,
   ImageDraftFlow,
   isFormEdited,
   MAX_CAPTION_CHARS,
@@ -920,5 +924,58 @@ describe("publish", () => {
     const r = await flow.publish("form-1");
     expect(r.ok).toBe(false);
     expect(deps.createDeal).not.toHaveBeenCalled();
+  });
+});
+
+describe("publish failure messages", () => {
+  it("maps only the known server strings to fixed copy", () => {
+    expect(publishMessage(convexError("Not signed in"))).toBe("Your session expired. Sign in again to publish.");
+    expect(publishMessage(convexError("Create your profile before publishing."))).toBe("Create your profile before publishing.");
+    for (const known of ["That image is not available to you.", "That image is missing, too large, or not a supported image."]) {
+      expect(publishMessage(convexError(known))).toMatch(/attached image could not be used/);
+    }
+  });
+
+  it.each([
+    ["an arbitrary backend string", convexError("Internal failure in provider sk-secret at convex/deals.ts:153")],
+    ["validation text", convexError("Price must be a finite non-negative number, got -5")],
+    ["an object payload with a message", convexError({ code: "X", message: "provider body leaked" })],
+    ["a plain Error", new Error("[Request ID: 9] Server Error: key sk-secret")],
+    ["a near-match of a known string", convexError("Not signed in; token abc")],
+    ["null", null],
+    ["a string", "Create your profile before publishing."],
+  ])("never echoes %s", (_n, error) => {
+    const message = publishMessage(error);
+    expect(message).toBe(GENERIC_PUBLISH_FAILURE);
+    expect(message).not.toMatch(/sk-secret|provider|Request ID|convex\/deals|token abc|-5/);
+  });
+
+  it("the form shows only the safe copy and keeps every edit", async () => {
+    const { flow } = await analyzed({ createDeal: vi.fn(async () => { throw convexError("Deal text must not contain secret-internal-detail"); }) });
+    flow.applyOffer(flow.getSnapshot().offers[0].id, 0, { kind: "replace", formKey: "form-1" });
+    reviewAll(flow, "form-1");
+    flow.dispatch("form-1", { type: "SET_FIELD", field: "dealText", value: "My wording" });
+    const r = await flow.publish("form-1");
+    expect(r).toEqual({ ok: false, message: GENERIC_PUBLISH_FAILURE });
+    expect(form(flow, "form-1").publishError).toBe(GENERIC_PUBLISH_FAILURE);
+    expect(form(flow, "form-1").draft.fields.dealText.value).toBe("My wording");
+    expect(form(flow, "form-1").draft.location?.confirmed).toBe(true);
+    expect(form(flow, "form-1").saved).toBeNull();
+  });
+});
+
+describe("saved deal route and session notice", () => {
+  it("routes a saved deal to the map with its id", () => {
+    expect(savedDealMapHref("k17abcdefgh")).toBe("/map?deal=k17abcdefgh");
+    expect(savedDealMapHref("a b&c")).toBe("/map?deal=a%20b%26c");
+  });
+
+  it("tells signed-out and missing-profile users apart, and stays quiet while loading", () => {
+    expect(sessionNotice({ isLoading: true, isAuthenticated: false, profile: undefined })).toBe("none");
+    expect(sessionNotice({ isLoading: false, isAuthenticated: false, profile: undefined })).toBe("signed_out");
+    expect(sessionNotice({ isLoading: false, isAuthenticated: false, profile: false })).toBe("signed_out");
+    expect(sessionNotice({ isLoading: false, isAuthenticated: true, profile: false })).toBe("no_profile");
+    expect(sessionNotice({ isLoading: false, isAuthenticated: true, profile: undefined })).toBe("none");
+    expect(sessionNotice({ isLoading: false, isAuthenticated: true, profile: true })).toBe("none");
   });
 });
