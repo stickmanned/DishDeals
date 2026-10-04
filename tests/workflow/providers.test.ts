@@ -33,6 +33,17 @@ it("retrieves URLs before structured extraction and never fetches the submitted 
   expect(result.deals).toHaveLength(1);
   expect(fetcher.mock.calls.every(([url]) => String(url).startsWith("https://generativelanguage.googleapis.com/"))).toBe(true);
 });
+it("uses a copied caption when Instagram is inaccessible and requires manual confirmation", async () => {
+  const url = "https://www.instagram.com/p/example";
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ candidates: [{ finishReason: "STOP",
+    content: { parts: [{ text: "Sign in to see this post" }] }, urlContextMetadata: { urlMetadata: [{ retrievedUrl: url, urlRetrievalStatus: "URL_RETRIEVAL_STATUS_ERROR" }] } }] }))
+    .mockResolvedValueOnce(modelResponse({ deals: [deal], rejectionReason: null }));
+  const result = await extractWithGemini(inputSchema.parse({ source: { type: "url", url, caption: input.source.text } }), { apiKey: "test", model: "primary", fetcher });
+  const extractedInput = JSON.parse(JSON.parse(fetcher.mock.calls[1][1]!.body as string).contents[0].parts[0].text);
+  expect(extractedInput.sourceText).toBe(input.source.text);
+  expect(result.deals[0].warnings.join(" ")).toContain("supplied text");
+  expect(fetcher.mock.calls.every(([target]) => String(target).startsWith("https://generativelanguage.googleapis.com/"))).toBe(true);
+});
 it("falls back on invalid model JSON but never on a key error", async () => {
   const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(modelResponse({ wrong: true })).mockResolvedValueOnce(modelResponse({ deals: [deal], rejectionReason: null }));
   await extractWithGemini(inputSchema.parse(input), { apiKey: "test", model: "primary", fallbackModel: "fallback", fetcher });

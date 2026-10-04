@@ -14,11 +14,7 @@ export const publicUrl = z.string().max(2048).refine((value) => {
 const provenance = { sourceUrl: publicUrl.optional(), publishedAt: z.iso.date().optional() };
 export const sourceSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("text"), text: z.string().trim().min(10).max(30000), ...provenance }).strict(),
-  z.object({ type: z.literal("url"), url: publicUrl.refine(value => {
-    const host = new URL(value).hostname.toLowerCase();
-    return host !== "instagram.com" && !host.endsWith(".instagram.com") &&
-      host !== "instagr.am" && !host.endsWith(".instagr.am");
-  }, "Instagram links cannot be fetched; paste the caption or upload a screenshot instead"), ...provenance }).strict(),
+  z.object({ type: z.literal("url"), url: publicUrl, caption: z.string().max(10000).optional(), ...provenance }).strict(),
   z.object({ type: z.literal("image"), data: z.string().min(4).max(450000)
     .regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/, "Invalid base64 image"),
     mimeType: z.enum(["image/png", "image/jpeg", "image/webp"]),

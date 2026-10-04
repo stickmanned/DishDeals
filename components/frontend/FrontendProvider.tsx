@@ -109,7 +109,7 @@ function Runtime({
   const [draft, setDraft] = useState<Draft>(emptyDraft),
     [sourceText, setSourceText] = useState(""),
     [sourceImage, setSourceImage] = useState("");
-  const [sourceMode, setSourceMode] = useState<"image" | "text">("image"),
+  const [sourceMode, setSourceMode] = useState<"image" | "text">("text"),
     [sourceUrl, setSourceUrl] = useState(""),
     [publishedAt, setPublishedAt] = useState(""),
     [sourceFilename, setSourceFilename] = useState("");
@@ -128,7 +128,7 @@ function Runtime({
     setDraft(emptyDraft);
     setSourceImage("");
     setSourceText("");
-    setSourceMode("image");
+    setSourceMode("text");
     setSourceUrl("");
     setPublishedAt("");
     setSourceFilename("");
