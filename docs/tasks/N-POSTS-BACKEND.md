@@ -2,6 +2,8 @@
 
 Northstar amendment: `tests/backend/dealWrites.test.ts` additionally approved ONLY to update the hard-coded export-list assertion for approved listMine/internal cleanup exports. No weakening of CRUD/security assertions.
 
+Additional amendment: `tests/backend/dealImageUpload.test.ts` approved ONLY for old deals-export and cron-name inventory assertions to include reviewed new listMine/removeExpired/sweepExpired and canonical retention cron. Preserve all upload/auth/quota/storage assertions; rerun the suite.
+
 Owner Loom. Checkout /Users/william/Code/DishDeals-worktrees/posts-expiry-backend; branch t-10-posts-expiry-backend; pinned base dcdda819e97de9c371726dd7ba33585912afe7d5.
 
 Writable ONLY: `convex/deals.ts`, `convex/crons.ts`, `lib/dealRetention.ts`, `tests/backend/dealMine.test.ts`, `tests/backend/dealRetention.test.ts`, `tests/import/dealRetention.test.ts`, `docs/handoffs/n-posts-backend.md`.

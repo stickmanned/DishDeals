@@ -1,5 +1,7 @@
 # N-INSTAGRAM-KIND
 
+Northstar amendment: `ios/ShareExtension/ShareViewController.swift` additionally approved ONLY for generic initial Instagram-link copy and resolved post/Reel receipt labels, preserving the integrated contrast fix and all payload/storage/lifecycle code. Success text may direct user to review/publish publicly, never claim automatic public publication. Both source-kind helpers must validate exact supported HTTPS hosts, no credentials/port and anchored direct paths; invalid input returns unknown, no substring fallback.
+
 Owner Mica. Checkout /Users/william/Code/DishDeals-worktrees/instagram-source-kind; branch t-13-instagram-source-kind; pinned base dcdda819e97de9c371726dd7ba33585912afe7d5.
 
 Writable ONLY: `lib/reels/contract.ts`, `ios/Shared/ShareStore.swift`, `components/reels/ReelIntake.tsx`, `tests/native/ShareStoreChecks.swift`, `tests/import/postSource.test.ts`, `tests/import/reelPublicEntry.test.tsx`, `docs/handoffs/n-instagram-kind.md`, `lib/reels/contract.test.ts`.
