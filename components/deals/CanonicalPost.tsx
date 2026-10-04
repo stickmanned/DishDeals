@@ -33,6 +33,8 @@ import {
   type Offer,
 } from "@/lib/imageDraftFlow";
 import { isValidDealId } from "@/lib/mapPage";
+import { RecordingPicker } from "./RecordingFrames";
+import { prepareRecordingFrames } from "@/lib/recordingFrameFlow";
 import { createSearch } from "@/lib/reels/publish";
 import { DealReviewForm } from "./DealReviewForm";
 
@@ -45,9 +47,9 @@ export interface CanonicalPostProps {
 }
 
 const PHASE_COPY: Partial<Record<FlowSnapshot["phase"], string>> = {
-  preparing: "Preparing your image…",
-  uploading: "Uploading your image…",
-  extracting: "Reading the image. This can take a little while.",
+  preparing: "Preparing your image or recording…",
+  uploading: "Uploading…",
+  extracting: "Reading your image. This can take a little while.",
   done: "Analysis finished. Choose how to use the suggestions below.",
   canceled: "Analysis canceled. Your image and details are kept.",
 };
@@ -83,6 +85,7 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
   // The controller is created once; fresh hook functions are handed over after each render.
   const deps: FlowDeps = {
     prepareImage: async (file, signal) => boundedJpegUpload(await resizeImage(file, { signal })),
+    prepareFrames: (file, signal) => prepareRecordingFrames(file, signal),
     getToken: () => session.fetchAccessToken({ forceRefreshToken: false }),
     generateUploadUrl: () => generateUploadUrl({}),
     upload: (args) => uploadDealImage(args),
@@ -98,7 +101,7 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
   const snap = useSyncExternalStore(flow.subscribe, flow.getSnapshot, flow.getSnapshot);
 
   const hasWork =
-    snap.source.file !== null || snap.offers.length > 0 || snap.forms.some((f) => f.saved !== null || isFormEdited(f.draft));
+    snap.source.file !== null || snap.source.recording !== null || snap.offers.length > 0 || snap.forms.some((f) => f.saved !== null || isFormEdited(f.draft));
   const ready = session.isAuthenticated && !!me;
   const notice = sessionNotice({ isLoading: session.isLoading, isAuthenticated: session.isAuthenticated, profile: me === undefined ? undefined : me !== null });
 
@@ -191,6 +194,7 @@ function Gate({ loading, signedIn }: { loading: boolean; signedIn: boolean }) {
 function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot }) {
   const running = isRunning(snap.phase);
   const { source } = snap;
+  const hasSource = source.file !== null || source.recording !== null;
 
   function pick(e: ChangeEvent<HTMLInputElement>) {
     const chosen = e.target.files?.[0];
@@ -213,6 +217,7 @@ function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot 
         Or take a photo
         <input type="file" accept="image/*" capture="environment" onChange={pick} disabled={running} />
       </label>
+      <RecordingPicker flow={flow} snap={snap} />
       {source.fileError && (
         <p role="alert" className="field-error">
           {source.fileError}
@@ -259,7 +264,7 @@ function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot 
       </label>
 
       <div className="form-actions">
-        <button type="button" className="button primary" disabled={running || !source.file} onClick={() => void flow.analyze()}>
+        <button type="button" className="button primary" disabled={running || !hasSource} onClick={() => void flow.analyze()}>
           {running ? "Analyzing…" : snap.phase === "failed" || snap.phase === "canceled" ? "Try again" : "Get suggestions"}
         </button>
         {running && (
@@ -268,7 +273,7 @@ function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot 
           </button>
         )}
       </div>
-      {!source.file && <p className="muted">Add an image to get suggestions, or skip this and fill in the form below by hand.</p>}
+      {!hasSource && <p className="muted">Add an image to get suggestions, or skip this and fill in the form below by hand.</p>}
       {PHASE_COPY[snap.phase] && <p role="status" aria-live="polite">{PHASE_COPY[snap.phase]}</p>}
       {snap.error && (
         <p role="alert" className="field-error">
