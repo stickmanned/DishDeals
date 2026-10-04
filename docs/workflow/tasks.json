@@ -8,7 +8,7 @@
       "owner": "Loom",
       "branch": "t-03-auth",
       "worktree": "auth",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-01",
         "T-02",
@@ -37,9 +37,11 @@
       "issue": "https://github.com/stickmanned/DishDeals/issues/1",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local checks only; no cloud target authorized",
-      "implementationState": "local source implemented; review-driven wrapper tests pending",
+      "implementationState": "reviewed, locally integrated at 2ceb3de; coordinator full check PASS 37 Vitest/23 workflow/build",
       "nativeChecks": "pending runtime agreement/toolchain",
-      "phoneAcceptance": "pending William iPhone"
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "passed",
+      "blocker": "native storage, live backend/JWT setup, real iPhone auth acceptance pending"
     },
     {
       "id": "T-04A",
@@ -69,7 +71,7 @@
       "owner": "Mica",
       "branch": "t-04-distance",
       "worktree": "distance",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-02",
         "T-00"
@@ -83,9 +85,10 @@
       "issue": "https://github.com/stickmanned/DishDeals/issues/2",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local checks only; no cloud target authorized",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed, locally integrated at 1c5bd8d",
       "nativeChecks": "pending runtime agreement/toolchain",
-      "phoneAcceptance": "pending William iPhone"
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "worker full check passed; coordinator combined check pending"
     },
     {
       "id": "T-05R",
@@ -127,6 +130,50 @@
       "packet": "docs/tasks/T-07A.md",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "no backend writes; pure logic only",
+      "implementationState": "not started",
+      "nativeChecks": "pending integration",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-05A",
+      "owner": "Loom",
+      "branch": "t-05-extraction-core",
+      "worktree": "extraction-core",
+      "status": "ready",
+      "dependencies": [
+        "T-02",
+        "T-05R"
+      ],
+      "allowedPaths": [
+        "lib/extractCore.ts",
+        "lib/prompt.ts",
+        "tests/extraction/",
+        "docs/handoffs/t-05a.md"
+      ],
+      "packet": "docs/tasks/T-05A.md",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local only; no cloud/provider calls",
+      "implementationState": "not started",
+      "nativeChecks": "pending integration",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-06A",
+      "owner": "Prism",
+      "branch": "t-06-real-deal-sources",
+      "worktree": "deal-sources",
+      "status": "ready",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/data/",
+        "fixtures/source-candidates/",
+        "docs/handoffs/t-06a.md"
+      ],
+      "packet": "docs/tasks/T-06A.md",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local only; no cloud/provider calls",
       "implementationState": "not started",
       "nativeChecks": "pending integration",
       "phoneAcceptance": "pending"

@@ -47,3 +47,5 @@ Deadline: October 4 at 12:00 America/Vancouver. Xcode installing; own-device iOS
 ### T-07 split approved for independent local work
 
 T-07A (Mica after distance review): reusable pure draft state/confirmation/publish-field validation, depends completed T-02 only. T-07B actual upload/extraction/backend create depends T-03/T-05 and agreed source ownership/geospatial hooks; T-07C Harry native form/Pinyuan confirmed pin integration depends N-IOS/N-SHARE/T-08. Full original T-07 stays pending until the real phone publish flow passes. No duplicate frontend/map/share implementation.
+
+T-05 split: T-05A Loom headless source-supported extraction/core error tests after reviewed T-05R; T-05B signed canonical action blocked on durable upload ownership contract/provider/backend target authorization. Full 3-real-image/latency evidence stays pending. T-06A Prism source evidence research now authorized by William; T-06B real images/photos and Pinyuan confirmed coords/seed validation remain HITL. No seed deployment authorized.
