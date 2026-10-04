@@ -1,5 +1,6 @@
 import { defineApp } from "convex/server";
 import workflow from "@convex-dev/workflow/convex.config.js";
+import geospatial from "@convex-dev/geospatial/convex.config.js";
 import { v } from "convex/values";
 const app = defineApp({ env: {
   REEL_PROVIDER_USAGE_AUTHORIZED: v.optional(v.string()),
@@ -10,4 +11,5 @@ const app = defineApp({ env: {
   REEL_WEB_ORIGIN: v.optional(v.string()),
 } });
 app.use(workflow);
+app.use(geospatial);
 export default app;

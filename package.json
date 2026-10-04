@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.96",
+    "@convex-dev/geospatial": "0.2.1",
     "@convex-dev/workflow": "^0.4.8",
     "@google/genai": "^2.27.0",
     "@restaurant-deals/map": "file:./map-component",
