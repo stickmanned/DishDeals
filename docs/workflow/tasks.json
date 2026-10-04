@@ -502,9 +502,10 @@
       "packet": "docs/tasks/N-SHARE-DRAFT.md",
       "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
       "backendTarget": "local checks only; no cloud/provider actions authorized",
-      "implementationState": "dispatched; exact isolated checkout prepared at 1eb2e7c",
+      "implementationState": "review corrections accepted; e022b0b locally integrated",
       "nativeChecks": "pending real runtime execution",
-      "phoneAcceptance": "pending William iPhone"
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "worker corrected check PASS588 tests/23workflow/typecheck/lint/build; root combined pending"
     },
     {
       "id": "N-FORM-UI",
@@ -607,6 +608,32 @@
       "localChecks": "npm run check PASS: 510 Vitest, 23 workflow, typecheck/lint/build",
       "nativeChecks": "pending WKWebView integration",
       "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-STORE-A",
+      "owner": "Northstar",
+      "branch": "t-00-agent-workflow",
+      "worktree": "workflow",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "ios/Shared/ShareStore.swift",
+        "ios/App/DinedealsApp.swift",
+        "ios/ShareExtension/ShareViewController.swift",
+        "tests/native/ShareStoreChecks.swift",
+        "docs/tasks/N-STORE-A.md",
+        "docs/handoffs/n-store-a.md"
+      ],
+      "packet": "docs/tasks/N-STORE-A.md",
+      "pinnedBaseSha": "740391b",
+      "backendTarget": "none; no HTTP/cloud/provider",
+      "implementationState": "locally implemented",
+      "localChecks": "18 synthetic Foundation checks PASS",
+      "nativeChecks": "actual unsigned generic Simulator SDK app+extension build PASS",
+      "phoneAcceptance": "pending signing/runtime/iPhone"
     }
   ],
   "completedDependencies": {

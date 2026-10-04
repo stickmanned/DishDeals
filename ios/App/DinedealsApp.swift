@@ -47,21 +47,27 @@ struct WebShell: UIViewRepresentable {
     }
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var lastRoute = ""
-        var allowed: URL { URL(string: Bundle.main.object(forInfoDictionaryKey: "WebsiteURL") as! String)! }
+        var allowed: URL? {
+            guard let value = Bundle.main.object(forInfoDictionaryKey: "WebsiteURL") as? String,
+                  let url = URL(string: value), url.scheme == "https", url.host != nil,
+                  url.user == nil, url.password == nil else { return nil }
+            return url
+        }
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-            guard let url = action.request.url else { decisionHandler(.cancel); return }
+            guard let allowed = allowed, let url = action.request.url else { decisionHandler(.cancel); return }
             if url.scheme == allowed.scheme && url.host == allowed.host && url.port == allowed.port { decisionHandler(.allow) }
             else { decisionHandler(.cancel); if action.navigationType == .linkActivated { UIApplication.shared.open(url) } }
         }
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             let origin = message.frameInfo.securityOrigin
-            guard message.frameInfo.isMainFrame, origin.host == allowed.host, origin.protocol == allowed.scheme,
+            guard let allowed = allowed, message.frameInfo.isMainFrame, origin.host == allowed.host, origin.protocol == allowed.scheme,
                   (origin.port == (allowed.port ?? 443) || (allowed.port == nil && origin.port == 0)), let body = message.body as? [String: Any], let type = body["type"] as? String else { return }
             switch type {
             case "session": _ = ShareStore.saveToken(body["token"] as? String)
             case "received":
                 // Remove matching local recovery copies only after the backend's deduplicated receipt.
-                if let link = body["sourceUrl"] as? String, let files = try? FileManager.default.contentsOfDirectory(at: ShareStore.inbox, includingPropertiesForKeys: nil) {
+                if let link = body["sourceUrl"] as? String, let inbox = ShareStore.inbox,
+                   let files = try? FileManager.default.contentsOfDirectory(at: inbox, includingPropertiesForKeys: nil) {
                     for file in files { if let data = try? Data(contentsOf: file), let record = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], record["kind"] as? String == "link", record["value"] as? String == link { try? FileManager.default.removeItem(at: file) } }
                 }
             case "enableNotifications": UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
