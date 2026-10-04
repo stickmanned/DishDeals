@@ -1093,7 +1093,7 @@
       "packet": "docs/tasks/N-SHARE-C.md",
       "pinnedBaseSha": "25cc20b65be346b699f7760b9465a461f0465df0",
       "backendTarget": "LOCAL ONLY; no external writes/provider use",
-      "implementationState": "dependency-ready packet",
+      "implementationState": "reviewed and locally integrated; full live/phone acceptance pending",
       "nativeChecks": "pending",
       "phoneAcceptance": "pending"
     },
@@ -1129,7 +1129,7 @@
       "packet": "docs/tasks/N-SOURCE-D.md",
       "pinnedBaseSha": "25cc20b65be346b699f7760b9465a461f0465df0",
       "backendTarget": "LOCAL ONLY; no external writes/provider use",
-      "implementationState": "dependency-ready packet",
+      "implementationState": "reviewed and locally integrated; full live/phone acceptance pending",
       "nativeChecks": "pending",
       "phoneAcceptance": "pending"
     },
@@ -1152,7 +1152,7 @@
       "packet": "docs/tasks/N-RELEASE-A.md",
       "pinnedBaseSha": "25cc20b65be346b699f7760b9465a461f0465df0",
       "backendTarget": "LOCAL ONLY; no external writes/provider use",
-      "implementationState": "dependency-ready packet",
+      "implementationState": "reviewed and locally integrated; full live/phone acceptance pending",
       "nativeChecks": "pending",
       "phoneAcceptance": "pending"
     },
@@ -1179,7 +1179,7 @@
       "packet": "docs/tasks/T-12A.md",
       "pinnedBaseSha": "ce80c4d0d80b404033fee785f23b2b4640b74a88",
       "backendTarget": "local actual in-memory component only",
-      "implementationState": "core split ready; full T12 real data pending",
+      "implementationState": "reviewed and locally integrated; full live/phone acceptance pending",
       "nativeChecks": "pending",
       "phoneAcceptance": "pending real data/map"
     },
@@ -1200,9 +1200,107 @@
       "packet": "docs/tasks/N-SIM-A.md",
       "pinnedBaseSha": "4241d266962bb2d7fe2e7d945c9e02ae7a139197",
       "backendTarget": "NONE; controlled synthetic simulator only",
-      "implementationState": "authorized simulatorQA",
-      "nativeChecks": "assigned iPhone17e iOS27",
+      "implementationState": "reviewed and locally integrated; full live/phone acceptance pending",
+      "nativeChecks": "Actual unsigned simulator app+extension build/install passed; placeholder-host flow and App Group save blocked",
       "phoneAcceptance": "pending realInstagram iOS26.6.1"
+    },
+    {
+      "id": "N-RELEASE-B",
+      "owner": "Loom",
+      "branch": "t-19-dev-backend-release",
+      "worktree": "dev-backend-release",
+      "status": "ready",
+      "dependencies": [
+        "N-SOURCE-D",
+        "N-RELEASE-A"
+      ],
+      "allowedPaths": [
+        "docs/release/backend/",
+        "docs/handoffs/n-release-b.md",
+        "convex/_generated/"
+      ],
+      "packet": "docs/tasks/N-RELEASE-B.md",
+      "pinnedBaseSha": "3148364ce985df1daf3f3530023322afd449dc6d",
+      "backendTarget": "proper-marmot-82 dev approved backed-up release only",
+      "implementationState": "dependency-ready assigned packet",
+      "nativeChecks": "pending relevant native build",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "N-LOAD-A",
+      "owner": "Cinder",
+      "branch": "t-18-native-load-recovery",
+      "worktree": "native-load-recovery",
+      "status": "ready",
+      "dependencies": [
+        "N-SIM-A"
+      ],
+      "allowedPaths": [
+        "ios/App/DinedealsApp.swift",
+        "tests/native/WebLoadChecks.swift",
+        "docs/integration/native-load-recovery.md",
+        "docs/handoffs/n-load-a.md"
+      ],
+      "packet": "docs/tasks/N-LOAD-A.md",
+      "pinnedBaseSha": "3148364ce985df1daf3f3530023322afd449dc6d",
+      "backendTarget": "local implementation only; no external writes",
+      "implementationState": "dependency-ready assigned packet",
+      "nativeChecks": "pending relevant native build",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-14B",
+      "owner": "Prism",
+      "branch": "t-14-recording-frame-bindings",
+      "worktree": "recording-frame-bindings",
+      "status": "ready",
+      "dependencies": [
+        "T-14A",
+        "T-07C"
+      ],
+      "allowedPaths": [
+        "components/deals/CanonicalPost.tsx",
+        "components/deals/RecordingFrames.tsx",
+        "lib/imageDraftFlow.ts",
+        "lib/recordingFrameFlow.ts",
+        "tests/import/imageDraftFlow.test.ts",
+        "tests/import/recordingFrameFlow.test.ts",
+        "docs/integration/recording-frame-bindings.md",
+        "docs/handoffs/t-14b.md"
+      ],
+      "packet": "docs/tasks/T-14B.md",
+      "pinnedBaseSha": "3148364ce985df1daf3f3530023322afd449dc6d",
+      "backendTarget": "local implementation only; no external writes",
+      "implementationState": "dependency-ready assigned packet",
+      "nativeChecks": "pending relevant native build",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-15B",
+      "owner": "Mica",
+      "branch": "t-15-tip-qr-receipt",
+      "worktree": "tip-qr-receipt",
+      "status": "ready",
+      "dependencies": [
+        "T-15A",
+        "T-10B"
+      ],
+      "allowedPaths": [
+        "components/TipQR.tsx",
+        "components/deals/CanonicalDealDetails.tsx",
+        "lib/tipReceipt.ts",
+        "tests/import/tipReceipt.test.ts",
+        "package.json",
+        "package-lock.json",
+        "docs/integration/tip-qr-receipt.md",
+        "docs/handoffs/t-15b.md"
+      ],
+      "packet": "docs/tasks/T-15B.md",
+      "pinnedBaseSha": "3148364ce985df1daf3f3530023322afd449dc6d",
+      "backendTarget": "local implementation only; no external writes",
+      "implementationState": "dependency-ready assigned packet",
+      "nativeChecks": "pending relevant native build",
+      "phoneAcceptance": "pending William iPhone"
     }
   ],
   "completedDependencies": {
@@ -1212,5 +1310,6 @@
   },
   "localIntegrationBase": "83035c1eeed1c17915764ae0321594315fd5a81b",
   "authority": "local implementation/tests/commits/reviewed integration; no remote or cloud writes",
-  "workerRouting": "William reset: Claude Code Sonnet5.5/high Loom; Sonnet5.5/medium Cinder/Mica/Prism. Antigravity actual credit failures parked; same nodes/work reused; Northstar unchanged"
+  "workerRouting": "William reset: Claude Code Sonnet5.5/high Loom; Sonnet5.5/medium Cinder/Mica/Prism. Antigravity actual credit failures parked; same nodes/work reused; Northstar unchanged",
+  "releaseAuthority": "William Oct4 explicitly authorized demo Vercel hosting, backed-up additive dev proper-marmot-82 sync and existing-provider primary extraction/geocoding usage; no production/newaccount/purchases/overages/resolver/destructive restore"
 }
