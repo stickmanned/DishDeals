@@ -178,7 +178,7 @@
       "packet": "docs/tasks/T-06A.md",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local only; no cloud/provider calls",
-      "implementationState": "dispatched",
+      "implementationState": "review corrections: unsupported currency/hour/offer/price evidence",
       "nativeChecks": "pending integration",
       "phoneAcceptance": "pending"
     },
@@ -223,9 +223,10 @@
       "packet": "docs/tasks/T-11A.md",
       "pinnedBaseSha": "56f23c31da4ba78d2883a117574a795034da9836",
       "backendTarget": "in-memory convex-test only; no cloud authorization",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed locally integrated at212428b",
       "nativeChecks": "pending Harry UI bindings",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "worker29 backendtests129total/23workflow/typecheck/lint/build; coordinator ownership PASS; combined check pending"
     },
     {
       "id": "T-19A",
@@ -271,6 +272,52 @@
       "implementationState": "dispatched",
       "nativeChecks": "pending Harry bindings",
       "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-10A",
+      "owner": "Loom",
+      "branch": "t-10-deal-detail-read",
+      "worktree": "detail-read",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-03",
+        "T-11A"
+      ],
+      "allowedPaths": [
+        "convex/deals.ts",
+        "tests/backend/dealGet.test.ts",
+        "convex/_generated/api.d.ts",
+        "docs/handoffs/t-10a.md"
+      ],
+      "packet": "docs/tasks/T-10A.md",
+      "pinnedBaseSha": "212428b1d85567e9964873c1f56e1989e5ba2fae",
+      "backendTarget": "in-memory only; no cloud",
+      "implementationState": "dispatched",
+      "nativeChecks": "pending Harry/Pinyuan",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-15A",
+      "owner": "Cinder",
+      "branch": "t-15-solana-tip-request",
+      "worktree": "tip-request",
+      "status": "ready",
+      "dependencies": [
+        "T-03"
+      ],
+      "allowedPaths": [
+        "lib/tipRequest.ts",
+        "lib/tipRequest.test.ts",
+        "docs/integration/solana-devnet.md",
+        "docs/handoffs/t-15a.md"
+      ],
+      "packet": "docs/tasks/T-15A.md",
+      "pinnedBaseSha": "212428b1d85567e9964873c1f56e1989e5ba2fae",
+      "backendTarget": "none; no wallet/RPC/provider calls",
+      "implementationState": "prepared",
+      "nativeChecks": "pending Harry runtime/wallet UI",
+      "phoneAcceptance": "pending real devnet tip"
     }
   ],
   "completedDependencies": {
