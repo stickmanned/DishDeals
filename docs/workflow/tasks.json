@@ -925,7 +925,7 @@
       "packet": "docs/tasks/T-08G-B.md",
       "pinnedBaseSha": "e4d9cec3820c58d8557bb9cec68bd26aa1a2b6ae",
       "backendTarget": "local tests only; no cloud/provider target authorized",
-      "implementationState": "assigned bounded durable wrapper",
+      "implementationState": "reviewed integrated92ccdfc; failclosed backwardsclock correction; actualprovider/native UI pending",
       "nativeChecks": "unrun",
       "phoneAcceptance": "pending William iPhone"
     },
@@ -1001,6 +1001,33 @@
       "pinnedBaseSha": "2c97c07aecfb5055769724d83f01eb8482da388a",
       "backendTarget": "read-only published source review only; no cloud commands",
       "implementationState": "assigned concrete preservation/release artifact",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-FORM-C",
+      "owner": "Loom",
+      "branch": "t-07-reel-publish-bindings",
+      "worktree": "reel-publish-bindings",
+      "status": "prepared",
+      "dependencies": [
+        "T-08G-B",
+        "N-FORM-B",
+        "N-SOURCE-C",
+        "T-09C"
+      ],
+      "allowedPaths": [
+        "components/reels/ReelIntake.tsx",
+        "components/reels/CanonicalReelReview.tsx",
+        "lib/reels/publish.ts",
+        "tests/import/reelPublish.test.ts",
+        "docs/integration/reel-publish-bindings.md",
+        "docs/handoffs/n-form-c.md"
+      ],
+      "packet": "docs/tasks/N-FORM-C.md",
+      "pinnedBaseSha": "92ccdfc0f0d5df8f5da314c7c1f1ac950f509e89",
+      "backendTarget": "local checks only; cloud/provider not authorized",
+      "implementationState": "assigned actual reel publish/geocode UI binding",
       "nativeChecks": "pending",
       "phoneAcceptance": "pending"
     }
