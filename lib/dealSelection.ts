@@ -176,6 +176,11 @@ export function selectDeals<T extends CanonicalSavedDeal>(
       validity,
     };
 
+    // Strip any prior/stale distanceKm from incoming deal (e.g. from a prior selectDeals call)
+    if ("distanceKm" in enriched) {
+      delete (enriched as { distanceKm?: number }).distanceKm;
+    }
+
     if (dealDist !== undefined) {
       enriched.distanceKm = dealDist;
     }
@@ -186,8 +191,8 @@ export function selectDeals<T extends CanonicalSavedDeal>(
   // Deterministic sort:
   // 1. Valid deals first
   // 2. Nearest first (if valid userLocation provided and deal has distance)
-  // 3. Newest _creationTime first
-  // 4. Stable _id tie-break
+  // 3. Newest _creationTime first (sanitized finite numbers)
+  // 4. Stable _id tie-break (locale-independent lexicographical comparison)
   selected.sort((a, b) => {
     const aValid = a.validity.status === "valid" ? 0 : 1;
     const bValid = b.validity.status === "valid" ? 0 : 1;
@@ -212,13 +217,23 @@ export function selectDeals<T extends CanonicalSavedDeal>(
       }
     }
 
-    const aTime = typeof a._creationTime === "number" ? a._creationTime : 0;
-    const bTime = typeof b._creationTime === "number" ? b._creationTime : 0;
+    const aTime =
+      typeof a._creationTime === "number" && Number.isFinite(a._creationTime)
+        ? a._creationTime
+        : 0;
+    const bTime =
+      typeof b._creationTime === "number" && Number.isFinite(b._creationTime)
+        ? b._creationTime
+        : 0;
     if (aTime !== bTime) {
       return bTime - aTime;
     }
 
-    return String(a._id).localeCompare(String(b._id));
+    const aId = String(a._id ?? "");
+    const bId = String(b._id ?? "");
+    if (aId < bId) return -1;
+    if (aId > bId) return 1;
+    return 0;
   });
 
   return selected;

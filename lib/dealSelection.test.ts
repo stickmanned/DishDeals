@@ -389,5 +389,90 @@ describe("dealSelection (T-09A)", () => {
       expect(result[0].distanceKm).toBeTypeOf("number");
       expect(result[0].validity.status).toBe("valid");
     });
+
+    it("strips prior distanceKm when re-selecting with absent or null user location", () => {
+      const dealOldNear = createDeal({
+        _id: "deal_old_near",
+        lat: NEAR_COORDS.lat,
+        lng: NEAR_COORDS.lng,
+        _creationTime: 100,
+      });
+      const dealNewFar = createDeal({
+        _id: "deal_new_far",
+        lat: FAR_COORDS.lat,
+        lng: FAR_COORDS.lng,
+        _creationTime: 500,
+      });
+
+      // 1. Initial selection with user location: dealOldNear has distance ~0.05 km, dealNewFar has ~6 km
+      const initial = selectDeals([dealOldNear, dealNewFar], {
+        now: defaultNow,
+        userLocation: SFU_COORDS,
+      });
+      expect(initial[0]._id).toBe("deal_old_near");
+      expect(initial[0].distanceKm).toBeTypeOf("number");
+      expect(initial[1]._id).toBe("deal_new_far");
+      expect(initial[1].distanceKm).toBeTypeOf("number");
+
+      // 2. Re-select prior results with location revoked/absent
+      const reselected = selectDeals(initial, {
+        now: defaultNow,
+        userLocation: null,
+      });
+
+      // Ensure no distanceKm property remains on any re-selected record
+      for (const item of reselected) {
+        expect("distanceKm" in item).toBe(false);
+        expect(item.distanceKm).toBeUndefined();
+      }
+
+      // Ensure sorting order does NOT use stale distances (dealNewFar has newer _creationTime 500 > 100)
+      expect(reselected[0]._id).toBe("deal_new_far");
+      expect(reselected[1]._id).toBe("deal_old_near");
+    });
+
+    it("strips prior distanceKm and does not sort by stale distance when deal coordinates are invalid", () => {
+      const priorResult = [
+        {
+          ...createDeal({ _id: "deal_corrupt", lat: NaN, lng: NaN, _creationTime: 100 }),
+          distanceKm: 0.01, // Stale distance from before corruption
+        },
+        createDeal({ _id: "deal_valid_far", lat: FAR_COORDS.lat, lng: FAR_COORDS.lng, _creationTime: 200 }),
+      ];
+
+      const reselected = selectDeals(priorResult, {
+        now: defaultNow,
+        userLocation: SFU_COORDS,
+      });
+
+      const corruptDeal = reselected.find((d) => d._id === "deal_corrupt");
+      expect(corruptDeal).toBeDefined();
+      expect("distanceKm" in corruptDeal!).toBe(false);
+      expect(corruptDeal!.distanceKm).toBeUndefined();
+
+      // Valid far deal with valid distance sorts ahead of corrupt deal lacking valid distance
+      expect(reselected[0]._id).toBe("deal_valid_far");
+      expect(reselected[1]._id).toBe("deal_corrupt");
+    });
+
+    it("sanitizes non-finite _creationTime deterministically", () => {
+      const d1 = createDeal({ _id: "d_nan_time", _creationTime: NaN });
+      const d2 = createDeal({ _id: "d_inf_time", _creationTime: Infinity });
+      const d3 = createDeal({ _id: "d_pos_time", _creationTime: 100 });
+
+      const result = selectDeals([d1, d2, d3], { now: defaultNow });
+      // Valid positive creation time sorts before sanitized 0
+      expect(result[0]._id).toBe("d_pos_time");
+      // d_inf_time and d_nan_time fall back to 0 and tie-break by ID
+      expect(result.map((d) => d._id)).toEqual(["d_pos_time", "d_inf_time", "d_nan_time"]);
+    });
+
+    it("uses locale-independent ID tie comparison", () => {
+      const dA = createDeal({ _id: "deal_a", _creationTime: 1000 });
+      const dB = createDeal({ _id: "deal_b", _creationTime: 1000 });
+      const result = selectDeals([dB, dA], { now: defaultNow });
+      expect(result[0]._id).toBe("deal_a");
+      expect(result[1]._id).toBe("deal_b");
+    });
   });
 });
