@@ -323,10 +323,11 @@ describe("hourly bounded cleanup", () => {
   const exists = (s: S, id: Id<"_storage">) => s.t.run(async ctx => (await ctx.db.system.get("_storage", id)) !== null);
   const rowFor = (s: S, id: Id<"_storage">) => s.t.run(ctx => ctx.db.query("dealUploads").withIndex("by_storage", q => q.eq("storageId", id)).collect());
 
-  it("is registered as a real hourly cron and preserves no other job", () => {
-    const names = Object.keys((crons as unknown as { crons: Record<string, unknown> }).crons);
-    expect(names).toEqual(["clean expired deal image uploads"]);
-    expect(JSON.stringify((crons as unknown as { crons: Record<string, unknown> }).crons[names[0]])).toContain("dealUploads");
+  it("is registered as a real hourly cron beside only the preserved published workflow expiry cron", () => {
+    const registered = (crons as unknown as { crons: Record<string, unknown> }).crons;
+    expect(Object.keys(registered).sort()).toEqual(["Remove expired deals from realtime maps", "clean expired deal image uploads"]);
+    expect(JSON.stringify(registered["clean expired deal image uploads"])).toContain("dealUploads");
+    expect(JSON.stringify(registered["Remove expired deals from realtime maps"])).toContain("workflow");
   });
   it("deletes expired unpublished unreferenced uploads and their files, and nothing else", async () => {
     const s = await setup();
