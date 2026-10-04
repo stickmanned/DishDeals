@@ -11,21 +11,29 @@
     "test": "vitest run --exclude \"scripts/**\"",
     "agents": "node scripts/agent-workflow.mjs",
     "test:workflow": "node --test scripts/agent-workflow.test.mjs",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run test:workflow && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run test && npm run test:workflow && npm run build",
+    "build:pages": "node scripts/build-github-pages.mjs"
   },
   "dependencies": {
+    "@auth/core": "^0.41.3",
     "@convex-dev/auth": "^0.0.96",
+    "@convex-dev/workflow": "^0.4.8",
+    "@google/genai": "^2.27.0",
+    "@restaurant-deals/map": "file:vendor/restaurant-deals-map-0.2.0.tgz",
     "convex": "^1.46.0",
+    "dompurify": "^3.4.16",
     "next": "^16.3.8",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@edge-runtime/vm": "^5.0.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "convex-test": "^0.0.60",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.8",
     "tailwindcss": "^4.3.3",

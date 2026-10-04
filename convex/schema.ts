@@ -1,9 +1,22 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { workflowTables } from "./workflowTables";
 import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
+  ...workflowTables,
   ...authTables, // includes the users table
+
+  reelItems: defineTable({
+    ownerId: v.id("users"), sourceUrl: v.string(),
+    status: v.union(v.literal("queued"), v.literal("retrieving"), v.literal("extracting"), v.literal("ready"), v.literal("no_deal"), v.literal("failed")),
+    generation: v.number(), attempts: v.number(), updatedAt: v.number(), expiresAt: v.number(),
+    workflowId: v.optional(v.string()), videoId: v.optional(v.id("_storage")),
+    caption: v.optional(v.string()), duration: v.optional(v.number()), publishedAt: v.optional(v.string()),
+    extractionJson: v.optional(v.string()), draftJson: v.optional(v.string()),
+    error: v.optional(v.object({ code: v.string(), message: v.string() })),
+  }).index("by_owner_url", ["ownerId", "sourceUrl"]).index("by_owner", ["ownerId"]).index("by_expiry", ["expiresAt"]),
+  reelLimits: defineTable({ ownerId: v.id("users"), windowStart: v.number(), count: v.number() }).index("by_owner", ["ownerId"]),
 
   profiles: defineTable({
     userId: v.id("users"),
