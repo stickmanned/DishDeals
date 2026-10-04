@@ -20,6 +20,11 @@
 //   into exactly four JPEG frames; all four are uploaded (each needs its own real receipt) and analyzed in one
 //   extract call. Everything after that (offers, edits, publish, cancel, generations) is unchanged. A recording
 //   never attaches a frame as the deal photo, and nothing is inferred about audio.
+// - T-16B: opt-in demo replay. When the user switches replay on AND asks for analysis, and an injected `demoCache` exists,
+//   the controller first looks for an exact saved capture of the same actual source (after the real uploads, so every
+//   published image still has a real owned receipt). A hit becomes the same validated offer, labeled cached, and the
+//   live `extract` is skipped; a miss, bad file or slow lookup continues to the live call exactly once. Cancel ignores
+//   both a late lookup and the fallback. Only hashes of the prepared bytes are kept in the source receipt.
 // - Publishing runs the canonical buildPublishFields gate, calls deals.create once per form (a second
 //   click shares the in-flight call), and a form is "saved" only after a real id receipt comes back.
 
@@ -38,6 +43,8 @@ import { checkImageChoice, MAX_IMAGE_BYTES, type ImageChoice, type ImageUploadOu
 import type { ExtractOutcome } from "./extractCore";
 import { extractOutcomeToDrafts, validateExtractOutcome } from "./extractionDraft";
 import { checkRecordingFile, RECORDING_COPY, RECORDING_FRAME_COUNT } from "./recordingFrameFlow";
+import { demoKeyFromMaterial, type DemoCacheResult, type DemoKey, type DemoMaterial } from "./demoCache";
+import { buildDemoMaterial, DEMO_LOOKUP_DEADLINE_MS, type CachedOrigin } from "./demoCacheFlow";
 
 // ------------------------------------------------------------------ limits
 
@@ -120,6 +127,12 @@ export interface FlowDeps {
   upload(args: { uploadUrl: string; token: string; file: Blob & ImageChoice; signal: AbortSignal }): Promise<ImageUploadOutcome>;
   extract(args: ExtractArgs): Promise<unknown>;
   createDeal(args: CreateDealArgs): Promise<unknown>;
+  /**
+   * Optional (T-16B), both needed together. Absent = no demo replay mode; every old caller is unchanged.
+   * `demoPromptVersion` is the prompt/contract version a capture must match; `loadDemo` is the same-origin loader.
+   */
+  demoPromptVersion?(): Promise<string>;
+  loadDemo?(key: DemoKey, options: { signal: AbortSignal }): Promise<DemoCacheResult>;
 }
 
 export type RunPhase = "idle" | "preparing" | "uploading" | "extracting" | "failed" | "canceled" | "done";
@@ -156,6 +169,8 @@ export interface Offer {
   imageIds: OwnedStorageId[];
   source: "image" | "recording";
   imageName: string;
+  /** Present only when this offer was replayed from a saved capture (T-16B); absent for live analysis. */
+  cached?: CachedOrigin;
   /** The model found no deal; nothing to apply. */
   noDeal: boolean;
   drafts: DealDraft[];
@@ -182,6 +197,10 @@ export interface FlowSnapshot {
   uploaded: boolean;
   /** Frame upload progress while a recording is being sent; null otherwise. */
   progress: { done: number; total: number } | null;
+  /** The user's explicit opt-in to replay a saved demo capture (T-16B). Off until switched on; never persisted. */
+  demoReplay: boolean;
+  /** True only while a saved-capture lookup is in flight. */
+  cacheLookup: boolean;
   offers: Offer[];
   forms: FormEntry[];
   activeFormKey: string;
@@ -301,7 +320,7 @@ export class ImageDraftFlow {
   private idSeq = 1;
   private abort: AbortController | null = null;
   private attached = true;
-  private receipt: { fileSeq: number; storageIds: OwnedStorageId[]; fileName: string; kind: "image" | "recording" } | null = null;
+  private receipt: { fileSeq: number; storageIds: OwnedStorageId[]; fileName: string; kind: "image" | "recording"; demo: DemoMaterial | null } | null = null;
   /** Every storage id a real upload receipt produced; the only ids a publish may reference. */
   private readonly owned = new Set<string>();
   private readonly inflight = new Map<string, Promise<PublishResult>>();
@@ -313,6 +332,8 @@ export class ImageDraftFlow {
       error: null,
       uploaded: false,
       progress: null,
+      demoReplay: false,
+      cacheLookup: false,
       offers: [],
       forms: [blankForm("form-1")],
       activeFormKey: "form-1",
@@ -347,8 +368,8 @@ export class ImageDraftFlow {
 
   private set(patch: Partial<FlowSnapshot>): void {
     // Progress only means something while a run is in flight.
-    const idle = patch.phase !== undefined && !isRunning(patch.phase) && !("progress" in patch);
-    this.snap = { ...this.snap, ...patch, ...(idle ? { progress: null } : {}) };
+    const idle = patch.phase !== undefined && !isRunning(patch.phase);
+    this.snap = { ...this.snap, ...patch, ...(idle && !("progress" in patch) ? { progress: null } : {}), ...(idle && !("cacheLookup" in patch) ? { cacheLookup: false } : {}) };
     for (const listener of [...this.listeners]) listener();
   }
 
@@ -398,6 +419,11 @@ export class ImageDraftFlow {
     this.fileSeq += 1;
     this.receipt = null;
     this.set({ source: { ...this.snap.source, file: null, recording: file, fileError: null, recordingError: null }, phase: "idle", error: null, uploaded: false });
+  }
+
+  /** Explicit opt-in for demo replay. Applies to the NEXT analysis; a run already in flight keeps what it started with. */
+  setDemoReplay(on: boolean): void {
+    this.set({ demoReplay: on === true });
   }
 
   setContext(patch: Partial<Pick<SourceState, "caption" | "text" | "provenanceUrl" | "publishedAt">>): void {
@@ -456,6 +482,7 @@ export class ImageDraftFlow {
       return;
     }
 
+    const replay = this.snap.demoReplay && !!this.deps.demoPromptVersion && !!this.deps.loadDemo;
     const myRun = ++this.runId;
     const myFile = this.fileSeq;
     const controller = new AbortController();
@@ -484,6 +511,9 @@ export class ImageDraftFlow {
         if (prepared.type !== "image/jpeg" || checkImageChoice(prepared) !== null) {
           return fail({ code: "IMAGE_UNREADABLE", message: "That image could not be prepared for upload.", retryable: false });
         }
+        // Hashes of the ORIGINAL file and the prepared upload, kept in the receipt for retries (bytes are not kept).
+        const demo = this.deps.loadDemo ? await buildDemoMaterial(file as unknown as Blob, [prepared]) : null;
+        if (stale()) return;
 
         this.set({ phase: "uploading" });
         let token: string | null;
@@ -514,7 +544,7 @@ export class ImageDraftFlow {
           this.owned.add(storageId);
           // The upload is real even if the run was canceled meanwhile; keep it for a retry of the same file.
           if (this.fileSeq === myFile) {
-            this.receipt = { fileSeq: myFile, storageIds: [storageId], fileName: file.name, kind: "image" };
+            this.receipt = { fileSeq: myFile, storageIds: [storageId], fileName: file.name, kind: "image", demo };
             receipt = this.receipt;
             this.set({ uploaded: true });
           }
@@ -525,32 +555,53 @@ export class ImageDraftFlow {
         this.set({ phase: "extracting" });
       }
 
-      let raw: unknown;
-      try {
-        raw = await this.deps.extract({ imageIds: [...receipt.storageIds], ...context.args });
-      } catch (error) {
-        if (stale()) return;
-        const failure = classifyExtractError(error);
-        if (failure.code === "IMAGE_NOT_AVAILABLE" || failure.code === "INVALID_IMAGE") {
-          if (this.receipt?.fileSeq === myFile) this.receipt = null;
-          this.set({ uploaded: false });
-        }
-        return fail(failure);
-      }
-      if (stale()) return;
-
-      let model: string;
-      let noDeal: boolean;
-      let drafts: DealDraft[];
-      try {
+      const source = receipt;
+      // Build the offer's drafts from a validated envelope; throws if it is not usable.
+      const build = (raw: unknown) => {
         validateExtractOutcome(raw);
         const outcome = raw as ExtractOutcome;
-        model = outcome.model;
-        noDeal = !outcome.result.isDeal || outcome.result.deals.length === 0;
-        drafts = noDeal ? [] : extractOutcomeToDrafts(outcome, { sourceUrl: context.args.provenanceUrl ?? null, imageId: receipt.kind === "image" ? receipt.storageIds[0] : null });
-      } catch {
-        return fail({ code: "UNUSABLE_RESULT", message: "The analysis result was not usable. Try again, or fill in the form by hand.", retryable: true });
+        const noDeal = !outcome.result.isDeal || outcome.result.deals.length === 0;
+        const drafts = noDeal ? [] : extractOutcomeToDrafts(outcome, { sourceUrl: context.args.provenanceUrl ?? null, imageId: source.kind === "image" ? source.storageIds[0] : null });
+        return { model: outcome.model, noDeal, drafts };
+      };
+
+      // Opt-in replay: look for an exact saved capture first. Anything but a usable hit continues to the live call once.
+      let built: ReturnType<typeof build> | null = null;
+      let cached: CachedOrigin | undefined;
+      if (replay) {
+        const hit = await this.lookupCache(receipt, context.args, controller, stale);
+        if (hit === "stale") return;
+        if (hit) {
+          try {
+            built = build(hit.outcome);
+            cached = hit.origin;
+          } catch {
+            built = null;
+          }
+        }
       }
+
+      if (!built) {
+        let raw: unknown;
+        try {
+          raw = await this.deps.extract({ imageIds: [...receipt.storageIds], ...context.args });
+        } catch (error) {
+          if (stale()) return;
+          const failure = classifyExtractError(error);
+          if (failure.code === "IMAGE_NOT_AVAILABLE" || failure.code === "INVALID_IMAGE") {
+            if (this.receipt?.fileSeq === myFile) this.receipt = null;
+            this.set({ uploaded: false });
+          }
+          return fail(failure);
+        }
+        if (stale()) return;
+        try {
+          built = build(raw);
+        } catch {
+          return fail({ code: "UNUSABLE_RESULT", message: "The analysis result was not usable. Try again, or fill in the form by hand.", retryable: true });
+        }
+      }
+      const { model, noDeal, drafts } = built;
 
       const offer: Offer = {
         id: this.nextId("offer"),
@@ -560,6 +611,7 @@ export class ImageDraftFlow {
         imageIds: [...receipt.storageIds],
         source: receipt.kind,
         imageName: receipt.fileName,
+        ...(cached ? { cached } : {}),
         noDeal,
         drafts,
         appliedTo: drafts.map(() => null),
@@ -570,6 +622,54 @@ export class ImageDraftFlow {
     } finally {
       if (this.runId === myRun) this.abort = null;
     }
+  }
+
+  /**
+   * Ask the injected demo cache for an exact saved capture of this receipt's source plus the current context.
+   * Returns "stale" if the run was canceled/superseded meanwhile (the caller must then do nothing at all), a hit, or
+   * null for any miss, invalid file, error or timeout. Bounded by its own deadline even if the loader never settles.
+   */
+  private async lookupCache(
+    receipt: NonNullable<ImageDraftFlow["receipt"]>,
+    args: Omit<ExtractArgs, "imageIds">,
+    controller: AbortController,
+    stale: () => boolean,
+  ): Promise<"stale" | { outcome: ExtractOutcome; origin: CachedOrigin } | null> {
+    const { demoPromptVersion, loadDemo } = this.deps;
+    if (!demoPromptVersion || !loadDemo || !receipt.demo) return null;
+    // A recording matches only its exact four frames; anything else is a miss.
+    if (receipt.kind === "recording" && receipt.demo.images.length !== RECORDING_FRAME_COUNT) return null;
+    this.set({ cacheLookup: true });
+    const bounded = <T,>(work: Promise<T>): Promise<T | null> =>
+      new Promise<T | null>((resolve) => {
+        const done = (value: T | null) => {
+          clearTimeout(timer);
+          controller.signal.removeEventListener("abort", onAbort);
+          resolve(value);
+        };
+        const onAbort = () => done(null);
+        const timer = setTimeout(() => done(null), DEMO_LOOKUP_DEADLINE_MS);
+        controller.signal.addEventListener("abort", onAbort, { once: true });
+        work.then(done, () => done(null));
+      });
+    let found: { outcome: ExtractOutcome; origin: CachedOrigin } | null = null;
+    try {
+      const version = await bounded(demoPromptVersion());
+      if (stale()) return "stale";
+      if (version) {
+        const key = await demoKeyFromMaterial(receipt.demo, args, version);
+        const result = await bounded(loadDemo(key, { signal: controller.signal }));
+        if (stale()) return "stale";
+        if (result && result.status === "hit") {
+          found = { outcome: result.outcome, origin: { capturedAt: result.provenance.capturedAt, evidenceReference: result.provenance.evidenceReference, model: result.provenance.model } };
+        }
+      }
+    } catch {
+      found = null;
+    }
+    if (stale()) return "stale";
+    this.set({ cacheLookup: false });
+    return found;
   }
 
   /**
@@ -600,6 +700,10 @@ export class ImageDraftFlow {
     ) {
       return failure("RECORDING_UNREADABLE", RECORDING_COPY.unreadable, false);
     }
+
+    // Exactly four frames, hashed with the ORIGINAL recording for the demo key (hashes only are kept).
+    const demo = this.deps.loadDemo ? await buildDemoMaterial(recording as unknown as Blob, frames) : null;
+    if (stale()) return "stale";
 
     this.set({ phase: "uploading", progress: { done: 0, total: frames.length } });
     let token: string | null;
@@ -637,7 +741,7 @@ export class ImageDraftFlow {
     }
     if (ids.length !== RECORDING_FRAME_COUNT || this.fileSeq !== myFile) return { error: UPLOAD_FAILURES.unexpected };
 
-    this.receipt = { fileSeq: myFile, storageIds: ids, fileName: recording.name, kind: "recording" };
+    this.receipt = { fileSeq: myFile, storageIds: ids, fileName: recording.name, kind: "recording", demo };
     this.set({ uploaded: true, phase: "extracting" });
     return { receipt: this.receipt };
   }
