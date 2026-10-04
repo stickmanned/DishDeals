@@ -132,10 +132,10 @@
       "packet": "docs/tasks/T-07A.md",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "no backend writes; pure logic only",
-      "implementationState": "reviewed d0d7de7; queued for integration",
+      "implementationState": "reviewed locally integrated",
       "nativeChecks": "pending integration",
       "phoneAcceptance": "pending",
-      "localChecks": "worker 20 draft/27 total Vitest, 23 workflow/typecheck/lint/build; coordinator ownership PASS"
+      "localChecks": "actual worker checks recorded in handoff; native/phone pending"
     },
     {
       "id": "T-05A",
@@ -247,9 +247,10 @@
       "packet": "docs/tasks/T-19A.md",
       "pinnedBaseSha": "5f26c892647a0336f18e5e4340ea544a7d94f7c0",
       "backendTarget": "none; documentation only",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed locally integrated",
       "nativeChecks": "pending Harry source/Xcode",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "actual worker checks recorded in handoff; native/phone pending"
     },
     {
       "id": "T-07D",
@@ -269,9 +270,10 @@
       "packet": "docs/tasks/T-07D.md",
       "pinnedBaseSha": "b55ea3c0d613f0878ca7a5924120416dc74546bf",
       "backendTarget": "none; headless adapter/synthetic replay only",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed, queued for local integration",
       "nativeChecks": "pending Harry bindings",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "actual worker checks and coordinator ownership PASS; combined check pending"
     },
     {
       "id": "T-10A",
@@ -293,16 +295,17 @@
       "packet": "docs/tasks/T-10A.md",
       "pinnedBaseSha": "212428b1d85567e9964873c1f56e1989e5ba2fae",
       "backendTarget": "in-memory only; no cloud",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed, queued for local integration",
       "nativeChecks": "pending Harry/Pinyuan",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "actual worker checks and coordinator ownership PASS; combined check pending"
     },
     {
       "id": "T-15A",
       "owner": "Cinder",
       "branch": "t-15-solana-tip-request",
       "worktree": "tip-request",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-03"
       ],
@@ -315,9 +318,50 @@
       "packet": "docs/tasks/T-15A.md",
       "pinnedBaseSha": "212428b1d85567e9964873c1f56e1989e5ba2fae",
       "backendTarget": "none; no wallet/RPC/provider calls",
-      "implementationState": "prepared",
+      "implementationState": "reviewed, queued for local integration",
       "nativeChecks": "pending Harry runtime/wallet UI",
-      "phoneAcceptance": "pending real devnet tip"
+      "phoneAcceptance": "pending real devnet tip",
+      "localChecks": "actual worker checks and coordinator ownership PASS; combined check pending"
+    },
+    {
+      "id": "N-IOS-A",
+      "owner": "Loom",
+      "branch": "t-13-native-contract-review",
+      "worktree": "native-contract-review",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/handoffs/n-ios-a.md"
+      ],
+      "packet": "docs/tasks/N-IOS-A.md",
+      "pinnedBaseSha": "547a74df5d279ad40758394430979645e416f2c5",
+      "backendTarget": "read-only source inspection; no cloud/provider",
+      "implementationState": "dispatched",
+      "nativeChecks": "pending compile; installed Xcode/SDK, runtime downloading",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-BUILD-A",
+      "owner": "Cinder",
+      "branch": "t-13-native-sdk-check",
+      "worktree": "native-sdk-check",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/handoffs/n-build-a.md"
+      ],
+      "packet": "docs/tasks/N-BUILD-A.md",
+      "pinnedBaseSha": "547a74df5d279ad40758394430979645e416f2c5",
+      "backendTarget": "no cloud/provider",
+      "implementationState": "dispatched",
+      "nativeChecks": "SDK compilation inspection available; runtime execution pending",
+      "phoneAcceptance": "pending signing/phone"
     }
   ],
   "completedDependencies": {

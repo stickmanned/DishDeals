@@ -1,13 +1,13 @@
 # Real iPhone share-to-map acceptance record
 
-Status: **pending, not run**. Deadline: October 4, 2026 at 12:00 America/Vancouver. Device reported iOS 26; minor version and actual app/Instagram versions unverified. Harry native sharing source unpushed; framework/schemes/signing unknown. Xcode installing. This record must be filled with observed results, not intended behavior. T-01/T-02 remain DONE; new native evidence is tracked here.
+Status: **pending, not run**. Deadline: October 4, 2026 at 12:00 America/Vancouver. Device reported iOS 26; minor version and actual app/Instagram versions unverified. Harry native sharing source unpushed; framework/schemes/signing unknown. Xcode installed/selected: 27.0 (27A266a); simulator runtime still installing (William update), no installed runtimes/devices in Maestri read-only check. This record must be filled with observed results, not intended behavior. T-01/T-02 remain DONE; new native evidence is tracked here.
 
 ## Stage gates
 
 | Stage | Evidence needed | Current state |
 | --- | --- | --- |
 | Implementation/local checks | Reviewed source commits, exact checkout, commands/results, synthetic inputs labeled | T-03/T-04/T-05R locally integrated at 56f23c3; combined check 100 Vitest +23 workflow/typecheck/lint/build passed |
-| Native build/simulator | Actual app/extension targets/schemes, Xcode/iOS runtime versions, exact build/tests, isolated simulator ownership | Pending Harry source/tooling; no command invented |
+| Native build/simulator | Actual app/extension targets/schemes, Xcode/iOS runtime versions, exact build/tests, isolated simulator ownership | Xcode/SDK installed; Harry source/build commands pending; simulator runtime still installing; no app build run |
 | Signing/installation | Actual Team/capabilities/bundle IDs/profile, device pairing/Developer Mode, installed build | Pending; prefer own-device Personal Team, no Store submission; capabilities need verification |
 | Real Instagram iPhone flow | Exact native UI and actual payload, source-supported VLM, confirmed fields/location, publish and map result | Pending William phone |
 

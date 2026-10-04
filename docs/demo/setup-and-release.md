@@ -67,7 +67,7 @@ The backend and frontend codebase references the following environment variables
 
 Harry owns the frontend implementation and native iOS Instagram Share Extension. His native source repository/branch is pending integration. When source is provided, discovery must be performed using read-only inspection commands without altering system toolchains.
 
-> **Native Framework and Map Rendering Unresolved**: The published MapLibre GL browser component (`components/Map.tsx`) serves as a web reference implementation only; it does not select or commit to MapLibre for native iOS rendering. Native framework selection (e.g. SwiftUI/MapKit vs web container vs React Native) and native runtime rendering remain unresolved pending Harry's native source intake.
+> **Native Framework and Map Rendering Unresolved**: The published MapLibre GL browser component (`map-component/src/DealMap.tsx` on published `feature/deal-map`) serves as a web reference implementation only; it does not select or commit to MapLibre for native iOS rendering. Native framework selection (e.g. SwiftUI/MapKit vs web container vs React Native) and native runtime rendering remain unresolved pending Harry's native source intake.
 
 ### Read-Only Toolchain Discovery Commands
 ```bash

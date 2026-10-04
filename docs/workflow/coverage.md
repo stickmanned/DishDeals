@@ -14,7 +14,7 @@ October 3, 2026. T-01 and T-02: **DONE by William confirmation**, code reused. T
 | T-10 | Author edits/deletes; others cannot | Native details with canonical fields and map | Loom read / Harry / Pinyuan | Full 07,08; read split 02,03,11A | T-10A canonical optional-auth detail read released; update/delete/map/native pending |
 | T-11 | One vote/user; switching updates both counts | Native controls over same protected votes.cast | Loom backend / Harry UI | Full 10; backend split 02,03 | T-11A reviewed/integrated at212428b: in-memory auth/atomic vote checks; live/detail/native pending |
 | T-12 | Seed fills feed; two actual profiles/devnet wallets | Validated real canonical seeds populate map | Worker TBD / William / Pinyuan | 06,09 | No live seed run authorized; real data/profile/wallet missing |
-| T-13 | Android screenshot share opens post with file | Primary iOS Harry extension integration; Android original tracked separately | Harry native / secondary worker TBD | 07,N-IOS,N-SHARE | Unpushed extension; Android secondary pending |
+| T-13 | Android screenshot share opens post with file | Primary iOS Harry extension integration; Android original tracked separately | Harry native / secondary worker TBD | 07,N-IOS,N-SHARE | Published Harry extension547a74d; receipt/build/provider/phone pending; Android secondary pending |
 | T-14 | 10s recording yields 4 frames; reveal behavior | Native frame adapter after runtime; Harry owns reveal | Functional worker TBD / Harry | 07 | Pending; shared image helpers possible after source contract |
 | T-15 | Real devnet wallet tip displays receipt | Native wallet transition and receipt; no real purchases | Cinder protocol / William / Harry | Full 03,10; protocol split03 | T-15A prepared request helper only; wallet/device/network dependencies; does not delay first demo |
 | T-16 | Genuine cached demo results work without Gemini key | Separate replay provenance; does not imply offline Convex | Worker TBD | 07 | No genuine extraction outputs yet; never manufacture |
@@ -28,10 +28,10 @@ October 3, 2026. T-01 and T-02: **DONE by William confirmation**, code reused. T
 
 | ID | Scope / owner | Inputs and dependencies | Acceptance and current status |
 | --- | --- | --- | --- |
-| N-IOS | Runtime/auth/map compatibility; Northstar + Harry/Pinyuan | Harry published native source, 03/08 interfaces | Agreed framework, schemes, dependencies, bundle IDs, signing/build commands; **blocked on Harry source**, not Xcode for inspection |
-| N-SHARE | Share-to-ingestion adapter; Harry owns extension | Real Instagram item sample; durable lifecycle/storage/ownership contract | Actual iPhone receipt recorded; no URL-media assumption; **pending source/sample** |
+| N-IOS | Runtime/auth/map compatibility; Northstar + Harry/Pinyuan | Harry published native source, 03/08 interfaces | Agreed framework, schemes, dependencies, bundle IDs, signing/build commands; **Harry source received547a74d; N-IOS-A contract review active**, no native compatibility acceptance yet |
+| N-SHARE | Share-to-ingestion adapter; Harry owns extension | Real Instagram item sample; durable lifecycle/storage/ownership contract | Actual iPhone receipt recorded; no URL-media assumption; **source received; actual sample pending** |
 | N-FORM | Native shared form bindings; functional worker + Harry/Pinyuan | 07 state contract, N-IOS/N-SHARE | Edits survive late errors/retries; accepted tentative values; confirmed pin before publish; **pending integration** |
-| N-BUILD | Native build and simulator QA; assigned one simulator owner | N-IOS, installed Xcode/runtime | Actual scheme/build/native tests; **pending tooling/source**, no simulator/device inference |
+| N-BUILD | Native build and simulator QA; assigned one simulator owner | N-IOS, installed Xcode/runtime | Actual scheme/build/native tests; **Xcode/SDK installed, source received; N-BUILD-A compile inspection active; simulator runtime pending**, no simulator/device inference |
 | N-PHONE | Primary reel-share-to-map acceptance; William + Northstar | Signed installed app, real source/API and 03/05/07/08/09 | Exact real Instagram transitions/items, timings, field/pin confirmation, published marker; **pending real iPhone** |
 
 ## Dispatch and gates
@@ -42,7 +42,7 @@ Northstar reviews exact local commits and ownership, integrates serially in work
 
 Human inputs pending: Harry native branch and interface agreement; Pinyuan location/publish/map adapter agreement; 10 real deals + 2 photos + confirmed pins; actual Instagram payload sample; iOS 26 minor version and signing readiness. Independent work continues.
 
-Deadline: October 4 at 12:00 America/Vancouver. Xcode installing; own-device iOS 26 testing via free Personal Team preferred, extension entitlements/signing unverified.
+Deadline: October 4 at 12:00 America/Vancouver. Xcode 27.0 installed/selected, simulator runtime still installing; own-device iOS 26 testing via free Personal Team preferred, extension entitlements/signing unverified.
 
 ### T-07 split approved for independent local work
 
@@ -63,3 +63,7 @@ T-07D internal bridge depends reviewed T-05A/T-07A; carries canonical suggestion
 T-10A read split: canonical deals.get public saved-record read, authorName/authorWallet/imageUrl/viewerVote enrichment; no viewerlocation means no distance. Northstar specifies viewerVote key and nullable no-vote value, table/API names preserved. Only sole agent read writer touchesdeals.ts; mutations/geospatial still require Pinyuan agreement. Full author-edit/delete acceptance remains open.
 
 T-15A secondary pure protocol preparation: valid SOL transfer URI and explicit devnet binding/receipt contract, no new wallet stack/dependency and no wallet/RPC action. Full QR/native validated real receipt remains pending. This slice must not delay primary native-share intake.
+
+Toolchain milestone October3 22:37 Vancouver: xcode-select points /Applications/Xcode.app/Contents/Developer; xcodebuild-version Xcode27.0 build27A266a, iOS/iOS Simulator27 SDKs installed. Root sandbox simctl failed service/log access; authorized Maestri Workspace Ops read-only simctl succeeds with empty runtimes/devices, not an Xcode installation failure. William confirms simulator download still ongoing. No system switch/install/download initiated. Actual app/extension compilation still pending Harry source; simulator execution waits runtime; signing/real iPhone acceptance separately pending.
+
+Harry source now received547a74d, SwiftUI/WKWebView + UIKit extension. N-IOS-A Loom/N-BUILD-A Cinder inspect independently in owned worktrees. Signing not configured. ScrapeCreators retrieval unauthorized/disabled; genuine reel understanding still blocked on supported authorized media path. Map-home agreement with Harry/Pinyuan pending.

@@ -33,3 +33,19 @@ Apple’s [extension lifecycle](https://developer.apple.com/library/archive/docu
 ## Deadline and phone setup reply
 
 William reports deadline October 4, 2026 at 12:00 America/Vancouver; iPhone runs iOS 26 (minor version unknown), Xcode still installing. He requests direct phone testing without App Store publication/paid enrollment. Prepare Xcode Personal Team route; no account/purchase/submission action authorized. Apple [personal-team guidance](https://developer.apple.com/help/account/basics/about-your-developer-account) permits own-device installation/testing with expiring profiles (7 days). Harry extension capabilities/App Groups feasibility under that team remains to be verified; do not promise every entitlement is available. Developer Mode/pairing/signing are human steps.
+
+## Toolchain update (October 3, 22:37 Vancouver)
+
+William confirms Xcode installed and simulator runtime still downloading. Observed selected directory /Applications/Xcode.app/Contents/Developer, Xcode27.0 (27A266a), iOS27/iOS Simulator27 SDKs present. Workspace Ops read-only simctl lists no installed runtimes/devices. No native build or device signing is proved. After source intake, discover actual schemes and consider compiling against installed SDK before simulator download finishes; running simulator tests still needs its runtime. No platform download or directory switch performed by agents.
+
+## Harry source received — October 3 22:45 Vancouver
+
+William confirms published `t-20-reel-sharing`, inspected at `547a74df5d279ad40758394430979645e416f2c5`. Existing owner chose SwiftUI/WKWebView plus UIKit Share extension; reuse this application, not a second stack. XcodeGen YAML defines Dinedeals app `dev.dishdeals.app`, embedded ReelShare `dev.dishdeals.app.ReelShare`, iOS16 deployment target, Swift5, AppGroup `group.dev.dishdeals`, shared Keychain `$(AppIdentifierPrefix)dev.dishdeals.shared`. Team blank, web/backend URLs placeholders. Architecture is owner-supplied; authentication/map compatibility still under reconciliation. Default app route `/reels` must be reconciled with required map home by Harry/Pinyuan; no substitute map.
+
+Native extension accepts URL/text only; direct reel/reels/p shortcode links normalized; no media bytes received by this implementation. Protected 24h link recovery in AppGroup files; verified auth access token shared via Keychain, extension does not refresh. It posts canonical private `reels.submit`, ends with Done then user reopens app; no automatic app launch. Notifications are local while webview observes results, not terminated-app remote processing alerts. Actual Instagram payload remains unobserved.
+
+Harry's canonical auth/profile/deal/vote tables preserved; additive reel staging and durable workflow component require separate review and cloud authorization. Existing frontend references standalone workflow backend and local previews, not reviewed canonical users/deals/votes; adapt rather than merging incompatible schemas. `toCanonical` currently fills four zero confidence sentinels; do not represent them as genuine field scores.
+
+Reel video understanding uses ScrapeCreators resolver/download + Gemini video. This resolver is NOT authorized under William's no-scraping/unapproved-resolver instruction and provider billing/deployment boundaries. Keep usage disabled. URL receipt alone cannot establish source-supported extraction. Supported original media/caption/images and owner-agreed ingestion must resolve this blocker; screenshot fallback does not close reel-share acceptance.
+
+William reports signing not configured; own-device Personal Team testing preferred, AppGroups/Keychain capability compatibility unresolved. Simulator runtime downloading; SDK compilation inspection need not wait. N-IOS-A Loom read-only contracts and N-BUILD-A Cinder actual SDK checks are separate bounded packets; neither may edit Harry's native implementation.
