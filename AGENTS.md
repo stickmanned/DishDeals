@@ -1,6 +1,6 @@
 # DishDeals agent instructions
 
-Read `StormHacks Project Plan Instagram Deal Saver.md` as the current specification, particularly Guide for AI coding agents, Data model, Backend functions, and your assigned ticket. Read `docs/team-integration.md` for the human's ownership adjustment and `docs/development-kickoff.md` for the first bounded assignment.
+Read `StormHacks Project Plan Instagram Deal Saver.md` as the current specification, particularly Guide for AI coding agents, Data model, Backend functions, and your assigned ticket. Read `docs/team-integration.md` for the human's ownership adjustment and `docs/agent-workflow.md` plus your task packet for current assignments.
 
 The effective repository is `/Users/william/Code/DishDeals` or an explicitly assigned isolated checkout. A role session may start under `.maestri/roles/<id>/`; locate the ancestor containing the plan and inspect Git status before editing. Do not use the old Codex output repository or its localStorage/no-login brief.
 
@@ -11,10 +11,10 @@ The effective repository is `/Users/william/Code/DishDeals` or an explicitly ass
 - Follow plan security/data rules: server-only keys, no committed `.env*`, signed-in checks on protected operations, no Instagram scraping, browser-computed current validity, America/Vancouver local times, schema-validated extraction, null-to-undefined conversion for optional Convex fields.
 - Inspect current official documentation for version-sensitive SDK/setup claims. Keep unavailable models, credentials, or deployment steps explicit; never invent successful backend or API evidence.
 - Run relevant checks from the plan and report exact results or blockers. No false passes for unrun commands, empty tests, mocks, phone-only behavior, or external provisioning.
-- Do not publish/deploy, push, submit, purchase, or create accounts without specific authorization. The kickoff prepares local work and human setup instructions.
+- The workflow instruction authorizes scoped task commits, branch pushes and draft PRs. Only Northstar integrates reviewed green PRs. Do not force push, deploy, submit purchases or create accounts. Cloud changes require specific authorization; old T-02 dev sync approval is scoped to T-02.
 - Return ticket status, branch/checkout, changed files, checks, human phone/setup steps, and the next proposed ticket. Stop if stuck for 30 minutes as the plan directs.
 
-Current first-ticket scope: T-01 functional scaffold only. Styling is teammate-owned; live Convex/HTTPS acceptance is pending until real provisioning and authorized integration are complete. Later dependencies must be resolved honestly or explicitly adjusted by the human.
+Current scope: T-00 workflow setup. T-01/T-02 are committed in 356ec1b; T-02 development schema sync succeeded. Live T-01 browser/HTTPS/phone acceptance remains pending. T-03/T-04 task packets are prepared, not automatically dispatched; T-05R is reconciliation before extraction implementation. Read docs/workflow/tasks.json for ownership. All autonomous workers use separate worktrees. Root main is human-owned. No unlimited backlog execution.
 
 <!-- convex-ai-start -->
 

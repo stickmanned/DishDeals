@@ -4,7 +4,7 @@ stormhacks project
 
 ## T-01 foundation: setup and run
 
-Functional scaffold only: Next.js App Router, TypeScript, Tailwind CSS v4, Convex. Polished styling and fonts belong to the frontend teammate. There is no schema, auth, extraction or map code yet.
+Functional scaffold only: Next.js App Router, TypeScript, Tailwind CSS v4, Convex. Polished styling and fonts belong to the frontend teammate. T-02 adds the canonical schemas and seven contract tests. Auth, extraction and maps remain later work.
 
 ### Local setup
 
@@ -22,7 +22,7 @@ Without a Convex URL, the home page shows "DishDeals" and a visible "Convex is n
 3. Do not commit `.env*` or any key. `.env*` is git-ignored. Keep server-only keys out of `NEXT_PUBLIC_*` variables.
 4. `npm run dev` should then show "Convex says: Hello from Convex".
 
-`convex/test.ts` is a table-free `queryGeneric` (`test:ping`, validated with `returns: v.object({ message: v.string() })`). `components/ConvexTestResult.tsx` calls it through an explicitly typed `makeFunctionReference`, because `convex/_generated` does not exist until `npx convex dev` (cloud setup) has generated authentic files. After generation, it can switch to `api.test.ping`. `convex/_generated/` is not git-ignored; Convex recommends committing it, and that decision is still open.
+`convex/test.ts` is a table-free `queryGeneric` (`test:ping`, validated with `returns: v.object({ message: v.string() })`). `components/ConvexTestResult.tsx` calls it through an explicitly typed `makeFunctionReference`, because `convex/_generated` does not exist until `npx convex dev` (cloud setup) has generated authentic files. After generation, it can switch to `api.test.ping`. `convex/_generated/` is not git-ignored; Convex recommends committing it, and authentic generated files are now committed in the T-02 baseline.
 
 ### Checks
 
@@ -30,7 +30,7 @@ Without a Convex URL, the home page shows "DishDeals" and a visible "Convex is n
 npm run typecheck   # tsc --noEmit
 npm run lint        # eslint .
 npm run build       # next build (works with NEXT_PUBLIC_CONVEX_URL unset)
-npx vitest run      # no tests yet: exits 1 ("No test files found"); this is not a pass
+npm test           # seven schema contract tests in T-02
 npx convex dev --once   # not validated by the scaffold; may auto-create an anonymous LOCAL backend (see above)
 ```
 
@@ -45,3 +45,9 @@ Vercel build command: `npx convex deploy --cmd "npm run build"`. In Vercel, set 
 - Convex Next.js quickstart: https://docs.convex.dev/quickstart/nextjs
 - Convex server API (`queryGeneric`, `FunctionReference`): https://docs.convex.dev/api/modules/server
 - Convex on Vercel: https://docs.convex.dev/production/hosting/vercel
+
+## Parallel agent workflow
+
+Read [the workflow](docs/agent-workflow.md), [task ownership](docs/workflow/tasks.json) and [teammate integration decision](docs/decisions/0001-teammate-backend-integration.md). Northstar coordinates, Loom owns auth, Tempo owns pure logic, Prism reconciles extraction when Gemini credits are available. Every builder has its own Git worktree; human teammates retain polished frontend and all maps.
+
+`npm run agents -- status` shows the roster and published branches; `npm run check` runs local quality checks. No provider credentials or deployment are required by CI. T-03/T-04 packets are prepared; Northstar must assign the bounded batch after setup integration.

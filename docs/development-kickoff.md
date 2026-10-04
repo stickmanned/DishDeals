@@ -1,3 +1,5 @@
+> Updated 2026-10-03: current assignments and isolated Git workflow are in [agent-workflow.md](agent-workflow.md) and [tasks manifest](workflow/tasks.json). T-01/T-02 are committed in 356ec1b. Earlier first-kickoff sections below are historical; task packets supersede their dispatch instructions. Human UI/map boundaries remain in force.
+
 # DishDeals development kickoff
 
 Paste the prompt below into Northstar. This starts one ticket, not the entire plan. After its handoff, request the next ticket explicitly.

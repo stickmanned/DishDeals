@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --exclude \"scripts/**\"",
+    "agents": "node scripts/agent-workflow.mjs",
+    "test:workflow": "node --test scripts/agent-workflow.test.mjs",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run test:workflow && npm run build"
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.96",

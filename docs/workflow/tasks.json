@@ -1,0 +1,72 @@
+{
+  "baseRef": "origin/main",
+  "baselineCommit": "356ec1b",
+  "worktreeParent": "../DishDeals-worktrees",
+  "tasks": [
+    {
+      "id": "T-03",
+      "owner": "Loom",
+      "branch": "t-03-auth",
+      "worktree": "auth",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02",
+        "T-00"
+      ],
+      "allowedPaths": [
+        "app/signin/",
+        "app/profile/",
+        "convex/auth.ts",
+        "convex/http.ts",
+        "convex/users.ts",
+        "components/AuthProvider.tsx",
+        "components/AuthControls.tsx",
+        "components/ConvexClientProvider.tsx",
+        "app/layout.tsx",
+        "tests/auth/",
+        "docs/handoffs/t-03.md"
+      ],
+      "packet": "docs/tasks/T-03.md",
+      "issue": "https://github.com/stickmanned/DishDeals/issues/1"
+    },
+    {
+      "id": "T-04",
+      "owner": "Tempo",
+      "branch": "t-04-deal-logic",
+      "worktree": "logic",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-00"
+      ],
+      "allowedPaths": [
+        "lib/validNow.ts",
+        "lib/distance.ts",
+        "lib/validNow.test.ts",
+        "lib/distance.test.ts",
+        "docs/handoffs/t-04.md"
+      ],
+      "packet": "docs/tasks/T-04.md",
+      "issue": "https://github.com/stickmanned/DishDeals/issues/2"
+    },
+    {
+      "id": "T-05R",
+      "owner": "Prism",
+      "branch": "t-05-extraction-reconciliation",
+      "worktree": "extraction",
+      "status": "blocked",
+      "dependencies": [
+        "T-02",
+        "T-00"
+      ],
+      "allowedPaths": [
+        "docs/extraction/",
+        "fixtures/extraction-contract/",
+        "docs/handoffs/t-05r.md"
+      ],
+      "packet": "docs/tasks/T-05R.md",
+      "issue": "https://github.com/stickmanned/DishDeals/issues/3"
+    }
+  ]
+}

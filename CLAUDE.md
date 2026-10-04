@@ -1,31 +1,3 @@
-# DishDeals agent instructions
+# DishDeals agent entry point
 
-Read `StormHacks Project Plan Instagram Deal Saver.md` as the current specification, particularly Guide for AI coding agents, Data model, Backend functions, and your assigned ticket. Read `docs/team-integration.md` for the human's ownership adjustment and `docs/development-kickoff.md` for the first bounded assignment.
-
-The effective repository is `/Users/william/Code/DishDeals` or an explicitly assigned isolated checkout. A role session may start under `.maestri/roles/<id>/`; locate the ancestor containing the plan and inspect Git status before editing. Do not use the old Codex output repository or its localStorage/no-login brief.
-
-- Execute only the explicitly assigned ticket. Verify its dependencies; stop with a handoff once its checks pass or a named blocker prevents progress. Do not pull the next ticket automatically.
-- Human teammates own high-quality frontend and all map integration. Agents own functional core work only, with minimal usable UI where needed. Do not implement polished styling/fonts/animations, geocoding, maps, pin controls, map grounding, directions integration, or geospatial wiring without a new explicit assignment. Keep the plan's coordinates, table fields, and API names intact.
-- Run `maestri list` (or `"$MAESTRI_CLI" list`) before addressing connected teammates or notes. Reuse Northstar, Loom, and Prism. Northstar coordinates and alone maintains Delivery Board/shared status. No duplicate recruits or circular blocking requests.
-- Agree branch/checkout, exact writable paths, acceptance, and checks before edits. Use `t-XX-short-name` branches. Overlapping writers require isolated checkouts or serial work. Preserve human and teammate changes.
-- Follow plan security/data rules: server-only keys, no committed `.env*`, signed-in checks on protected operations, no Instagram scraping, browser-computed current validity, America/Vancouver local times, schema-validated extraction, null-to-undefined conversion for optional Convex fields.
-- Inspect current official documentation for version-sensitive SDK/setup claims. Keep unavailable models, credentials, or deployment steps explicit; never invent successful backend or API evidence.
-- Run relevant checks from the plan and report exact results or blockers. No false passes for unrun commands, empty tests, mocks, phone-only behavior, or external provisioning.
-- Do not publish/deploy, push, submit, purchase, or create accounts without specific authorization. The kickoff prepares local work and human setup instructions.
-- Return ticket status, branch/checkout, changed files, checks, human phone/setup steps, and the next proposed ticket. Stop if stuck for 30 minutes as the plan directs.
-
-Current first-ticket scope: T-01 functional scaffold only. Styling is teammate-owned; live Convex/HTTPS acceptance is pending until real provisioning and authorized integration are complete. Later dependencies must be resolved honestly or explicitly adjusted by the human.
-
-<!-- convex-ai-start -->
-
-This project uses [Convex](https://convex.dev) as its backend.
-
-When working on Convex code, **always read
-`convex/_generated/ai/guidelines.md` first** for important guidelines on
-how to correctly use Convex APIs and patterns. The file contains rules that
-override what you may have learned about Convex from training data.
-
-Convex agent skills for common tasks can be installed by running
-`npx convex ai-files install`.
-
-<!-- convex-ai-end -->
+Read AGENTS.md, the authoritative StormHacks plan, docs/agent-workflow.md, docs/team-integration.md and your exact assigned task packet. Inspect pwd, Git branch/status and task ownership before editing. Use the assigned isolated worktree, never the human main checkout. Fetch published teammate branches before duplicating a subsystem. Human teammates own polished frontend and all map integration. One bounded ticket, exact checks, honest handoff and stop. Run maestri list before connected peer requests; avoid circular blocking asks. Server secrets stay out of Git/chat. No deployments without task-specific authorization.
