@@ -15,6 +15,7 @@ import type * as deals from "../deals.js";
 import type * as http from "../http.js";
 import type * as jobs from "../jobs.js";
 import type * as maintenance from "../maintenance.js";
+import type * as search from "../search.js";
 
   /**
    * A utility for referencing Convex functions in your app's API.
@@ -31,6 +32,7 @@ import type * as maintenance from "../maintenance.js";
 "http": typeof http,
 "jobs": typeof jobs,
 "maintenance": typeof maintenance,
+"search": typeof search,
   }>;
   export declare const api: FilterApi<typeof fullApi, FunctionReference<any, "public">>;
   export declare const internal: FilterApi<typeof fullApi, FunctionReference<any, "internal">>;

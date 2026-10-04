@@ -31,6 +31,19 @@ async function generate(config: GeminiConfig, model: string, body: object) {
   if (!candidate || candidate.finishReason !== "STOP") throw new WorkflowError("INVALID_MODEL_OUTPUT", "Gemini did not complete extraction; source may be blocked or too large.");
   return { candidate, text: candidate.content?.parts.filter(p => !p.thought).map(p => p.text ?? "").join("") ?? "" };
 }
+export async function generateStructured<T>(config: GeminiConfig, instruction: string, data: unknown, schema: z.ZodType<T>): Promise<T> {
+  const output = await generate(config, config.model, {
+    systemInstruction: { parts: [{ text: instruction }] },
+    contents: [{ role: "user", parts: [{ text: JSON.stringify(data) }] }],
+    generationConfig: { temperature: 0, maxOutputTokens: 4000, responseMimeType: "application/json",
+      responseJsonSchema: z.toJSONSchema(schema, { unrepresentable: "any" }) },
+  });
+  let raw: unknown;
+  try { raw = JSON.parse(output.text); } catch { throw new WorkflowError("INVALID_MODEL_OUTPUT", "Gemini returned invalid recommendation JSON."); }
+  const parsed = schema.safeParse(raw);
+  if (!parsed.success) throw new WorkflowError("INVALID_MODEL_OUTPUT", "Gemini recommendation fields failed validation.");
+  return parsed.data;
+}
 export async function extractWithGemini(input: WorkflowInput, config: GeminiConfig): Promise<Extraction> {
   let sourceText: string;
   if (input.source.type === "url") {

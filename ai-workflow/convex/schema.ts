@@ -13,4 +13,5 @@ export default defineSchema({
     reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
   }).index("by_job", ["jobId"]).index("by_status", ["status", "createdAt"]),
   limits: defineTable({ owner: v.string(), windowStart: v.number(), count: v.number() }).index("by_owner", ["owner"]),
+  searchLimits: defineTable({ owner: v.string(), windowStart: v.number(), count: v.number() }).index("by_owner", ["owner"]),
 });
