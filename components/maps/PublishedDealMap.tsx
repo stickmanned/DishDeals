@@ -83,7 +83,11 @@ export function PublishedDealMap(props: PublishedDealMapProps) {
         role="region"
         aria-label={ariaLabel}
       >
-        <div className="bitemap-error" role="alert">
+        <div
+          className="bitemap-error"
+          role="alert"
+          style={{ padding: "16px", color: "#b3261e", background: "#fce8e6", borderRadius: "8px" }}
+        >
           {loadError}
         </div>
       </div>

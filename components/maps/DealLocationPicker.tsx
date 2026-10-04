@@ -105,6 +105,43 @@ export function applyNewProposal(
 }
 
 /**
+ * Resolves location prop updates. When parent passes null or clears confirmation
+ * (e.g. in response to onInvalidate), preserves the active proposed point.
+ * Explicitly clears proposals only when form context changes.
+ */
+export function resolveLocationPropUpdate(
+  currentProposedPoint: { lat: number; lng: number } | null,
+  newLocation: DealLocationPickerLocation | null
+): { proposedPoint: { lat: number; lng: number } | null; isConfirmed: boolean } {
+  if (newLocation && isValidLocationPoint(newLocation.lat, newLocation.lng)) {
+    return {
+      proposedPoint: { lat: newLocation.lat, lng: newLocation.lng },
+      isConfirmed: newLocation.confirmed,
+    };
+  }
+  // Parent cleared confirmation or passed null: preserve local proposal, mark unconfirmed
+  return {
+    proposedPoint: currentProposedPoint,
+    isConfirmed: false,
+  };
+}
+
+/**
+ * Resets form state when restaurant or address changes.
+ */
+export function resetFormContextState(restaurant: string, address: string | null) {
+  return {
+    proposedPoint: null,
+    isConfirmed: false,
+    candidates: [] as GeocodeCandidate[],
+    isSearching: false,
+    searchMessage: null as string | null,
+    geoMessage: null as string | null,
+    searchQuery: [restaurant, address].filter(Boolean).join(", "),
+  };
+}
+
+/**
  * Validates and executes location confirmation.
  */
 export function confirmProposal(
@@ -179,33 +216,35 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
   const [prevLocation, setPrevLocation] = useState(location);
   if (location !== prevLocation) {
     setPrevLocation(location);
-    if (location && isValidLocationPoint(location.lat, location.lng)) {
-      setProposedPoint({ lat: location.lat, lng: location.lng });
-      setIsConfirmed(location.confirmed);
-    } else if (!location) {
-      setProposedPoint(null);
-      setIsConfirmed(false);
-    }
+    const resolved = resolveLocationPropUpdate(proposedPoint, location);
+    setProposedPoint(resolved.proposedPoint);
+    setIsConfirmed(resolved.isConfirmed);
   }
 
   // Adjust state during render when restaurant or address changes
-  const [searchEpoch, setSearchEpoch] = useState(0);
   const [prevFormContext, setPrevFormContext] = useState({ restaurant, address });
   if (prevFormContext.restaurant !== restaurant || prevFormContext.address !== address) {
     setPrevFormContext({ restaurant, address });
-    setSearchEpoch((e) => e + 1);
-    setCandidates([]);
-    setSearchMessage(null);
-    setGeoMessage(null);
-    setIsSearching(false);
-    setSearchQuery([restaurant, address].filter(Boolean).join(", "));
-    setProposedPoint(null);
-    setIsConfirmed(false);
+    const reset = resetFormContextState(restaurant, address);
+    setProposedPoint(reset.proposedPoint);
+    setIsConfirmed(reset.isConfirmed);
+    setCandidates(reset.candidates);
+    setIsSearching(reset.isSearching);
+    setSearchMessage(reset.searchMessage);
+    setGeoMessage(reset.geoMessage);
+    setSearchQuery(reset.searchQuery);
   }
+
+  // Invalidate in-flight search requests when form context changes
+  useEffect(() => {
+    searchGuard.current.invalidate();
+  }, [restaurant, address]);
 
   const handleSearchQueryChange = (val: string) => {
     setSearchQuery(val);
     searchGuard.current.invalidate();
+    setIsSearching(false);
+    setCandidates([]);
     setSearchMessage(null);
   };
 
@@ -222,13 +261,12 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
     }
 
     const reqId = searchGuard.current.startSearch();
-    const epoch = searchEpoch;
     setIsSearching(true);
     setSearchMessage(null);
 
     search(query)
       .then((results) => {
-        if (!isMounted.current || !searchGuard.current.isCurrent(reqId) || searchEpoch !== epoch) return;
+        if (!isMounted.current || !searchGuard.current.isCurrent(reqId)) return;
         setIsSearching(false);
         const valid = filterValidCandidates(results);
         setCandidates(valid);
@@ -237,7 +275,7 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
         }
       })
       .catch(() => {
-        if (!isMounted.current || !searchGuard.current.isCurrent(reqId) || searchEpoch !== epoch) return;
+        if (!isMounted.current || !searchGuard.current.isCurrent(reqId)) return;
         setIsSearching(false);
         setSearchMessage("Search failed. Please try again or place pin on the map.");
       });
@@ -266,11 +304,10 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
     }
 
     const reqId = searchGuard.current.getRequestId();
-    const epoch = searchEpoch;
     setGeoMessage("Requesting device location…");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        if (!isMounted.current || !searchGuard.current.isCurrent(reqId) || searchEpoch !== epoch) return;
+        if (!isMounted.current || !searchGuard.current.isCurrent(reqId)) return;
         const proposal = applyNewProposal(
           { lat: pos.coords.latitude, lng: pos.coords.longitude },
           onInvalidate

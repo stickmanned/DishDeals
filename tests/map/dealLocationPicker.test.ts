@@ -5,6 +5,8 @@ import {
   LocationSearchGuard,
   applyNewProposal,
   confirmProposal,
+  resolveLocationPropUpdate,
+  resetFormContextState,
   type DealLocationPickerProps,
   type GeocodeCandidate,
   type DealLocationPickerLocation,
@@ -48,7 +50,48 @@ describe("DealLocationPicker production bounds validation", () => {
   });
 });
 
-describe("DealLocationPicker production proposal & confirmation lifecycle", () => {
+describe("DealLocationPicker production state transitions (helpers used by component)", () => {
+  it("preserves active dragged/clicked proposal when parent clears confirmation or passes null", () => {
+    const activeProposal = { lat: 49.2501, lng: -122.9815 };
+
+    // Parent responds to onInvalidate by setting location = null or confirmed = false
+    const transitionNull = resolveLocationPropUpdate(activeProposal, null);
+    expect(transitionNull).toEqual({
+      proposedPoint: { lat: 49.2501, lng: -122.9815 },
+      isConfirmed: false,
+    });
+
+    const transitionUnconfirmed = resolveLocationPropUpdate(activeProposal, {
+      lat: 49.2501,
+      lng: -122.9815,
+      confirmed: false,
+    });
+    expect(transitionUnconfirmed).toEqual({
+      proposedPoint: { lat: 49.2501, lng: -122.9815 },
+      isConfirmed: false,
+    });
+  });
+
+  it("adopts new coordinates when parent passes a confirmed location", () => {
+    const activeProposal = { lat: 49.2501, lng: -122.9815 };
+    const newLocation = { lat: 49.2827, lng: -123.1207, confirmed: true };
+
+    const result = resolveLocationPropUpdate(activeProposal, newLocation);
+    expect(result).toEqual({
+      proposedPoint: { lat: 49.2827, lng: -123.1207 },
+      isConfirmed: true,
+    });
+  });
+
+  it("clears old proposals and candidates when restaurant or address changes", () => {
+    const reset = resetFormContextState("New Ramen", "123 Main St");
+    expect(reset.proposedPoint).toBeNull();
+    expect(reset.isConfirmed).toBe(false);
+    expect(reset.candidates).toEqual([]);
+    expect(reset.isSearching).toBe(false);
+    expect(reset.searchQuery).toBe("New Ramen, 123 Main St");
+  });
+
   it("invokes onInvalidate immediately when an unconfirmed proposal is applied", () => {
     const onInvalidate = vi.fn();
     const result = applyNewProposal({ lat: 49.2501, lng: -122.9815 }, onInvalidate);

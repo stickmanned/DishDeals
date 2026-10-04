@@ -113,16 +113,18 @@ export interface DealLocationPickerProps {
 - `isValidLocationPoint(lat: unknown, lng: unknown): boolean`: Strictly validates finite numbers within Web Mercator limits (`|lat| <= 85.05112878`, `|lng| <= 180`).
 - `filterValidCandidates(candidates: readonly GeocodeCandidate[]): GeocodeCandidate[]`: Cleanses external search results, eliminating invalid points or blank labels.
 - `LocationSearchGuard`: Monotonic request counter guaranteeing that out-of-order slow search responses and late browser geolocation callbacks are ignored.
+- `resolveLocationPropUpdate(currentProposedPoint, newLocation)`: Preserves current proposed point when parent clears confirmation or passes `null` following `onInvalidate`, while marking confirmed as false. Adopts coordinates only when parent passes a valid point.
+- `resetFormContextState(restaurant, address)`: Clears proposals, candidates, searching states, and resets default query when restaurant or address changes.
 - `applyNewProposal(coords, onInvalidate)`: Applies candidate/drag/click/hint proposals only after bounds validation, immediately invoking `onInvalidate`.
 - `confirmProposal(proposedPoint, onConfirm)`: Bounds-checks coordinates before executing `onConfirm`.
 
 #### Safety & State Invariants:
 1. **Immediate Invalidation (`onInvalidate`)**: Any new proposal (map click, pin drag, candidate click, or geolocation hint) immediately calls `onInvalidate()` so the parent form marks its location unconfirmed.
-2. **Preserving Proposals When Parent Clears Confirmation**: When the parent form clears `confirmed` (sets `location.confirmed = false`), the active proposed coordinates remain visible on the map for user adjustment, rather than disappearing.
-3. **Clearing on Form Context Edits**: When `restaurant` or `address` changes, stale candidates, previous proposals, in-flight searches, and geolocation hints are cleared.
-4. **Search Input Edit Guard**: Typing in the search input immediately invalidates previous search requests.
+2. **Preserving Proposals on Invalidation**: When the parent form clears `confirmed` or transitions `location` to `null` following `onInvalidate()`, the active proposed coordinates remain in local state for user inspection and fine-tuning rather than disappearing.
+3. **Clearing Proposals on Form Edits**: Changing `restaurant` or `address` clears previous proposals, stale candidates, and pending search requests.
+4. **Search Input Edit Reset**: Typing in the search query immediately stops any active spinner (`isSearching = false`), clears stale candidates, and increments the request guard to discard in-flight queries.
 5. **Burnaby Context Initial Viewport**: Initial map viewport is fixed to Burnaby context (`center: [-122.9805, 49.2488]`, `zoom: 12`).
 6. **Controlled Draft Location Isolation**: Draft pins are displayed via `draftLocation` on `DealMap`. The map's `deals` array is empty during picker mode, ensuring draft pins remain strictly isolated from published deals.
 7. **Explicit Search & Attribution**: Search is triggered ONLY on clicking the explicit "Search" button. Results display OpenStreetMap copyright attribution linking `https://www.openstreetmap.org/copyright`.
-8. **Permission-Based Browser Location**: "Use my location" queries `navigator.geolocation` as an unconfirmed hint only.
+8. **Permission-Based Browser Location**: "Use my location" queries `navigator.geolocation` as an unconfirmed hint only. Late responses arriving after form edits are safely discarded.
 9. **Actionable Import Failure**: If map assets fail to load, an actionable error banner is shown rather than an indefinite loading spinner.
