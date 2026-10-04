@@ -1540,6 +1540,27 @@
       "implementationState": "Bounded functional source/publication slice",
       "nativeChecks": "No native source change",
       "phoneAcceptance": "Pending actual supplied source / public publish"
+    },
+    {
+      "id": "N-SHARE-CONTRAST",
+      "owner": "Mica",
+      "branch": "t-18-share-receipt-contrast",
+      "worktree": "share-receipt-contrast",
+      "status": "prepared",
+      "dependencies": [
+        "N-CORE-SIM"
+      ],
+      "allowedPaths": [
+        "ios/ShareExtension/ShareViewController.swift",
+        "docs/qa/share-receipt-contrast.md",
+        "docs/handoffs/n-share-contrast.md"
+      ],
+      "packet": "docs/tasks/N-SHARE-CONTRAST.md",
+      "pinnedBaseSha": "8a46e5304949e8c2fa9a84e0333a8e7a6682c982",
+      "backendTarget": "NONE",
+      "implementationState": "William screenshot repro; priority native readability fix",
+      "nativeChecks": "Assigned iPhone18Pro simulation, exact native source required",
+      "phoneAcceptance": "Pending signed rebuild and receipt check"
     }
   ],
   "completedDependencies": {
