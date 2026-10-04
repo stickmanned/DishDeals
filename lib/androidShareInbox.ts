@@ -23,6 +23,8 @@ export const SHARE_MAX_IMAGE_BYTES = MAX_IMAGE_BYTES;
 export const SHARE_MAX_TITLE = 300;
 export const SHARE_MAX_TEXT = 5000;
 export const SHARE_MAX_URL = 2048;
+/** Worker and reader share one device clock; this only forgives small clock adjustments between the two reads. */
+export const SHARE_CLOCK_SKEW_MS = 5 * 60 * 1000;
 export const SHARE_ID_PATTERN = /^[0-9a-f]{32}$/;
 export const PENDING_SHARE_KEY = "dishdeals-pending-share";
 
@@ -142,7 +144,7 @@ function boundedString(value: unknown, max: number): value is string {
 }
 
 /** Re-validates a stored record from scratch. Anything unexpected is "invalid", never partially used. */
-async function toLoadedShare(raw: unknown, id: string): Promise<LoadedShare | null> {
+async function toLoadedShare(raw: unknown, id: string, now: number): Promise<LoadedShare | null> {
   if (!isObject(raw) || raw.v !== 1 || raw.id !== id) return null;
   const { mime, image, title, text, url, expiresAt, createdAt } = raw;
   if (!isUploadType(mime) || typeof image !== "object" || image === null || typeof (image as Blob).size !== "number") return null;
@@ -150,7 +152,12 @@ async function toLoadedShare(raw: unknown, id: string): Promise<LoadedShare | nu
   if (!(blob.size > 0) || blob.size > SHARE_MAX_IMAGE_BYTES) return null;
   if (!boundedString(title, SHARE_MAX_TITLE) || !boundedString(text, SHARE_MAX_TEXT) || !boundedString(url, SHARE_MAX_URL)) return null;
   if (url !== "" && !isValidSourceUrl(url)) return null;
-  if (typeof expiresAt !== "number" || typeof createdAt !== "number" || !Number.isFinite(expiresAt) || expiresAt - createdAt > SHARE_TTL_MS) return null;
+  // Finite, non-negative timestamps; created no later than now (plus the small skew above); and a lifetime that is
+  // positive and at most the 24 h TTL. NaN, infinities, future creation and reversed or oversize durations are refused.
+  if (typeof expiresAt !== "number" || typeof createdAt !== "number" || !Number.isFinite(expiresAt) || !Number.isFinite(createdAt) || !Number.isFinite(now)) return null;
+  if (createdAt < 0 || createdAt > now + SHARE_CLOCK_SKEW_MS) return null;
+  const lifetime = expiresAt - createdAt;
+  if (!(lifetime > 0) || lifetime > SHARE_TTL_MS) return null;
   let head: Uint8Array;
   try {
     head = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
@@ -176,7 +183,7 @@ export async function readShare(store: ShareStore, id: string, now: number = Dat
     await store.delete(id).catch(() => undefined);
     return { ok: false, reason: "expired" };
   }
-  const share = await toLoadedShare(raw, id);
+  const share = await toLoadedShare(raw, id, now);
   if (!share) {
     await store.delete(id).catch(() => undefined);
     return { ok: false, reason: "invalid" };
@@ -262,6 +269,48 @@ export function adoptShare(target: AdoptTarget, share: LoadedShare): AdoptResult
   return { ok: true, applied: { caption: "caption" in patch, text: "text" in patch, provenanceUrl: "provenanceUrl" in patch } };
 }
 
+// --------------------------------------------------- async action guard
+
+/**
+ * Keeps the panel's async use/discard completions honest: one action at a time, only for the item currently
+ * shown, and a completion may touch the UI only if the component is still mounted, still shows that item, and
+ * this exact action is still the running one (so a late result never mutates a newer item or an unmounted view).
+ */
+export class ShareActionGuard {
+  private mounted = false;
+  private current: string | null = null;
+  private running: { id: string } | null = null;
+
+  mount(): void {
+    this.mounted = true;
+  }
+
+  unmount(): void {
+    this.mounted = false;
+    this.running = null;
+  }
+
+  isMounted(): boolean {
+    return this.mounted;
+  }
+
+  show(id: string | null): void {
+    this.current = id;
+  }
+
+  begin(id: string): { id: string } | null {
+    if (!this.mounted || this.current !== id || this.running) return null;
+    this.running = { id };
+    return this.running;
+  }
+
+  finish(action: { id: string }): boolean {
+    const ok = this.mounted && this.running === action && this.current === action.id;
+    if (this.running === action) this.running = null;
+    return ok;
+  }
+}
+
 // ------------------------------------------- remembered pending id (sign-in)
 
 export interface TinyStorage {
@@ -290,8 +339,10 @@ export function recallPendingShare(storage: TinyStorage | null | undefined): str
   }
 }
 
-export function forgetPendingShare(storage: TinyStorage | null | undefined): void {
+/** With `onlyId`, forgets the remembered id only when it is still that id (a newer share's id is left alone). */
+export function forgetPendingShare(storage: TinyStorage | null | undefined, onlyId?: string): void {
   try {
+    if (onlyId !== undefined && storage?.getItem(PENDING_SHARE_KEY) !== onlyId) return;
     storage?.removeItem(PENDING_SHARE_KEY);
   } catch {
     /* ignore */

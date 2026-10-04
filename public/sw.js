@@ -49,15 +49,41 @@ function isShareRequest(request) {
   return url.origin === self.location.origin && url.pathname === SHARE_PATH;
 }
 
-function openDb() {
+/* Per-receive state shared by every stage. `cancelled` is set by the deadline; from then on no stage may start or
+ * finish a write, a late-opened database closes itself, and a pending write transaction is aborted. `committed`
+ * is set synchronously when the write transaction completes so a deadline firing afterwards cannot discard it. */
+function newState() {
+  return { cancelled: false, committed: false, reader: null, db: null, tx: null };
+}
+
+function cancelled() {
+  return new Error("cancelled");
+}
+
+function openDb(state) {
   return new Promise(function (resolve, reject) {
     var request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = function () {
+      if (state.cancelled) {
+        try {
+          request.transaction.abort();
+        } catch {
+          /* nothing to abort */
+        }
+        return;
+      }
       var db = request.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
     };
     request.onsuccess = function () {
-      resolve(request.result);
+      var db = request.result;
+      if (state.cancelled) {
+        db.close(); /* opened after the deadline: never leave the connection open */
+        reject(cancelled());
+        return;
+      }
+      state.db = db;
+      resolve(db);
     };
     request.onerror = function () {
       reject(request.error || new Error("open failed"));
@@ -69,16 +95,39 @@ function openDb() {
 }
 
 /* One readwrite transaction: prune expired rows, refuse when still full, otherwise add the record. */
-function saveShare(record) {
-  return openDb().then(function (db) {
+function saveShare(record, state) {
+  return openDb(state).then(function (db) {
     return new Promise(function (resolve, reject) {
       var full = false;
       var tx;
+      function closeDb() {
+        try {
+          db.close();
+        } catch {
+          /* already closed */
+        }
+        if (state.db === db) state.db = null;
+      }
+      if (state.cancelled) {
+        closeDb();
+        reject(cancelled());
+        return;
+      }
       try {
         tx = db.transaction(STORE, "readwrite");
+        state.tx = tx;
         var store = tx.objectStore(STORE);
         var all = store.getAll();
         all.onsuccess = function () {
+          if (state.cancelled) {
+            /* the deadline passed while reading: write nothing and roll the transaction back */
+            try {
+              tx.abort();
+            } catch {
+              /* already finishing */
+            }
+            return;
+          }
           var live = 0;
           var rows = all.result || [];
           for (var i = 0; i < rows.length; i++) {
@@ -91,16 +140,29 @@ function saveShare(record) {
           else store.put(record);
         };
       } catch (e) {
-        db.close();
+        closeDb();
         reject(e);
         return;
       }
       tx.oncomplete = function () {
-        db.close();
+        if (state.cancelled && !full) {
+          /* abort lost the race with the commit: remove the ghost record, then report cancellation */
+          try {
+            var undo = db.transaction(STORE, "readwrite");
+            undo.objectStore(STORE).delete(record.id);
+            undo.oncomplete = undo.onerror = undo.onabort = closeDb;
+          } catch {
+            closeDb();
+          }
+          reject(cancelled());
+          return;
+        }
+        state.committed = true;
+        closeDb();
         resolve(full ? "inbox_full" : "ok");
       };
       tx.onerror = tx.onabort = function () {
-        db.close();
+        closeDb();
         reject(tx.error || new Error("transaction failed"));
       };
     });
@@ -125,14 +187,15 @@ function detectType(b) {
   return null;
 }
 
-/* Reads the body through a byte counter; resolves null when it would exceed the bound. */
-function readBounded(body, control) {
+/* Reads the body through a byte counter; resolves null when it would exceed the bound or the receive was cancelled. */
+function readBounded(body, state) {
   var reader = body.getReader();
-  control.reader = reader;
+  state.reader = reader;
   var chunks = [];
   var total = 0;
   function step() {
     return reader.read().then(function (r) {
+      if (state.cancelled) return null;
       if (r.done) return chunks;
       total += r.value.byteLength;
       if (total > MAX_BODY_BYTES) {
@@ -163,8 +226,8 @@ function validLink(value) {
   }
 }
 
-/* Resolves { id } or { code }. Never stores anything unless every check passed. */
-function receive(request, control) {
+/* Resolves { id } or { code }. Never stores anything unless every check passed and the receive is still live. */
+function receive(request, state) {
   var contentType = request.headers.get("content-type") || "";
   if (!/^multipart\/form-data\s*;/i.test(contentType)) return Promise.resolve({ code: "malformed" });
   var length = request.headers.get("content-length");
@@ -174,21 +237,21 @@ function receive(request, control) {
   }
   if (!request.body) return Promise.resolve({ code: "malformed" });
 
-  return readBounded(request.body, control)
-    .then(function (chunks) {
-      if (chunks === null) return { code: "too_large" };
-      return new Response(new Blob(chunks), { headers: { "content-type": contentType } }).formData().then(
-        function (form) {
-          return inspect(form);
-        },
-        function () {
-          return { code: "malformed" };
-        }
-      );
-    });
+  return readBounded(request.body, state).then(function (chunks) {
+    if (state.cancelled) return { code: "timeout" };
+    if (chunks === null) return { code: "too_large" };
+    return new Response(new Blob(chunks), { headers: { "content-type": contentType } }).formData().then(
+      function (form) {
+        return state.cancelled ? { code: "timeout" } : inspect(form, state);
+      },
+      function () {
+        return { code: "malformed" };
+      }
+    );
+  });
 }
 
-function inspect(form) {
+function inspect(form, state) {
   var files = [];
   form.forEach(function (value, key) {
     if (typeof value !== "string") files.push({ key: key, file: value });
@@ -209,15 +272,16 @@ function inspect(form) {
 
   return file.slice(0, 12).arrayBuffer().then(
     function (buffer) {
+      if (state.cancelled) return { code: "timeout" }; /* the deadline passed during the signature read: no storage */
       if (detectType(new Uint8Array(buffer)) !== type) return { code: "unsupported" };
       var now = Date.now();
       var id = randomId();
-      return saveShare({ v: 1, id: id, createdAt: now, expiresAt: now + TTL_MS, mime: type, image: file, title: title, text: text, url: url }).then(
+      return saveShare({ v: 1, id: id, createdAt: now, expiresAt: now + TTL_MS, mime: type, image: file, title: title, text: text, url: url }, state).then(
         function (outcome) {
           return outcome === "ok" ? { id: id } : { code: outcome };
         },
         function () {
-          return { code: "storage" };
+          return { code: state.cancelled ? "timeout" : "storage" };
         }
       );
     },
@@ -227,17 +291,39 @@ function inspect(form) {
   );
 }
 
+/* Stops everything still in flight for this receive. Called only by the deadline. */
+function cancelReceive(state) {
+  state.cancelled = true;
+  if (state.reader) state.reader.cancel().catch(function () {});
+  if (state.tx) {
+    try {
+      state.tx.abort();
+    } catch {
+      /* already committing or finished; the commit path removes any ghost record */
+    }
+  }
+  if (state.db) {
+    try {
+      state.db.close();
+    } catch {
+      /* already closed */
+    }
+    state.db = null;
+  }
+}
+
 function handleShare(request) {
-  var control = { reader: null };
+  var state = newState();
   var timer;
   var deadline = new Promise(function (resolve) {
     timer = setTimeout(function () {
-      if (control.reader) control.reader.cancel().catch(function () {});
+      if (state.committed) return; /* the write already completed: its result stands */
+      cancelReceive(state);
       resolve({ code: "timeout" });
     }, DEADLINE_MS);
   });
-  var work = receive(request, control).catch(function () {
-    return { code: "storage" };
+  var work = receive(request, state).catch(function () {
+    return { code: state.cancelled ? "timeout" : "storage" };
   });
   return Promise.race([work, deadline]).then(function (result) {
     clearTimeout(timer);

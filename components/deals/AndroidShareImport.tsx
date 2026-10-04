@@ -20,6 +20,7 @@ import {
   readShare,
   recallPendingShare,
   rememberPendingShare,
+  ShareActionGuard,
   SHARE_ERROR_COPY,
   type LoadedShare,
   type ShareErrorCode,
@@ -47,11 +48,21 @@ const preview = (value: string) => (value.length > 160 ? `${value.slice(0, 160)}
 export function AndroidShareImport({ flow, ready, signedIn }: { flow: ImageDraftFlow; ready: boolean; signedIn: boolean }) {
   const [view, setView] = useState<View>({ k: "idle" });
   const [notice, setNotice] = useState("");
+  const [acting, setActing] = useState(false);
+  // One action at a time, and a late completion may only touch the item and mounted view it started from.
+  const [guard] = useState(() => new ShareActionGuard());
+
+  useEffect(() => {
+    guard.mount();
+    return () => guard.unmount();
+  }, [guard]);
 
   useEffect(() => {
     let live = true;
     const set = (next: View) => {
-      if (live) setView(next);
+      if (!live) return;
+      guard.show(next.k === "waiting" ? next.share.id : null);
+      setView(next);
     };
     const query = parseShareQuery(window.location.search);
     if (query.kind === "error") return set({ k: "error", code: query.code }), undefined;
@@ -62,22 +73,28 @@ export function AndroidShareImport({ flow, ready, signedIn }: { flow: ImageDraft
     set({ k: "loading" });
     rememberPendingShare(session(), id);
     void readShare(createIdbShareStore(), id).then((result) => {
+      if (!live) return; // a stale read must not forget or replace anything for a newer mount
       if (result.ok) return set({ k: "waiting", share: result.share });
-      forgetPendingShare(session());
+      forgetPendingShare(session(), id);
       if (result.reason === "unavailable") return set({ k: "error", code: "unavailable" });
       set({ k: "note", message: "That shared image is no longer stored here. It may have been used, discarded or expired. Share it again if you still need it." });
     });
     return () => {
       live = false;
     };
-  }, []);
+  }, [guard]);
 
   if (view.k === "idle") return null;
 
   async function use(share: LoadedShare) {
+    const action = guard.begin(share.id);
+    if (!action) return; // already acting, unmounted, or no longer the shown item
+    setActing(true);
     setNotice("");
     const result = adoptShare(flow, share);
     if (!result.ok) {
+      if (!guard.finish(action)) return;
+      setActing(false);
       setNotice(
         result.reason === "busy"
           ? "An analysis is running. Wait for it to finish or cancel it, then use the shared image."
@@ -87,8 +104,12 @@ export function AndroidShareImport({ flow, ready, signedIn }: { flow: ImageDraft
       );
       return;
     }
-    forgetPendingShare(session());
+    forgetPendingShare(session(), share.id);
+    // The controller already holds the image, so the one stored record is removed even if the view moved on.
     const removed = await discardShare(createIdbShareStore(), share.id);
+    if (!guard.finish(action)) return;
+    setActing(false);
+    guard.show(null);
     const parts = [result.applied.caption && "title", result.applied.text && "text", result.applied.provenanceUrl && "link"].filter(Boolean);
     setView({
       k: "done",
@@ -97,15 +118,22 @@ export function AndroidShareImport({ flow, ready, signedIn }: { flow: ImageDraft
   }
 
   async function discard(share: LoadedShare) {
+    const action = guard.begin(share.id);
+    if (!action) return;
+    setActing(true);
     setNotice("");
-    forgetPendingShare(session());
+    forgetPendingShare(session(), share.id);
     const removed = await discardShare(createIdbShareStore(), share.id);
+    if (!guard.finish(action)) return;
+    setActing(false);
+    guard.show(null);
     setView({ k: "note", message: removed ? "The shared image was discarded from this device." : "The shared image could not be removed now; it will expire on its own." });
   }
 
   async function clearAll() {
     forgetPendingShare(session());
     const cleared = await clearShares(createIdbShareStore());
+    if (!guard.isMounted()) return;
     setView({ k: "note", message: cleared ? "Stored shared images were cleared from this device." : "Stored shared images could not be cleared." });
   }
 
@@ -151,10 +179,10 @@ export function AndroidShareImport({ flow, ready, signedIn }: { flow: ImageDraft
             </p>
           )}
           <div className="form-actions">
-            <button type="button" className="button primary" disabled={!ready} onClick={() => void use(view.share)}>
+            <button type="button" className="button primary" disabled={!ready || acting} onClick={() => void use(view.share)}>
               Use this shared image
             </button>
-            <button type="button" className="button secondary" onClick={() => void discard(view.share)}>
+            <button type="button" className="button secondary" disabled={acting} onClick={() => void discard(view.share)}>
               Discard it
             </button>
           </div>

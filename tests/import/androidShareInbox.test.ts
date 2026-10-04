@@ -17,6 +17,8 @@ import {
   rememberPendingShare,
   SHARE_ERROR_CODES,
   SHARE_ERROR_COPY,
+  SHARE_CLOCK_SKEW_MS,
+  ShareActionGuard,
   shareContext,
   SHARE_TTL_MS,
   type LoadedShare,
@@ -143,11 +145,31 @@ describe("readShare", () => {
     ["link with credentials", { url: "https://u:p@example.invalid/" }],
     ["lifetime longer than the TTL", { expiresAt: NOW + SHARE_TTL_MS * 10 }],
     ["missing timestamps", { createdAt: "now" }],
+    ["NaN creation time", { createdAt: Number.NaN }],
+    ["infinite creation time", { createdAt: Number.NEGATIVE_INFINITY }],
+    ["negative creation time", { createdAt: -1, expiresAt: NOW + 1000 }],
+    ["creation in the future", { createdAt: NOW + SHARE_CLOCK_SKEW_MS + 1, expiresAt: NOW + SHARE_CLOCK_SKEW_MS + 1 + SHARE_TTL_MS }],
+    ["reversed duration (expires before created)", { createdAt: NOW + 100_000, expiresAt: NOW + 50_000 }],
+    ["zero duration", { createdAt: NOW + 1000, expiresAt: NOW + 1000 }],
+    ["NaN expiry", { expiresAt: Number.NaN }],
+    ["infinite expiry", { expiresAt: Number.POSITIVE_INFINITY }],
   ];
   it.each(corrupt)("refuses and deletes a corrupt record: %s", async (_name, over) => {
     const store = memoryStore({ [ID]: record(over) });
     expect(await readShare(store, ID, NOW)).toEqual({ ok: false, reason: "invalid" });
     expect(store.rows.has(ID)).toBe(false);
+  });
+
+  it("keeps legitimate records valid, including small clock differences and the full 24 h lifetime", async () => {
+    const ok = async (over: Record<string, unknown>, now = NOW) => (await readShare(memoryStore({ [ID]: record(over) }), ID, now)).ok;
+    expect(await ok({})).toBe(true);
+    expect(await ok({ createdAt: NOW - 3600_000, expiresAt: NOW - 3600_000 + SHARE_TTL_MS })).toBe(true);
+    expect(await ok({ createdAt: NOW + SHARE_CLOCK_SKEW_MS, expiresAt: NOW + SHARE_CLOCK_SKEW_MS + SHARE_TTL_MS })).toBe(true); // within the tolerance
+    expect(await ok({ createdAt: NOW, expiresAt: NOW + 1 })).toBe(true);
+  });
+
+  it("refuses everything when the supplied clock is not a finite time", async () => {
+    expect(await readShare(memoryStore({ [ID]: record() }), ID, Number.NaN)).toEqual({ ok: false, reason: "invalid" });
   });
 
   it("refuses a non-object record", async () => {
@@ -283,6 +305,69 @@ describe("remembered pending share id", () => {
 });
 
 // ============================================================== registration
+
+describe("forgetPendingShare with an id", () => {
+  it("leaves a newer share's remembered id alone", () => {
+    const data = new Map<string, string>([[PENDING_SHARE_KEY, "f".repeat(32)]]);
+    const storage = { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v), removeItem: (k: string) => void data.delete(k) };
+    forgetPendingShare(storage, ID); // an old share finishing late
+    expect(data.get(PENDING_SHARE_KEY)).toBe("f".repeat(32));
+    forgetPendingShare(storage, "f".repeat(32));
+    expect(data.has(PENDING_SHARE_KEY)).toBe(false);
+  });
+});
+
+describe("ShareActionGuard (late use/discard completions)", () => {
+  it("allows one action at a time for the shown item only", () => {
+    const guard = new ShareActionGuard();
+    guard.mount();
+    guard.show(ID);
+    expect(guard.begin("e".repeat(32))).toBeNull(); // not the shown item
+    const first = guard.begin(ID);
+    expect(first).not.toBeNull();
+    expect(guard.begin(ID)).toBeNull(); // double activation while one is running
+    expect(guard.finish(first!)).toBe(true);
+    expect(guard.begin(ID)).not.toBeNull(); // free again after it finished
+  });
+
+  it("a completion after unmount must not touch the UI", () => {
+    const guard = new ShareActionGuard();
+    guard.mount();
+    guard.show(ID);
+    const action = guard.begin(ID)!;
+    guard.unmount();
+    expect(guard.finish(action)).toBe(false);
+    expect(guard.begin(ID)).toBeNull();
+    guard.mount(); // a remount (StrictMode, gate to page) starts clean and cannot be completed by the old action
+    guard.show(ID);
+    expect(guard.finish(action)).toBe(false);
+    expect(guard.begin(ID)).not.toBeNull();
+  });
+
+  it("a completion for an item that is no longer shown is ignored", () => {
+    const guard = new ShareActionGuard();
+    guard.mount();
+    guard.show(ID);
+    const action = guard.begin(ID)!;
+    guard.show("d".repeat(32)); // a newer item replaced it
+    expect(guard.finish(action)).toBe(false);
+    expect(guard.begin("d".repeat(32))).not.toBeNull(); // the newer item is not blocked by the old action
+  });
+
+  it("a stale finish never releases a newer action", () => {
+    const guard = new ShareActionGuard();
+    guard.mount();
+    guard.show(ID);
+    const old = guard.begin(ID)!;
+    guard.unmount();
+    guard.mount();
+    guard.show(ID);
+    const newer = guard.begin(ID)!;
+    expect(guard.finish(old)).toBe(false);
+    expect(guard.begin(ID)).toBeNull(); // newer is still running
+    expect(guard.finish(newer)).toBe(true);
+  });
+});
 
 describe("registerShareWorker", () => {
   it("registers /sw.js at the root scope, bypassing the HTTP cache for the worker script", async () => {

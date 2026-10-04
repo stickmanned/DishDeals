@@ -9,6 +9,7 @@ import fs from "node:fs";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import nextConfig from "../../next.config";
 import {
   clearShares,
   createIdbShareStore,
@@ -30,6 +31,7 @@ const swSource = read("public/sw.js");
 // --------------------------------------------------------------- fake IndexedDB
 
 type Row = Record<string, unknown>;
+type Gate = Promise<void> | null;
 class FakeIdb {
   rows = new Map<string, Row>();
   hasStore = false;
@@ -37,12 +39,21 @@ class FakeIdb {
   version = 0;
   opens: { name: string; version: number }[] = [];
   closes = 0;
+  transactions = 0;
+  aborts = 0;
   failWrite = false;
   failOpen = false;
+  abortThrows = false;
+  // Gates hold a stage until the test releases it, so a deadline can fire in the middle of that stage.
+  openGate: Gate = null;
+  opGate: Gate = null;
+  writeGate: Gate = null;
+  completeGate: Gate = null;
 
   open = (name: string, version: number) => {
     const req: Record<string, any> = { result: undefined, error: null }; // eslint-disable-line @typescript-eslint/no-explicit-any
-    setTimeout(() => {
+    setTimeout(async () => {
+      if (this.openGate) await this.openGate;
       if (this.failOpen) {
         req.error = new Error("open failed");
         req.onerror?.();
@@ -74,6 +85,7 @@ class FakeIdb {
       },
       transaction: (n: string) => {
         if (n !== SHARE_STORE || !this.hasStore) throw new Error("NotFoundError");
+        this.transactions += 1;
         return this.makeTx();
       },
     };
@@ -82,19 +94,41 @@ class FakeIdb {
   private makeTx() {
     let pending = 0;
     let done = false;
+    let aborted = false;
+    const undo: (() => void)[] = [];
     const tx: Record<string, any> = { error: null }; // eslint-disable-line @typescript-eslint/no-explicit-any
-    const finish = () =>
+    tx.abort = () => {
+      if (this.abortThrows || done) throw new Error("InvalidStateError");
+      aborted = true;
+      this.aborts += 1;
+      undo.reverse().forEach((fn) => fn()); // an abort rolls back everything this transaction wrote
+      tx.error = tx.error ?? new Error("AbortError");
       setTimeout(() => {
-        if (pending === 0 && !done) {
+        if (!done) {
           done = true;
-          if (tx.error) tx.onabort?.();
-          else tx.oncomplete?.();
+          tx.onabort?.();
         }
+      }, 0);
+    };
+    const finish = () =>
+      setTimeout(async () => {
+        if (pending !== 0 || done || aborted) return;
+        if (this.completeGate) await this.completeGate;
+        if (done || aborted) return;
+        done = true;
+        if (tx.error) tx.onabort?.();
+        else tx.oncomplete?.();
       }, 0);
     const request = (op: () => unknown, write = false) => {
       const req: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
       pending += 1;
-      setTimeout(() => {
+      setTimeout(async () => {
+        if (this.opGate) await this.opGate;
+        if (write && this.writeGate) await this.writeGate;
+        if (aborted) {
+          pending -= 1; // requests of an aborted transaction never succeed
+          return;
+        }
         try {
           if (write && this.failWrite) throw new Error("QuotaExceededError");
           req.result = op();
@@ -109,10 +143,23 @@ class FakeIdb {
       return req;
     };
     tx.objectStore = () => ({
-      put: (v: Row) => request(() => (this.rows.set(v.id as string, v), v.id), true),
+      put: (v: Row) =>
+        request(() => {
+          const key = v.id as string;
+          const prev = this.rows.get(key);
+          undo.push(() => (prev === undefined ? this.rows.delete(key) : this.rows.set(key, prev)));
+          this.rows.set(key, v);
+          return key;
+        }, true),
       get: (k: string) => request(() => this.rows.get(k)),
       getAll: () => request(() => [...this.rows.values()]),
-      delete: (k: string) => request(() => (this.rows.delete(k), undefined), true),
+      delete: (k: string) =>
+        request(() => {
+          const prev = this.rows.get(k);
+          undo.push(() => (prev === undefined ? undefined : this.rows.set(k, prev)));
+          this.rows.delete(k);
+          return undefined;
+        }, true),
       clear: () => request(() => (this.rows.clear(), undefined), true),
     });
     return tx;
@@ -123,7 +170,7 @@ class FakeIdb {
 
 const ORIGIN = "https://app.example";
 
-function loadWorker(idb: FakeIdb, opts: { controlledTimers?: boolean } = {}) {
+function loadWorker(idb: FakeIdb, opts: { controlledTimers?: boolean; formData?: unknown } = {}) {
   const clock = { now: 1_800_000_000_000 };
   const timerCallbacks: (() => void)[] = [];
   const handlers: Record<string, (event: unknown) => void> = {};
@@ -135,8 +182,14 @@ function loadWorker(idb: FakeIdb, opts: { controlledTimers?: boolean } = {}) {
     skipWaiting: vi.fn(async () => undefined),
     clients: { claim: vi.fn(async () => undefined) },
   };
+  // Lets a test hand the worker a controlled parsed form (to delay the signature read) without touching its code.
+  class StubResponse extends Response {
+    formData() {
+      return opts.formData ? Promise.resolve(opts.formData as FormData) : super.formData();
+    }
+  }
   const sandbox = {
-    self, indexedDB: idb, Response, Request, URL, Blob, Uint8Array, Promise, crypto, String, Number, Array, Error,
+    self, indexedDB: idb, Response: opts.formData ? StubResponse : Response, Request, URL, Blob, Uint8Array, Promise, crypto, String, Number, Array, Error,
     Date: { now: () => clock.now },
     setTimeout: opts.controlledTimers ? (cb: () => void) => (timerCallbacks.push(cb), timerCallbacks.length) : setTimeout,
     clearTimeout: opts.controlledTimers ? () => undefined : clearTimeout,
@@ -473,5 +526,177 @@ describe("page reader against the same store", () => {
     expect(parseShareQuery(location(ok).split("?")[1])).toEqual({ kind: "id", id: shareId(ok) });
     const bad = await worker.dispatch(shareRequest([["title", "t"]]));
     expect(parseShareQuery(location(bad).split("?")[1])).toEqual({ kind: "error", code: "no_image" });
+  });
+});
+
+// ============================================ deadline cancels every stage (real worker)
+
+describe("the deadline cancels receipt for good", () => {
+  const sleep = (ms = 20) => new Promise((r) => setTimeout(r, ms));
+  const deferred = () => {
+    let resolve!: () => void;
+    const promise = new Promise<void>((res) => {
+      resolve = res;
+    });
+    return { promise, resolve };
+  };
+  const headers = () => new Headers({ "content-type": "multipart/form-data; boundary=zzz" });
+  const stubbedRequest = () => ({ method: "POST", mode: "navigate", url: `${ORIGIN}/share-target`, headers: headers(), body: new Response("x").body });
+  const noGhost = (idb: FakeIdb) => {
+    expect(idb.rows.size).toBe(0);
+    expect(idb.closes).toBeGreaterThanOrEqual(idb.opens.length); // every connection that was opened got closed
+  };
+
+  it("a signature read that finishes after the deadline writes nothing and opens no database", async () => {
+    const gate = deferred();
+    const pngHead = bytes(PNG, 12);
+    const late = new Promise<ArrayBuffer>((resolve) => void gate.promise.then(() => resolve(pngHead.buffer.slice(0) as ArrayBuffer)));
+    const stubFile = { size: 100, type: "image/png", slice: () => ({ arrayBuffer: () => late }) };
+    const stubForm = { forEach: (cb: (v: unknown, k: string) => void) => cb(stubFile, "image"), getAll: () => [] };
+    const idb = new FakeIdb();
+    const worker = loadWorker(idb, { controlledTimers: true, formData: stubForm });
+    const pending = worker.dispatch(stubbedRequest());
+    await sleep();
+    worker.fireTimer();
+    expect(errorCode(await pending)).toBe("timeout");
+    gate.resolve(); // the decode now finishes: it must change nothing
+    await sleep();
+    expect(idb.opens).toHaveLength(0);
+    expect(idb.transactions).toBe(0);
+    noGhost(idb);
+  });
+
+  it("a body that completes after the deadline stores nothing", async () => {
+    const form = new FormData();
+    for (const [k, v] of okParts()) form.append(k, v);
+    const real = new Request(`${ORIGIN}/share-target`, { method: "POST", body: form });
+    const payload = new Uint8Array(await real.arrayBuffer());
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const body = new ReadableStream<Uint8Array>({ start: (c) => void (controller = c) });
+    const idb = new FakeIdb();
+    const worker = loadWorker(idb, { controlledTimers: true });
+    const pending = worker.dispatch({ method: "POST", mode: "navigate", url: real.url, headers: real.headers, body });
+    await sleep();
+    worker.fireTimer();
+    expect(errorCode(await pending)).toBe("timeout");
+    try {
+      controller.enqueue(payload);
+      controller.close();
+    } catch {
+      /* the worker already canceled the read, which is the point */
+    }
+    await sleep();
+    expect(idb.opens).toHaveLength(0);
+    noGhost(idb);
+  });
+
+  it("a database that opens after the deadline is closed at once and never written", async () => {
+    const gate = deferred();
+    const idb = new FakeIdb();
+    idb.openGate = gate.promise;
+    const worker = loadWorker(idb, { controlledTimers: true });
+    const pending = worker.dispatch(shareRequest(okParts()));
+    await sleep();
+    worker.fireTimer();
+    expect(errorCode(await pending)).toBe("timeout");
+    gate.resolve();
+    await sleep();
+    expect(idb.opens).toHaveLength(1); // the open really did complete late
+    expect(idb.closes).toBe(1);
+    expect(idb.transactions).toBe(0);
+    noGhost(idb);
+  });
+
+  it("a pending read transaction is aborted and never proceeds to prune or write", async () => {
+    const gate = deferred();
+    const idb = new FakeIdb();
+    idb.opGate = gate.promise;
+    const worker = loadWorker(idb, { controlledTimers: true });
+    const pending = worker.dispatch(shareRequest(okParts()));
+    await sleep();
+    expect(idb.transactions).toBe(1);
+    worker.fireTimer();
+    expect(errorCode(await pending)).toBe("timeout");
+    expect(idb.aborts).toBe(1);
+    gate.resolve();
+    await sleep();
+    noGhost(idb);
+  });
+
+  it("a write queued before the deadline is aborted and rolled back", async () => {
+    const gate = deferred();
+    const idb = new FakeIdb();
+    idb.writeGate = gate.promise;
+    const worker = loadWorker(idb, { controlledTimers: true });
+    const pending = worker.dispatch(shareRequest(okParts()));
+    await sleep();
+    worker.fireTimer();
+    expect(errorCode(await pending)).toBe("timeout");
+    expect(idb.aborts).toBe(1);
+    gate.resolve();
+    await sleep();
+    noGhost(idb);
+  });
+
+  it("a write already applied but not yet committed is rolled back by the abort", async () => {
+    const gate = deferred();
+    const idb = new FakeIdb();
+    idb.completeGate = gate.promise;
+    const worker = loadWorker(idb, { controlledTimers: true });
+    const pending = worker.dispatch(shareRequest(okParts()));
+    await sleep();
+    expect(idb.rows.size).toBe(1); // applied inside the open transaction
+    worker.fireTimer();
+    expect(errorCode(await pending)).toBe("timeout");
+    expect(idb.rows.size).toBe(0);
+    gate.resolve();
+    await sleep();
+    noGhost(idb);
+  });
+
+  it("when the abort loses the race with the commit, the ghost record is deleted", async () => {
+    const gate = deferred();
+    const idb = new FakeIdb();
+    idb.completeGate = gate.promise;
+    idb.abortThrows = true; // the browser refuses abort(): the transaction is already committing
+    const worker = loadWorker(idb, { controlledTimers: true });
+    const pending = worker.dispatch(shareRequest(okParts()));
+    await sleep();
+    expect(idb.rows.size).toBe(1);
+    worker.fireTimer();
+    expect(errorCode(await pending)).toBe("timeout");
+    gate.resolve(); // the commit lands after the timeout...
+    await sleep(40);
+    noGhost(idb); // ...and the worker removed what it had just written
+  });
+
+  it("a write that completed before the deadline fires is not discarded by it", async () => {
+    const idb = new FakeIdb();
+    const worker = loadWorker(idb, { controlledTimers: true });
+    const res = await worker.dispatch(shareRequest(okParts()));
+    expect(shareId(res)).toMatch(/^[0-9a-f]{32}$/);
+    worker.fireTimer(); // a stale timer callback after success must change nothing
+    await sleep();
+    expect(idb.rows.size).toBe(1);
+    expect(idb.aborts).toBe(0);
+  });
+});
+
+// ================================================================= next.config
+
+describe("next.config.ts", () => {
+  it("only adds headers for /sw.js (no-cache, JavaScript, nosniff, strict CSP) and nothing else", async () => {
+    expect(Object.keys(nextConfig)).toEqual(["headers"]);
+    const rules = await nextConfig.headers!();
+    expect(rules).toHaveLength(1);
+    expect(rules[0].source).toBe("/sw.js");
+    const h = Object.fromEntries(rules[0].headers.map((x) => [x.key, x.value]));
+    expect(h).toEqual({
+      "Content-Type": "application/javascript; charset=utf-8",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "default-src 'self'; script-src 'self'",
+    });
+    expect(JSON.stringify(rules)).not.toMatch(/auth|convex|api|manifest|share-target/i);
   });
 });
