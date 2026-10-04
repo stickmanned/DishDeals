@@ -335,7 +335,7 @@ function CanonicalDealDetailsContent({ dealId }: { dealId: Id<"deals"> }) {
             </div>
 
             {voteError && (
-              <p className="quiet-note" role="alert" style={{ color: "#c41e3a", marginTop: 8 }}>
+              <p className="quiet-note" role="alert" style={{ color: "var(--red-hover)", marginTop: 8 }}>
                 {voteError}
               </p>
             )}

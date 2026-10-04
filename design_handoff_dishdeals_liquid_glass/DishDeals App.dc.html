@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></link><style>body{margin:0;background:#EFE8DF;font-family:Inter,system-ui,sans-serif;color:#171210}a{color:#F22E4F}a:hover{color:#C81F3D}input{font-family:inherit}</style></helmet>
+<div style="min-height:100vh;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start;justify-content:center;padding:32px 24px;font-family:Inter,system-ui,sans-serif;color:#171210">
+
+<nav style="width:270px;display:flex;flex-direction:column;gap:4px;padding-top:8px">
+  <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:22px;letter-spacing:-0.02em;margin-bottom:6px"><img src="logo.png" alt="" style="width:26px;height:26px;display:block"></img>dish<span style="color:#F22E4F;margin-left:-8px">deals</span></div>
+  <span style="font-size:12px;color:#6b625b;margin-bottom:12px">Liquid Glass prototype · tap through</span>
+  <sc-for list="{{ rail }}" as="r" hint-placeholder-count="11"><div onClick="{{ r.pick }}" style="cursor:pointer;display:flex;gap:10px;align-items:center;padding:8px 12px;border-radius:14px;font-size:13px;background:{{ r.bg }};font-weight:{{ r.w }}" style-hover="background:rgba(255,255,255,.7)"><span style="width:20px;flex:none;color:#F22E4F;font-weight:600;font-size:12px">{{ r.n }}</span><span style="flex:1;min-width:0;white-space:nowrap">{{ r.label }}</span></div></sc-for>
+</nav>
+
+<div style="position:relative;width:390px;height:844px;flex:none;border-radius:56px;overflow:hidden;background:#F8F4EF;box-shadow:0 0 0 10px #171210,0 0 0 11px #4a413b,0 40px 80px rgba(23,18,16,.35)">
+
+  <sc-if value="{{ isMap }}" hint-placeholder-val="{{ true }}">
+  <div style="position:absolute;inset:0;background:#E9EFDF;overflow:hidden">
+    <div style="position:absolute;left:-60px;top:70px;width:230px;height:480px;border-radius:50% 45% 55% 40%;background:#B8DCE8"></div>
+    <div style="position:absolute;left:230px;top:140px;width:200px;height:170px;border-radius:50%;background:#CFE2BD"></div>
+    <div style="position:absolute;left:110px;top:500px;width:100px;height:90px;border-radius:50%;background:#CFE2BD"></div>
+    <div style="position:absolute;left:-20px;top:270px;width:440px;height:13px;border-radius:7px;background:#fff;transform:rotate(7deg)"></div>
+    <div style="position:absolute;left:40px;top:395px;width:380px;height:11px;border-radius:6px;background:#fff;transform:rotate(-3deg)"></div>
+    <div style="position:absolute;left:90px;top:60px;width:12px;height:420px;border-radius:6px;background:#fff;transform:rotate(-5deg)"></div>
+    <div style="position:absolute;left:185px;top:50px;width:12px;height:420px;border-radius:6px;background:#fff"></div>
+    <div style="position:absolute;left:330px;top:60px;width:12px;height:400px;border-radius:6px;background:#fff;transform:rotate(-12deg)"></div>
+    <span style="position:absolute;left:235px;top:262px;white-space:nowrap;font-size:11px;font-weight:600;letter-spacing:.05em;color:#6f7a62">MOUNT PLEASANT</span>
+    <sc-for list="{{ pins }}" as="p" hint-placeholder-count="4"><span onClick="{{ p.tap }}" style="{{ p.style }}">{{ p.label }}</span></sc-for>
+
+    <div style="position:absolute;left:16px;right:16px;top:58px;display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;align-items:center;gap:8px;height:48px;padding:0 18px 0 10px;border-radius:999px;background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(190%);-webkit-backdrop-filter:blur(14px) saturate(190%);border:1px solid rgba(255,255,255,.65);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),inset -1px -1px 1px rgba(255,255,255,.4),0 10px 30px rgba(23,18,16,.14)"><img src="logo.png" alt="" style="width:28px;height:28px;display:block"></img><b style="font-size:18px;letter-spacing:-0.02em">dish<span style="color:#F22E4F">deals</span></b></div>
+      <sc-if value="{{ isPublished }}"><span style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.4);backdrop-filter:blur(8px) saturate(190%);-webkit-backdrop-filter:blur(8px) saturate(190%);border:1px solid rgba(255,255,255,.7);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),0 8px 24px rgba(23,18,16,.14)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#171210" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="7"></circle><circle cx="12" cy="12" r="2"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path></svg></span></sc-if>
+      <sc-if value="{{ notPublished }}"><span style="height:40px;padding:0 14px;display:flex;align-items:center;white-space:nowrap;border-radius:999px;font-size:13px;font-weight:600;background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(190%);-webkit-backdrop-filter:blur(14px) saturate(190%);border:1px solid rgba(255,255,255,.65);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),0 8px 24px rgba(23,18,16,.14)">Vancouver · 1.2 km</span></sc-if>
+    </div>
+    <sc-if value="{{ notPublished }}">
+    <div style="position:absolute;left:16px;right:16px;top:118px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;gap:12px;height:52px;padding:0 8px 0 18px;border-radius:999px;background:rgba(255,255,255,.5);backdrop-filter:blur(14px) saturate(190%);-webkit-backdrop-filter:blur(14px) saturate(190%);border:1px solid rgba(255,255,255,.65);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),inset -1px -1px 1px rgba(255,255,255,.4),inset 0 0 20px rgba(255,255,255,.25),0 10px 30px rgba(23,18,16,.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a413b" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><span style="flex:1;font-size:16px;color:#4a413b">Search nearby deals</span><span style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.7);box-shadow:inset 1px 1px 1px #fff;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#171210" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2"></circle><circle cx="8" cy="16" r="2"></circle></svg></span></div>
+      <div style="display:flex;gap:8px"><sc-for list="{{ mapChips }}" as="c" hint-placeholder-count="3"><span onClick="{{ c.tap }}" style="{{ c.style }}">{{ c.label }}</span></sc-for></div>
+    </div>
+    <div style="position:absolute;left:14px;right:14px;bottom:112px;display:flex;border-radius:28px;overflow:hidden;background:#fff;box-shadow:0 14px 36px rgba(23,18,16,.22),0 2px 6px rgba(23,18,16,.08)">
+      <div style="width:116px;flex:none;background:linear-gradient(150deg,#C98B4E,#6E3F22);display:flex;align-items:flex-end;padding:8px"><span style="font-size:9px;font-family:ui-monospace,Menlo,monospace;color:rgba(255,255,255,.8)">tacos photo</span></div>
+      <div style="flex:1;padding:14px 14px 14px 16px;display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.04em"><span style="color:#F22E4F">LA PALOMA</span><span style="color:#6b625b;font-weight:500">4 min</span></div><b style="font-size:18px;line-height:1.2;letter-spacing:-0.01em">Two tacos + agua fresca</b><span style="font-size:12px;color:#6b625b">Today until 6 pm · Dine-in</span><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px;padding:8px 12px;border-radius:12px;background:#FFF0D3"><b style="font-size:18px;color:#8a5a00">$6</b><s style="font-size:12px;color:#8a5a00">$12</s></div></div>
+    </div>
+    </sc-if>
+    <sc-if value="{{ isPublished }}">
+    <div style="position:absolute;left:14px;right:14px;bottom:112px;padding:16px;border-radius:28px;background:#fff;box-shadow:0 14px 36px rgba(23,18,16,.22);display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:12px;align-items:center"><span style="width:44px;height:44px;flex:none;border-radius:50%;background:#237A4B;display:flex;align-items:center;justify-content:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><div style="display:flex;flex-direction:column;gap:2px"><b style="font-size:16px">You put dinner on the map.</b><span style="font-size:12px;color:#6b625b">La Paloma’s $6 deal is live until 6 pm.</span></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:16px;background:#FFF0D3"><div style="display:flex;flex-direction:column"><span style="font-size:11px;font-weight:700;color:#F22E4F;letter-spacing:.04em">LA PALOMA · JUST ADDED</span><b style="font-size:15px">Two tacos + agua fresca</b></div><b style="font-size:20px;color:#8a5a00">$6</b></div>
+    </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isDiscover }}">
+  <div style="position:absolute;inset:0;overflow:hidden auto;padding:62px 0 120px">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:0 20px"><b style="font-size:22px;letter-spacing:-0.02em;display:flex;align-items:center;gap:8px"><img src="logo.png" alt="" style="width:28px;height:28px;display:block"></img><span>dish<span style="color:#F22E4F">deals</span></span></b><span style="width:44px;height:44px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(23,18,16,.1);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#171210" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1-5 15-5 16 0"></path></svg></span></div>
+    <div style="padding:22px 20px 0;display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#F22E4F">GOOD FOOD. A LITTLE LESS.</span><h1 style="margin:0;font-size:34px;line-height:1.08;font-weight:500;letter-spacing:-0.03em">Find your next good meal.</h1><p style="margin:0;font-size:14px;line-height:1.5;color:#6b625b">Fresh Vancouver deals, shared by neighbors who spotted them.</p></div>
+    <div style="margin:18px 20px 0;display:flex;align-items:center;gap:12px;height:52px;padding:0 8px 0 18px;border-radius:999px;background:#fff;box-shadow:0 4px 16px rgba(23,18,16,.08)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4a413b" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><span style="flex:1;font-size:16px;color:#8a817a">Restaurant, dish, area</span><span style="width:38px;height:38px;border-radius:50%;background:#F4EEE7;display:flex;align-items:center;justify-content:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#171210" stroke-width="1.8" stroke-linecap="round"><path d="M4 8h10M18 8h2M4 16h2M10 16h10"></path><circle cx="16" cy="8" r="2"></circle><circle cx="8" cy="16" r="2"></circle></svg></span></div>
+    <div style="display:flex;gap:8px;padding:14px 20px 0;overflow:auto"><sc-for list="{{ priceChips }}" as="c" hint-placeholder-count="4"><span onClick="{{ c.tap }}" style="{{ c.style }}">{{ c.label }}</span></sc-for></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:22px 20px 12px"><div><b style="font-size:22px;letter-spacing:-0.02em">Nearby deals</b><div style="font-size:12px;color:#6b625b;margin-top:2px">12 live today</div></div><b style="font-size:14px;color:#F22E4F" onClick="{{ goMap }}">View all ›</b></div>
+    <div style="display:flex;gap:12px;padding:0 20px 8px;overflow-x:auto">
+      <sc-for list="{{ feed }}" as="d" hint-placeholder-count="3"><div style="flex:none;width:300px;border-radius:24px;background:#fff;overflow:hidden;box-shadow:0 4px 18px rgba(23,18,16,.08)"><div style="height:140px;background:{{ d.bg }};display:flex;align-items:flex-end;padding:10px"><span style="font-size:9px;font-family:ui-monospace,Menlo,monospace;color:rgba(255,255,255,.8)">{{ d.photo }}</span></div><div style="padding:14px 14px 14px;display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.04em"><span style="color:#F22E4F">{{ d.place }}</span><span style="color:#6b625b;font-weight:500">{{ d.dist }}</span></div><b style="font-size:20px;letter-spacing:-0.02em">{{ d.title }}</b><span style="font-size:12px;color:#6b625b">{{ d.when }}</span><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;padding:10px 14px;border-radius:14px;background:#FFF0D3"><b style="font-size:20px;color:#8a5a00">{{ d.price }}</b><s style="font-size:13px;color:#8a5a00">{{ d.was }}</s></div></div></div></sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isShare }}">
+  <div style="position:absolute;inset:0;overflow:hidden auto;padding:62px 20px 120px;display:flex;flex-direction:column;gap:18px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:22px;letter-spacing:-0.02em">dish<span style="color:#F22E4F">deals</span></b></div>
+    <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#F22E4F">SHARE A DEAL</span><h1 style="margin:0;font-size:32px;line-height:1.08;font-weight:600;letter-spacing:-0.03em">Help the neighborhood eat well.</h1><p style="margin:0;font-size:14px;line-height:1.5;color:#6b625b">Post a screenshot, flyer or Reel. You’ll review every field before anything goes live.</p></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px"><sc-for list="{{ shareTiles }}" as="t" hint-placeholder-count="3"><div onClick="{{ t.tap }}" style="cursor:pointer;height:84px;border-radius:20px;background:#fff;box-shadow:0 2px 10px rgba(23,18,16,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:600"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F22E4F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.d }}"></path></svg>{{ t.label }}</div></sc-for></div>
+    <div style="padding:20px;border-radius:28px;background:#fff;box-shadow:0 6px 24px rgba(23,18,16,.08);display:flex;flex-direction:column;gap:10px"><b style="font-size:19px;letter-spacing:-0.01em">Sign in to post a deal</b><span style="font-size:13px;color:#6b625b;line-height:1.45;margin-bottom:6px">Deals are tied to your account so you can edit or expire them later.</span>
+      <div onClick="{{ signIn }}" style="cursor:pointer;height:52px;border-radius:999px;background:rgba(23,18,16,.88);border:1px solid rgba(255,255,255,.25);box-shadow:inset 1px 1px 1px rgba(255,255,255,.35),0 8px 20px rgba(23,18,16,.25);color:#fff;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center">Continue with Apple</div>
+      <div onClick="{{ signIn }}" style="cursor:pointer;height:52px;border-radius:999px;background:#fff;border:1.5px solid #D9CFC4;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center">Continue with email</div>
+      <b style="font-size:13px;color:#F22E4F;text-align:center;margin-top:4px">New here? Create an account</b></div>
+    <div style="padding:14px 16px;border-radius:16px;background:#E6F4EA;color:#1e5b34;font-size:13px">Your drafts are private until you tap Publish.</div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isSaved }}">
+  <div style="position:absolute;inset:0;overflow:hidden auto;padding:62px 20px 120px;display:flex;flex-direction:column;gap:18px">
+    <b style="font-size:22px;letter-spacing:-0.02em">dish<span style="color:#F22E4F">deals</span></b>
+    <div style="display:flex;flex-direction:column;gap:6px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#F22E4F">YOUR SHORTLIST</span><h1 style="margin:0;font-size:32px;line-height:1.08;font-weight:600;letter-spacing:-0.03em">Save it for later.</h1><p style="margin:0;font-size:14px;line-height:1.5;color:#6b625b">Sign in to keep deals, private Reel finds and neighborhood lists synced across devices.</p></div>
+    <div style="position:relative;height:150px;border-radius:28px;background:#fff;overflow:hidden;padding:14px;display:flex;gap:12px;box-shadow:0 6px 24px rgba(23,18,16,.08)">
+      <div style="width:90px;height:70px;border-radius:14px;background:linear-gradient(150deg,#C98B4E,#6E3F22);opacity:.6"></div><div style="flex:1;display:flex;flex-direction:column;gap:8px;padding-top:6px"><div style="height:10px;border-radius:5px;background:#EFE8DF"></div><div style="height:10px;width:60%;border-radius:5px;background:#EFE8DF"></div></div>
+      <div style="position:absolute;left:50px;right:50px;bottom:22px;padding:12px 16px;border-radius:22px;background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(190%);-webkit-backdrop-filter:blur(14px) saturate(190%);border:1px solid rgba(255,255,255,.7);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.95),0 10px 28px rgba(23,18,16,.16);display:flex;flex-direction:column"><b style="font-size:14px">Your saves stay private</b><span style="font-size:11px;color:#6b625b">Only you can see this list.</span></div>
+    </div>
+    <sc-if value="{{ notSignedIn }}"><div style="padding:20px;border-radius:28px;background:#fff;box-shadow:0 6px 24px rgba(23,18,16,.08);display:flex;flex-direction:column;gap:10px"><b style="font-size:19px">Sign in to DishDeals</b><span style="font-size:13px;color:#6b625b;margin-bottom:6px">Save deals and manage anything you share.</span>
+      <div onClick="{{ signIn }}" style="cursor:pointer;height:52px;border-radius:999px;background:rgba(23,18,16,.88);border:1px solid rgba(255,255,255,.25);box-shadow:inset 1px 1px 1px rgba(255,255,255,.35),0 8px 20px rgba(23,18,16,.25);color:#fff;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center">Continue with Apple</div>
+      <div onClick="{{ signIn }}" style="cursor:pointer;height:52px;border-radius:999px;background:#fff;border:1.5px solid #D9CFC4;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center">Continue with email</div>
+      <b style="font-size:13px;color:#F22E4F;text-align:center;margin-top:4px">New here? Create an account</b></div></sc-if>
+    <sc-if value="{{ signedIn }}"><div style="padding:14px 16px;border-radius:16px;background:#E6F4EA;color:#1e5b34;font-size:13px">Signed in. Deals you save will appear here.</div></sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isIg }}">
+  <div style="position:absolute;inset:0;background:linear-gradient(170deg,#3a2a1c,#8a5a2b 40%,#2a1d14);overflow:hidden">
+    <div style="position:absolute;top:80px;left:22px;font-size:22px;font-weight:700;color:#fff">Reels</div>
+    <div style="position:absolute;top:150px;right:22px;width:150px;padding:14px;border-radius:6px;background:#FFF8E8;transform:rotate(2deg);color:#C23B22;font-weight:700;font-size:15px;line-height:1.2;text-align:center">TACO TUESDAY SPECIAL!<br>2 TACOS &amp; AGUA FRESCA<br><span style="font-size:20px">$14.99</span></div>
+    <div style="position:absolute;left:22px;top:420px;color:#fff;font-size:13px;line-height:1.4;max-width:300px"><b>@vanfoodfinds</b><br>$6 taco combo at La Paloma today. Save this one for after work.</div>
+    <div style="position:absolute;left:12px;right:12px;bottom:12px;border-radius:36px;padding:10px 16px 18px;background:rgba(245,240,234,.62);backdrop-filter:blur(22px) saturate(190%);-webkit-backdrop-filter:blur(22px) saturate(190%);border:1px solid rgba(255,255,255,.6);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),inset -1px -1px 1px rgba(255,255,255,.4),0 -10px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:14px">
+      <span style="align-self:center;width:40px;height:5px;border-radius:3px;background:rgba(23,18,16,.25)"></span>
+      <div style="display:flex;gap:12px;align-items:center"><div style="width:48px;height:48px;border-radius:10px;background:linear-gradient(150deg,#C98B4E,#6E3F22)"></div><div style="display:flex;flex-direction:column"><b style="font-size:14px">La Paloma taco deal</b><span style="font-size:11px;color:#4a413b">instagram.com/reel/C9DishDeals…</span></div></div>
+      <div style="display:flex;justify-content:space-between"><sc-for list="{{ targets }}" as="t" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px"><span style="width:60px;height:60px;border-radius:20px;background:{{ t.bg }};border:1px solid rgba(255,255,255,.6);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:{{ t.fg }}">{{ t.ic }}</span>{{ t.label }}</div></sc-for></div>
+      <div onClick="{{ toExtract }}" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:20px;background:#fff"><span style="width:40px;height:40px;border-radius:12px;background:#F22E4F;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px">DD</span><div style="flex:1;display:flex;flex-direction:column"><b style="font-size:14px">Extract deal with DishDeals</b><span style="font-size:11px;color:#6b625b">Review everything before publishing</span></div><span style="font-size:20px">›</span></div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isFlow }}">
+  <div style="position:absolute;inset:0;overflow:hidden auto;padding:60px 20px 40px;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span onClick="{{ back }}" style="cursor:pointer;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.6);backdrop-filter:blur(14px) saturate(190%);-webkit-backdrop-filter:blur(14px) saturate(190%);border:1px solid rgba(255,255,255,.8);box-shadow:inset 1.5px 1.5px 1px #fff,0 6px 18px rgba(23,18,16,.12);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#171210" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg></span><b style="font-size:17px">{{ stepTitle }}</b><span style="min-width:60px;text-align:center;padding:8px 10px;border-radius:999px;background:#EDE5DB;font-size:12px;font-weight:600;color:#6b625b">{{ stepBadge }}</span></div>
+    <div style="display:flex;gap:6px"><sc-for list="{{ stepSegs }}" as="s" hint-placeholder-count="4"><div style="flex:1;display:flex;flex-direction:column;gap:4px"><span style="height:3px;border-radius:2px;background:{{ s.bg }}"></span><span style="font-size:10px;color:{{ s.fg }}">{{ s.label }}</span></div></sc-for></div>
+
+    <sc-if value="{{ isExtract }}">
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#F22E4F">SOURCE RECEIVED</span><h1 style="margin:0;font-size:34px;line-height:1.05;font-weight:700;letter-spacing:-0.03em">Finding the useful bits…</h1><p style="margin:0;font-size:14px;line-height:1.5;color:#6b625b">We’re reading the Reel caption and frames. Nothing is published without your review.</p></div>
+      <div style="align-self:center;margin:14px 0;width:190px;height:190px;border-radius:50%;background:rgba(242,46,79,.1);display:flex;align-items:center;justify-content:center"><div style="width:140px;height:140px;border-radius:50%;background:rgba(242,46,79,.16);display:flex;align-items:center;justify-content:center"><div style="width:96px;height:96px;border-radius:50%;background:rgba(242,46,79,.9);border:1px solid rgba(255,255,255,.6);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.7),0 12px 30px rgba(242,46,79,.45);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:600">{{ pct }}%</div></div></div>
+      <sc-for list="{{ tasks }}" as="t" hint-placeholder-count="3"><div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-radius:18px;background:{{ t.bg }};font-size:14px"><span>{{ t.label }}</span><span style="font-size:12px;font-weight:500;color:{{ t.fg }}">{{ t.state }}</span></div></sc-for>
+      <div style="padding:14px 16px;border-radius:16px;background:#F0E8E0;font-size:12px;line-height:1.5;color:#6b625b">Source stays private while you review. We keep the link so the community can verify the deal.</div>
+    </sc-if>
+
+    <sc-if value="{{ isDraft }}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:10px"><div><h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.02em">Check the deal draft</h1><p style="margin:4px 0 0;font-size:12px;color:#6b625b">We filled this from the Reel. Edit anything that looks off.</p></div><span style="padding:5px 9px;border-radius:999px;background:#E6F4EA;color:#237A4B;font-size:11px;font-weight:600;white-space:nowrap">82% matched</span></div>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600">Restaurant<input value="La Paloma Taqueria" style="height:52px;border-radius:16px;border:1px solid #E6DDD3;background:#fff;padding:0 16px;font-size:16px;font-weight:400"></input></label>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600">Deal title<input value="Two tacos + agua fresca" style="height:52px;border-radius:16px;border:1px solid #E6DDD3;background:#fff;padding:0 16px;font-size:16px;font-weight:400"></input></label>
+      <div style="display:flex;gap:12px"><label style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600">Deal price<input value="$6.00" style="height:52px;border-radius:16px;border:1px solid #E6DDD3;background:#fff;padding:0 16px;font-size:16px;font-weight:400;width:100%;box-sizing:border-box"></input></label><label style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600">Regular price<input value="$12.00" style="height:52px;border-radius:16px;border:1px solid #E6DDD3;background:#fff;padding:0 16px;font-size:16px;font-weight:400;width:100%;box-sizing:border-box"></input></label></div>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600"><span style="display:flex;justify-content:space-between">When is it valid?<span style="padding:3px 8px;border-radius:8px;background:#FFF0D3;color:#8a5a00;font-size:10px">Check this</span></span><input value="Today, 3:00–6:00 pm" style="height:52px;border-radius:16px;border:1.5px solid #E8B54D;background:#fff;padding:0 16px;font-size:16px;font-weight:400"></input><span style="font-size:11px;font-weight:400;color:#8a5a00">The end time was partly hidden in the video.</span></label>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600"><span style="display:flex;justify-content:space-between">Conditions<span style="padding:3px 8px;border-radius:8px;background:#FFF0D3;color:#8a5a00;font-size:10px">Check this</span></span><input value="Dine-in only · One per person" style="height:52px;border-radius:16px;border:1.5px solid #E8B54D;background:#fff;padding:0 16px;font-size:16px;font-weight:400"></input></label>
+    </sc-if>
+
+    <sc-if value="{{ isConfirm }}">
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#F22E4F">TWO QUICK CHECKS</span><h1 style="margin:0;font-size:32px;line-height:1.05;font-weight:700;letter-spacing:-0.03em">You know the deal best.</h1><p style="margin:0;font-size:14px;line-height:1.5;color:#6b625b">Choose what the Reel meant. Your answers help keep the map trustworthy.</p></div>
+      <div style="padding:16px;border-radius:24px;background:#fff;display:flex;flex-direction:column;gap:10px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:15px">When does the deal end?</b><span style="padding:4px 9px;border-radius:999px;background:#FFF0D3;color:#8a5a00;font-size:11px">Low confidence</span></div>
+        <sc-for list="{{ endOpts }}" as="o" hint-placeholder-count="3"><div onClick="{{ o.pick }}" style="{{ o.style }}"><span style="{{ o.dot }}"></span>{{ o.label }}</div></sc-for></div>
+      <div style="padding:16px;border-radius:24px;background:#fff;display:flex;flex-direction:column;gap:10px"><b style="font-size:15px">How can people redeem it?</b>
+        <sc-for list="{{ redeemOpts }}" as="o" hint-placeholder-count="2"><div onClick="{{ o.pick }}" style="{{ o.style }}"><span style="{{ o.dot }}"></span>{{ o.label }}</div></sc-for></div>
+    </sc-if>
+
+    <sc-if value="{{ isLocation }}">
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#F22E4F">ONE MATCH FOUND</span><h1 style="margin:0;font-size:30px;line-height:1.05;font-weight:700;letter-spacing:-0.03em">Pin the right La Paloma.</h1><p style="margin:0;font-size:14px;color:#6b625b">This is where the deal will appear on the neighborhood map.</p></div>
+      <div style="position:relative;height:240px;border-radius:28px;overflow:hidden;background:#E9EFDF;flex:none">
+        <div style="position:absolute;left:-40px;top:-10px;width:130px;height:260px;border-radius:40% 50% 55% 30%;background:#B8DCE8"></div><div style="position:absolute;left:230px;top:70px;width:110px;height:100px;border-radius:50%;background:#CFE2BD"></div>
+        <div style="position:absolute;left:0;top:70px;width:360px;height:10px;border-radius:5px;background:#fff;transform:rotate(-6deg)"></div><div style="position:absolute;left:150px;top:0;width:10px;height:240px;background:#fff"></div><div style="position:absolute;left:290px;top:0;width:10px;height:240px;background:#fff;transform:rotate(-8deg)"></div>
+        <span style="position:absolute;left:120px;top:96px;padding:8px 14px;border-radius:999px;background:rgba(242,46,79,.9);border:1px solid rgba(255,255,255,.7);box-shadow:inset 1px 1px 1px rgba(255,255,255,.6),0 8px 20px rgba(242,46,79,.45);color:#fff;font-size:12px;font-weight:700">La Paloma</span>
+        <div style="position:absolute;left:12px;right:12px;top:12px;height:44px;display:flex;align-items:center;padding:0 16px;border-radius:999px;background:rgba(255,255,255,.55);backdrop-filter:blur(14px) saturate(190%);-webkit-backdrop-filter:blur(14px) saturate(190%);border:1px solid rgba(255,255,255,.7);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),0 6px 18px rgba(23,18,16,.12);font-size:14px;color:#4a413b">Search restaurant or address</div>
+      </div>
+      <sc-for list="{{ places }}" as="p" hint-placeholder-count="2"><div onClick="{{ p.pick }}" style="{{ p.style }}"><span style="{{ p.dot }}"></span><div style="flex:1;display:flex;flex-direction:column"><b style="font-size:14px;font-weight:600">{{ p.name }}</b><span style="font-size:12px;color:#6b625b">{{ p.addr }}</span></div><span style="font-size:12px;color:#6b625b">{{ p.dist }}</span></div></sc-for>
+    </sc-if>
+
+    <sc-if value="{{ isReview }}">
+      <div><h1 style="margin:0;font-size:26px;font-weight:600;letter-spacing:-0.02em">Ready for the map?</h1><p style="margin:4px 0 0;font-size:13px;color:#6b625b">This is exactly what neighbors will see. You can edit or expire it later.</p></div>
+      <div style="border-radius:24px;overflow:hidden;background:#fff;box-shadow:0 4px 18px rgba(23,18,16,.08)"><div style="height:130px;background:linear-gradient(150deg,#C98B4E,#6E3F22)"></div><div style="padding:14px;display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.04em"><span style="color:#F22E4F">LA PALOMA TAQUERIA</span><span style="color:#6b625b;font-weight:500">0.8 km</span></div><b style="font-size:20px">Two tacos + agua fresca</b><span style="font-size:12px;color:#6b625b">Today · 3–6 pm · Dine-in only</span><div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;padding:10px 14px;border-radius:14px;background:#FFF0D3"><b style="font-size:20px;color:#8a5a00">$6</b><s style="font-size:13px;color:#8a5a00">$12</s></div></div></div>
+      <div style="padding:6px 16px;border-radius:24px;background:#fff;display:flex;flex-direction:column"><sc-for list="{{ facts }}" as="f" hint-placeholder-count="3"><div style="display:flex;flex-direction:column;gap:2px;padding:10px 0;border-top:{{ f.bt }}"><span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:#8a817a">{{ f.k }}</span><span style="font-size:14px">{{ f.v }}</span></div></sc-for></div>
+      <div onClick="{{ toggleCheck }}" style="cursor:pointer;display:flex;gap:10px;align-items:center;padding:14px 16px;border-radius:16px;background:#E6F4EA;color:#1e5b34;font-size:13px"><span style="width:22px;height:22px;flex:none;border-radius:7px;background:{{ checkBg }};border:1.5px solid #237A4B;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px">{{ checkMark }}</span>I checked the price, conditions, time and location.</div>
+    </sc-if>
+
+    <sc-if value="{{ isIntake }}">
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#F22E4F">ANOTHER WAY IN</span><h1 style="margin:0;font-size:32px;line-height:1.05;font-weight:700;letter-spacing:-0.03em">Turn a photo into a deal.</h1><p style="margin:0;font-size:14px;line-height:1.5;color:#6b625b">Add a screenshot or snap a flyer. We’ll extract the same draft for you to review.</p></div>
+      <div style="display:flex;gap:6px;padding:4px;border-radius:999px;background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.7);box-shadow:inset 0 1px 2px rgba(23,18,16,.08)"><sc-for list="{{ modes }}" as="m" hint-placeholder-count="3"><span onClick="{{ m.pick }}" style="{{ m.style }}">{{ m.label }}</span></sc-for></div>
+      <div style="position:relative;height:300px;border-radius:28px;overflow:hidden;background:linear-gradient(160deg,#5b4636,#2a1d14);flex:none"><div style="position:absolute;left:110px;top:40px;width:130px;padding:14px 10px;background:#FFF8E8;border-radius:4px;transform:rotate(1.5deg);text-align:center;color:#C23B22;font-weight:700;font-size:13px;line-height:1.25">TACOS TODAY<br>two tacos plus agua fresca<br>6ix dollars<br>3 to 6 pm</div>
+        <span style="position:absolute;left:12px;top:12px;padding:7px 12px;border-radius:999px;background:rgba(35,122,75,.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.5);box-shadow:inset 1px 1px 1px rgba(255,255,255,.5);color:#fff;font-size:12px;font-weight:600">Text detected</span>
+        <div style="position:absolute;left:12px;right:12px;bottom:12px;display:flex;gap:10px"><span style="flex:1;height:44px;border-radius:999px;background:rgba(255,255,255,.22);backdrop-filter:blur(8px) saturate(190%);-webkit-backdrop-filter:blur(8px) saturate(190%);border:1px solid rgba(255,255,255,.55);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.8);color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center">Retake</span><span style="flex:1;height:44px;border-radius:999px;background:rgba(255,255,255,.22);backdrop-filter:blur(8px) saturate(190%);-webkit-backdrop-filter:blur(8px) saturate(190%);border:1px solid rgba(255,255,255,.55);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.8);color:#fff;font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center">Crop</span></div></div>
+      <div style="padding:12px 14px;border-radius:16px;background:#FFE4E8;color:#C81F3D;font-size:12px;line-height:1.45">Next: we’ll extract price, time, conditions and restaurant, then show the same editable draft.</div>
+    </sc-if>
+
+    <div onClick="{{ next }}" style="cursor:pointer;margin-top:6px;height:56px;flex:none;border-radius:999px;background:rgba(242,46,79,.9);border:1px solid rgba(255,255,255,.55);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.65),inset -1px -1px 1px rgba(255,255,255,.2),0 12px 28px rgba(242,46,79,.42);color:#fff;font-size:16px;font-weight:600;display:flex;align-items:center;justify-content:center;opacity:{{ ctaOpacity }}" style-hover="filter:brightness(1.06)" style-active="transform:scale(.98)">{{ ctaLabel }}</div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ showTabs }}">
+  <div style="position:absolute;left:14px;right:14px;bottom:22px;display:flex;gap:4px;padding:6px;border-radius:999px;background:rgba(255,255,255,.5);backdrop-filter:blur(16px) saturate(190%);-webkit-backdrop-filter:blur(16px) saturate(190%);border:1px solid rgba(255,255,255,.7);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),inset -1px -1px 1px rgba(255,255,255,.4),0 14px 36px rgba(23,18,16,.18)">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4"><div onClick="{{ t.pick }}" style="{{ t.style }}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{ t.d }}"></path></svg><span style="font-size:10px;font-weight:600">{{ t.label }}</span></div></sc-for>
+  </div>
+  </sc-if>
+
+  <div style="position:absolute;top:0;left:0;right:0;height:50px;display:flex;justify-content:space-between;align-items:center;padding:6px 30px 0;font-size:15px;font-weight:600;color:{{ sbColor }};pointer-events:none"><span>9:41</span><span style="width:110px;height:32px;border-radius:16px;background:#000;position:absolute;left:50%;top:10px;margin-left:-55px"></span><svg width="66" height="14" viewBox="0 0 66 14" fill="currentColor"><rect x="0" y="9" width="3" height="5" rx="1"></rect><rect x="5" y="6" width="3" height="8" rx="1"></rect><rect x="10" y="3" width="3" height="11" rx="1"></rect><rect x="15" y="0" width="3" height="14" rx="1"></rect><path d="M30 3a9 9 0 0112 0l-1.5 1.7a6.7 6.7 0 00-9 0zM32.5 6.6a5.5 5.5 0 017 0L38 8.3a3.2 3.2 0 00-4 0zM36 10.5l1.6 1.8-1.6 1.7-1.6-1.7z"></path><rect x="47" y="1.5" width="17" height="11" rx="3.5" fill="none" stroke="currentColor" stroke-opacity=".5"></rect><rect x="49" y="3.5" width="13" height="7" rx="2"></rect></svg></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { screen: 'map', pct: 0, signed: false, price: 1, end: 0, redeem: 0, place: 0, checked: true, mode: 0, mapChip: 0 };
+  componentDidMount() {
+    this.t = setInterval(() => {
+      if (this.state.screen !== 'extract') return;
+      const p = Math.min(100, this.state.pct + 4);
+      if (p >= 100) this.setState({ pct: 100 }, () => setTimeout(() => this.state.screen === 'extract' && this.go('draft'), 500));
+      else this.setState({ pct: p });
+    }, 120);
+  }
+  componentWillUnmount() { clearInterval(this.t); }
+  go(s) { this.setState({ screen: s, pct: s === 'extract' ? 68 : this.state.pct }); }
+  renderVals() {
+    const S = this.state, sc = S.screen, go = s => () => this.go(s);
+    const rail = [['map', 'Map home'], ['discover', 'Discover feed'], ['ig', 'Instagram native share'], ['extract', 'Extraction progress'], ['draft', 'Editable deal draft'], ['confirm', 'Confirm uncertain details'], ['location', 'Location confirmation'], ['review', 'Publish review'], ['published', 'Published on map'], ['intake', 'Screenshot and flyer intake'], ['share', 'Share a deal sign-in'], ['saved', 'Saved deals sign-in']]
+      .map((a, i) => ({ n: String(i + 1).padStart(2, '0'), label: a[1], pick: go(a[0]), bg: sc === a[0] ? 'rgba(255,255,255,.85)' : 'transparent', w: sc === a[0] ? 600 : 500 }));
+    const glass = 'rgba(255,255,255,.5);backdrop-filter:blur(12px) saturate(190%);-webkit-backdrop-filter:blur(12px) saturate(190%);border:1px solid rgba(255,255,255,.7);box-shadow:inset 1px 1px 1px rgba(255,255,255,.9),0 6px 16px rgba(23,18,16,.1)';
+    const chip = (on, lbl, tap) => ({ label: lbl, tap, style: `cursor:pointer;white-space:nowrap;padding:11px 16px;border-radius:999px;font-size:14px;font-weight:500;` + (on ? 'background:rgba(23,18,16,.88);color:#fff;border:1px solid rgba(255,255,255,.25);box-shadow:inset 1px 1px 1px rgba(255,255,255,.4),0 6px 16px rgba(23,18,16,.2)' : 'background:' + glass) });
+    const pin = (x, y, l, on, tap) => ({ label: l, tap, style: `position:absolute;left:${x}px;top:${y}px;padding:7px 11px;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;` + (on === 'new' ? 'background:rgba(242,46,79,.92);color:#fff;border:2px solid #fff;box-shadow:0 8px 20px rgba(242,46,79,.5)' : on ? 'background:rgba(23,18,16,.9);color:#fff;border:2px solid #fff;box-shadow:0 8px 20px rgba(23,18,16,.3)' : 'background:rgba(255,255,255,.85);border:1px solid #fff;box-shadow:0 6px 16px rgba(23,18,16,.2)') });
+    const pub = sc === 'published';
+    const pins = pub ? [pin(310, 250, '$9.50'), pin(168, 330, '$6 NEW', 'new'), pin(166, 395, '$8.50')] : [pin(310, 250, '$9.50'), pin(256, 313, '$6', true, go('discover')), pin(166, 395, '$8.50')];
+    const opt = (sel, lbl, pick) => ({ label: lbl, pick, style: `cursor:pointer;display:flex;align-items:center;gap:12px;padding:14px;border-radius:16px;font-size:14px;font-weight:${sel ? 600 : 400};background:${sel ? '#FFE4E8' : '#fff'};border:1.5px solid ${sel ? '#F22E4F' : '#E6DDD3'}`, dot: `width:20px;height:20px;border-radius:50%;box-sizing:border-box;flex:none;border:${sel ? '6px solid #F22E4F' : '2px solid #C9BFB4'}` });
+    const flowSteps = { extract: [1, 'New deal', '1 of 4'], draft: [2, 'Deal draft', '2 of 4'], confirm: [2, 'Confirm details', '2 of 4'], location: [3, 'Confirm location', '3 of 4'], review: [4, 'Review & publish', '4 of 4'], intake: [0, 'Share a deal', 'New'] };
+    const fs = flowSteps[sc] || [0, '', ''];
+    const prev = { extract: 'ig', draft: 'extract', confirm: 'draft', location: 'confirm', review: 'location', intake: 'share' };
+    const nexts = { extract: 'draft', draft: 'confirm', confirm: 'location', location: 'review', review: 'published', intake: 'extract' };
+    const cta = { extract: 'Skip ahead', draft: 'Confirm uncertain details', confirm: 'Confirm & choose location', location: 'Use this location', review: 'Publish deal', intake: 'Use this photo' };
+    const segs = ['Extract', 'Details', 'Location', 'Review'].map((l, i) => ({ label: l, bg: i < fs[0] ? '#F22E4F' : '#E6DDD3', fg: i < fs[0] ? '#C81F3D' : '#8a817a' }));
+    const tabDefs = [['discover', 'Discover', 'M12 3a9 9 0 100 18 9 9 0 000-18zM15.5 8.5l-2 5-5 2 2-5z'], ['map', 'Map', 'M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14'], ['share', 'Share a deal', 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 8v8M8 12h8'], ['saved', 'Saved', 'M6 3h12v18l-6-4-6 4z']];
+    const act = pub ? 'map' : (sc === 'ig' || sc === 'intake') ? 'share' : sc;
+    const done = S.checked;
+    return {
+      rail, pins, sbColor: sc === 'ig' ? '#fff' : '#171210',
+      isMap: sc === 'map' || pub, isPublished: pub, notPublished: !pub,
+      isDiscover: sc === 'discover', isShare: sc === 'share', isSaved: sc === 'saved', isIg: sc === 'ig',
+      isFlow: !!flowSteps[sc], isExtract: sc === 'extract', isDraft: sc === 'draft', isConfirm: sc === 'confirm', isLocation: sc === 'location', isReview: sc === 'review', isIntake: sc === 'intake',
+      showTabs: ['map', 'published', 'discover', 'share', 'saved'].includes(sc),
+      mapChips: ['Open now', 'Under $10', 'Walking'].map((l, i) => chip(S.mapChip === i, l, () => this.setState({ mapChip: i }))),
+      priceChips: ['Any price', 'Under $5', 'Under $10', 'Valid now'].map((l, i) => chip(S.price === i, l, () => this.setState({ price: i }))),
+      goMap: go('map'),
+      feed: [{ bg: 'linear-gradient(150deg,#7A5030,#2E2118)', photo: 'ramen photo', place: 'NORI NOODLE HOUSE', dist: '0.7 km', title: 'Nori noodle lunch set', when: 'Weekdays · 11:30–2:30', price: '$8.50', was: '$15' }, { bg: 'linear-gradient(150deg,#C98B4E,#6E3F22)', photo: 'tacos photo', place: 'CORNER SLICE', dist: '1.1 km', title: 'Two slices + pop', when: 'Today · 3–6 pm', price: '$5', was: '$9' }, { bg: 'linear-gradient(150deg,#D9704F,#5A2A1E)', photo: 'bento photo', place: 'LITTLE BENTO', dist: '1.6 km', title: 'Lunch break bento', when: 'Weekdays · 11–2', price: '$9.50', was: '$16' }],
+      shareTiles: [{ label: 'Share a Reel', d: 'M7 3h10a4 4 0 014 4v10a4 4 0 01-4 4H7a4 4 0 01-4-4V7a4 4 0 014-4zM12 8a4 4 0 100 8 4 4 0 000-8z', tap: go('ig') }, { label: 'Add a photo', d: 'M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2zM3 17l5-5 4 4 3-3 6 6', tap: go('intake') }, { label: 'Type it in', d: 'M4 20l4-1 11-11-3-3L5 16z', tap: go('draft') }],
+      signIn: () => this.setState({ signed: true }), signedIn: S.signed, notSignedIn: !S.signed,
+      targets: [['AirDrop', 'AD', 'rgba(255,255,255,.5)', '#171210'], ['Messages', 'Msg', 'rgba(255,255,255,.5)', '#171210'], ['DishDeals', 'DD', '#F22E4F', '#fff'], ['More', '···', 'rgba(255,255,255,.5)', '#171210']].map(a => ({ label: a[0], ic: a[1], bg: a[2], fg: a[3] })),
+      toExtract: () => { this.setState({ pct: 0 }); this.go('extract'); },
+      stepTitle: fs[1], stepBadge: fs[2], stepSegs: fs[0] ? segs : [], back: go(prev[sc] || 'map'),
+      pct: S.pct,
+      tasks: [['Reel received', 'Done', 0], ['Restaurant & offer', 'Done', 0], ['Price & valid time', S.pct >= 100 ? 'Done' : 'Reading', 1]].map(a => { const d = a[1] === 'Done'; return { label: a[0], state: a[1], bg: d ? '#fff' : '#FFE4E8', fg: d ? '#237A4B' : '#C81F3D' }; }),
+      endOpts: ['Today at 6:00 pm', 'Today at closing', 'Not sure — leave it open'].map((l, i) => opt(S.end === i, l, () => this.setState({ end: i }))),
+      redeemOpts: ['Dine-in only', 'Dine-in or takeout'].map((l, i) => opt(S.redeem === i, l, () => this.setState({ redeem: i }))),
+      places: [['La Paloma Taqueria', '2450 Main St, Vancouver', '0.8 km'], ['La Paloma Market', '1185 Commercial Dr, Vancouver', '3.6 km']].map((a, i) => { const o = opt(S.place === i, a[0], () => this.setState({ place: i })); return { name: a[0], addr: a[1], dist: a[2], pick: o.pick, style: o.style, dot: `width:40px;height:40px;border-radius:50%;flex:none;background:${S.place === i ? '#F22E4F' : '#EDE5DB'}` }; }),
+      facts: [['LOCATION', S.place ? '1185 Commercial Dr, Vancouver' : '2450 Main St, Vancouver'], ['EXPIRES', ['Today at 6:00 pm', 'Today at closing', 'No end time'][S.end]], ['SOURCE', '@vanfoodfinds · Instagram Reel']].map((a, i) => ({ k: a[0], v: a[1], bt: i ? '1px solid #F0E9E1' : 'none' })),
+      checkBg: done ? '#237A4B' : '#fff', checkMark: done ? '✓' : '', toggleCheck: () => this.setState({ checked: !done }),
+      ctaOpacity: sc === 'review' && !done ? .45 : 1,
+      ctaLabel: cta[sc] || '', next: () => { if (sc === 'review' && !done) return; this.go(nexts[sc]); },
+      modes: ['Screenshot', 'Take photo', 'Type it in'].map((l, i) => ({ label: l, pick: () => this.setState({ mode: i }), style: `cursor:pointer;flex:1;text-align:center;padding:11px 0;border-radius:999px;font-size:13px;font-weight:600;` + (S.mode === i ? 'background:rgba(23,18,16,.88);color:#fff' : 'color:#4a413b') })),
+      tabs: tabDefs.map(t => { const on = (t[0] === act); return { label: t[1], d: t[2], pick: go(t[0] === 'share' ? 'share' : t[0]), style: `cursor:pointer;flex:1;height:58px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:${on ? '#C81F3D' : '#171210'};` + (on ? 'background:rgba(255,228,232,.85);box-shadow:inset 1px 1px 1px #fff,0 3px 10px rgba(242,46,79,.18)' : '') }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

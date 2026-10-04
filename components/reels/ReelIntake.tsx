@@ -67,7 +67,7 @@ function Intake({ itemId, shared }: { itemId?: string; shared?: string }) {
         {awaitingConsent && contextPlan.action === "blocked" && <p role="alert" className="field-error">The text shared with this link could not be read, so it will not be saved as if it were complete.</p>}
         <label className="field">Instagram {kindLabelLower} link<input required type="text" autoCapitalize="none" value={text} onChange={e => setText(e.target.value)} placeholder="https://www.instagram.com/…" /></label>
         <label className="field">Automatically delete after<select value={days} onChange={e => setDays(Number(e.target.value))}><option value={1}>1 day</option><option value={7}>7 days</option><option value={30}>30 days</option></select></label>
-        <p className="muted">Saving keeps the link private to you. Dinedeals then reads the Reel in the background and prepares a draft; this can fail if the Reel is private or the service is busy. You review any draft before using it.</p>
+        <p className="muted">Saving keeps the link private to you. DishDeals then reads the Reel in the background and prepares a draft; this can fail if the Reel is private or the service is busy. You review any draft before using it.</p>
         {shared && !recovered && <p role="alert" className="field-error">That shared link is not a supported Instagram post or Reel link, so it was not filled in.</p>}
         {error && <p role="alert" className="field-error">{error}</p>}<button className="button primary" disabled={busy || (awaitingConsent && contextPlan.action !== "send" && contextPlan.action !== "none")}>{busy ? "Saving…" : awaitingConsent ? "Save this link to my account" : "Save privately"}</button>
       </form>}
@@ -116,7 +116,7 @@ function Result({ itemId }: { itemId: Id<"reelItems"> }) {
         </Link>
       </div>
       <p className="muted">
-        Dinedeals reads the shared Reel automatically and prepares a draft for you to review. If that fails (for example, a private or removed Reel), attach your own recording below, fill in the deal by hand, or use the standard post form with a screenshot or caption.
+        DishDeals reads the shared Reel automatically and prepares a draft for you to review. If that fails (for example, a private or removed Reel), attach your own recording below, fill in the deal by hand, or use the standard post form with a screenshot or caption.
       </p>
     </div>
     <AttachRecording item={item} processing={["retrieving", "extracting"].includes(item.status)} /><DraftEditor key={itemId} item={item} /></>;
@@ -161,7 +161,7 @@ function AttachRecording({ item, processing }: { item: Doc<"reelItems">; process
     } finally { setBusy(false); }
   }
   return <div className="panel form-stack"><h2>Attach recording (optional)</h2>
-    <p className="muted">Attaching a recording is optional. Dinedeals tries to read this {kindLabelLower} from its link; if that fails (for example, a private or removed one), attach a screen recording or video from Photos or Files. Alternatively, you can review and publish a public deal manually below, or <Link href={`/post?source=${encodeURIComponent(item.sourceUrl)}`}>use the standard post form</Link> with screenshot or caption text. The recording stays private and is used only for this save. Its length is read by your browser and is not independently verified. Processing also needs video analysis to be enabled; if it is not, you will see a failed result and can edit by hand.</p>
+    <p className="muted">Attaching a recording is optional. DishDeals tries to read this {kindLabelLower} from its link; if that fails (for example, a private or removed one), attach a screen recording or video from Photos or Files. Alternatively, you can review and publish a public deal manually below, or <Link href={`/post?source=${encodeURIComponent(item.sourceUrl)}`}>use the standard post form</Link> with screenshot or caption text. The recording stays private and is used only for this save. Its length is read by your browser and is not independently verified. Processing also needs video analysis to be enabled; if it is not, you will see a failed result and can edit by hand.</p>
     {!siteUrl ? <p role="status" className="muted">Recording upload is not configured for this build.</p> : <>
       <label className="field">Video recording (MP4 or QuickTime, up to {MAX_MEDIA_BYTES / 1048576} MB, 1 to {MAX_DURATION_SECONDS} seconds)<input type="file" accept="video/mp4,video/quicktime,.mp4,.mov" onChange={e => void pick(e)} disabled={busy || processing} /></label>
       {file && duration !== null && <p role="status">{file.name} · {(file.size / 1048576).toFixed(1)} MB · about {Math.round(duration)} s (read by your browser)</p>}
