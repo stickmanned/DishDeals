@@ -6,10 +6,9 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useAuthActions, useConvexAuth as useSessionToken } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import type { Id, Doc } from "@/convex/_generated/dataModel";
-import { reelDraft, reelExtraction, type ReelDraft } from "@/lib/reels/contract";
-import { afterOwnSave, versionStatus } from "@/lib/reels/draftRevision";
 import { postNativeMessage, recoveredLink, saveReelLink } from "@/lib/nativeSession";
 import { MAX_CAPTION_BYTES, MAX_CAPTION_CHARS, MAX_DURATION_SECONDS, MAX_MEDIA_BYTES, checkFileChoice, readVideoDuration, uploadSuppliedReel, validateCaption, type VideoProbe } from "@/lib/reels/suppliedMedia";
+import { CanonicalReelReview } from "./CanonicalReelReview";
 
 // Uses the canonical root auth session (ConvexClientProvider); it creates no
 // client or auth provider of its own. The session is sent to native by the
@@ -65,7 +64,7 @@ function Result({ itemId }: { itemId: Id<"reelItems"> }) {
   if (!item) return <p role="status">Loading your private save…</p>;
   const labels = { queued: item.sourceKind === "supplied" ? "Recording attached. Waiting to be analyzed." : "Link saved privately. It is not analyzed until you attach your own recording.", retrieving: "Reading the Reel…", extracting: "Listening and reading the video…", ready: "Your draft is ready to review.", no_deal: "No clear dining offer was found.", failed: "Processing needs attention." };
   return <><div className="panel form-stack"><p role="status" aria-live="polite">{labels[item.status]}</p><a href={item.sourceUrl} target="_blank" rel="noreferrer">Original Reel</a>{item.error && <p role="alert">{item.error.message}</p>}{error && <p role="alert">{error}</p>}<div className="form-actions">{item.status === "failed" && <button disabled={busy || item.attempts >= 5} className="button primary" onClick={() => { announced.current = false; void run(() => retry({ itemId })); }}>Retry processing</button>}<button disabled={busy} className="button secondary" onClick={() => void run(async () => { await remove({ itemId }); router.replace("/reels"); })}>Delete save</button></div>
-    <label className="field">Reset automatic deletion<select disabled={busy} defaultValue="" onChange={e => { const days = Number(e.target.value); if (days) void run(() => retention({ itemId, days })); }}><option value="">Choose retention</option><option value="1">1 day from now</option><option value="7">7 days from now</option><option value="30">30 days from now</option></select></label><p className="muted">Deletes {new Date(item.expiresAt).toLocaleString()}. A recording you attach is kept for retries and deleted after analysis, when you delete this save, or at expiry.</p></div>{!["retrieving", "extracting"].includes(item.status) && <AttachRecording item={item} />}{hasDraft(item.draftJson) && <DraftEditor key={itemId} item={item} />}</>;
+    <label className="field">Reset automatic deletion<select disabled={busy} defaultValue="" onChange={e => { const days = Number(e.target.value); if (days) void run(() => retention({ itemId, days })); }}><option value="">Choose retention</option><option value="1">1 day from now</option><option value="7">7 days from now</option><option value="30">30 days from now</option></select></label><p className="muted">Deletes {new Date(item.expiresAt).toLocaleString()}. A recording you attach is kept for retries and deleted after analysis, when you delete this save, or at expiry.</p></div><AttachRecording item={item} processing={["retrieving", "extracting"].includes(item.status)} /><DraftEditor key={itemId} item={item} /></>;
 }
 function browserProbe(): VideoProbe {
   return {
@@ -77,7 +76,7 @@ function browserProbe(): VideoProbe {
 const uploadErrors = { invalid: "That recording or its details cannot be uploaded.", auth: "Your session expired. Sign in again.", rejected: "The server did not accept this recording. Check its type and length, then try again.",
   rate_limited: "Too many uploads or retries this hour. Try later.", network: "The upload did not reach the server. Your choices are kept; try again.", timeout: "The upload took too long and was stopped. Your choices are kept; try again.", aborted: "The upload was cancelled. Your choices are kept.", unexpected: "The upload could not be confirmed. Try again." } as const;
 // The user's own recording of this same Reel. File, caption and date are kept on every cancel or error.
-function AttachRecording({ item }: { item: Doc<"reelItems"> }) {
+function AttachRecording({ item, processing }: { item: Doc<"reelItems">; processing: boolean }) {
   const session = useSessionToken(), siteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
   const [file, setFile] = useState<File | null>(null), [duration, setDuration] = useState<number | null>(null);
   const [caption, setCaption] = useState(item.caption ?? ""), [published, setPublished] = useState(item.publishedAt?.slice(0, 10) ?? "");
@@ -94,7 +93,7 @@ function AttachRecording({ item }: { item: Doc<"reelItems"> }) {
     setFile(chosen); setDuration(seconds); setMessage("");
   }
   async function send() {
-    if (!file || duration === null || !siteUrl) return;
+    if (!file || duration === null || !siteUrl || processing) return;
     if (validateCaption(caption) === null) { setMessage(`The caption is too long or has unsupported characters (up to ${MAX_CAPTION_CHARS} characters and ${MAX_CAPTION_BYTES} bytes). It was not changed.`); return; }
     setBusy(true); setMessage(""); setReceipt("");
     try {
@@ -107,49 +106,43 @@ function AttachRecording({ item }: { item: Doc<"reelItems"> }) {
   return <div className="panel form-stack"><h2>Attach your recording</h2>
     <p className="muted">To analyze the Reel itself, attach a screen recording or video of this same Reel from Photos or Files. The saved link alone is never fetched or analyzed. The recording stays private and is used only for this save. Its length is read by your browser and is not independently verified. Processing also needs video analysis to be enabled; if it is not, you will see a failed result and can edit by hand.</p>
     {!siteUrl ? <p role="status" className="muted">Recording upload is not configured for this build.</p> : <>
-      <label className="field">Reel recording (MP4 or QuickTime, up to {MAX_MEDIA_BYTES / 1048576} MB, 1 to {MAX_DURATION_SECONDS} seconds)<input type="file" accept="video/mp4,video/quicktime,.mp4,.mov" onChange={e => void pick(e)} disabled={busy} /></label>
+      <label className="field">Reel recording (MP4 or QuickTime, up to {MAX_MEDIA_BYTES / 1048576} MB, 1 to {MAX_DURATION_SECONDS} seconds)<input type="file" accept="video/mp4,video/quicktime,.mp4,.mov" onChange={e => void pick(e)} disabled={busy || processing} /></label>
       {file && duration !== null && <p role="status">{file.name} · {(file.size / 1048576).toFixed(1)} MB · about {Math.round(duration)} s (read by your browser)</p>}
       <label className="field">Caption from the Reel (optional)<textarea maxLength={MAX_CAPTION_CHARS} value={caption} onChange={e => setCaption(e.target.value)} disabled={busy} /></label>
       <label className="field">Date the Reel was posted (optional, leave blank if unknown)<input type="date" value={published} onChange={e => setPublished(e.target.value)} disabled={busy} /></label>
-      <button type="button" className="button primary" disabled={busy || !file || duration === null} onClick={() => void send()}>{busy ? "Uploading…" : "Upload recording"}</button>
+      <button type="button" className="button primary" disabled={busy || processing || !file || duration === null} onClick={() => void send()}>{busy ? "Uploading…" : processing ? "Processing…" : "Upload recording"}</button>
       {message && <p role="alert" className="field-error">{message}</p>}{receipt && <p role="status">{receipt}</p>}</>}
   </div>;
-}
-function hasDraft(draftJson: string | undefined) {
-  try { return draftJson !== undefined && Array.isArray(JSON.parse(draftJson)) && JSON.parse(draftJson).length > 0; } catch { return false; }
 }
 // Mounted per item (not per generation) so edits survive retries and reactive updates.
 function DraftEditor({ item }: { item: Doc<"reelItems"> }) {
   const save = useMutation(api.reels.saveDraft);
-  return <DraftReview item={item} onSave={(draftJson, expected) => save({ itemId: item._id, draftJson, expectedGeneration: expected.generation, expectedRevision: expected.revision })} />;
+  return (
+    <CanonicalReelReview
+      key={item._id}
+      item={item}
+      onSave={(draftJson, expected) =>
+        save({
+          itemId: item._id,
+          draftJson,
+          expectedGeneration: expected.generation,
+          expectedRevision: expected.revision,
+        })
+      }
+      sourceUrl={item.sourceUrl}
+    />
+  );
 }
 // Version fields are optional so the static layout preview can render without a stored item.
-type DraftItem = Pick<Doc<"reelItems">, "extractionJson" | "draftJson" | "caption"> & Partial<Pick<Doc<"reelItems">, "generation" | "draftRevision" | "draftEdited" | "status">>;
-export function DraftReview({ item, onSave }: { item: DraftItem; onSave: (draftJson: string, expected: { generation: number; revision: number }) => Promise<unknown> }) {
-  const extracted = useMemo(() => { try { return item.extractionJson ? reelExtraction.parse(JSON.parse(item.extractionJson)) : null; } catch { return null; } }, [item.extractionJson]);
-  // Local inputs and the expected version are captured once and never resynced from reactive props.
-  const [drafts, setDrafts] = useState<ReelDraft[]>(() => reelDraft.array().parse(JSON.parse(item.draftJson!)));
-  const [expected, setExpected] = useState(() => ({ generation: item.generation ?? 0, revision: item.draftRevision ?? 0 }));
-  const [message, setMessage] = useState(""), [busy, setBusy] = useState(false);
-  const changed = !busy && versionStatus(expected, { generation: item.generation ?? 0, draftRevision: item.draftRevision }) === "changed";
-  const latest = { generation: item.generation ?? 0, revision: item.draftRevision ?? 0 };
-  function edit(index: number, patch: Partial<ReelDraft>) { setMessage(""); setDrafts(previous => previous.map((draft, i) => i === index ? { ...draft, ...patch } : draft)); }
-  function loadLatest() { try { setDrafts(reelDraft.array().parse(JSON.parse(item.draftJson!))); setExpected(latest); setMessage("Loaded the latest saved draft."); } catch { setMessage("The latest draft could not be loaded."); } }
-  function keepMine() { setExpected(latest); setMessage("Your edits are kept. Saving will replace the latest saved version."); }
-  async function persist(e: FormEvent) {
-    e.preventDefault(); if (changed) return; setBusy(true);
-    try { reelDraft.array().min(1).max(10).parse(drafts); await onSave(JSON.stringify(drafts), expected); const next = afterOwnSave(expected); if (next) { setExpected(next); setMessage("Draft saved privately."); } else setMessage("Draft saved. Reload the latest draft before editing again."); }
-    catch { setMessage("Could not save. Check the fields; if the draft changed elsewhere, use the choices above."); } finally { setBusy(false); }
-  }
-  return <form className="panel form-stack" onSubmit={persist}><h2>Review the draft</h2>{!!item.status && ["queued", "retrieving", "extracting", "failed"].includes(item.status) && <p role="status" className="muted">Processing is not finished or needs attention. Your saved draft and edits are kept.</p>}{changed && <div role="alert" className="form-stack"><p><b>This draft was changed by another save or retry.</b> Your edits on this screen are unchanged and cannot be saved until you choose.</p><div className="form-actions"><button type="button" className="button secondary" onClick={loadLatest}>Load the latest saved draft</button><button type="button" className="text-button" onClick={keepMine}>Keep my edits and replace the latest</button></div></div>}<p className="muted">Blank fields are unknown. Currency stays unknown unless the source states it. Times use America/Vancouver.</p>
-    {drafts.map((draft, index) => <fieldset className="form-stack" key={index}><legend>Offer {index + 1}</legend>
-      {(["restaurant", "address", "dealText", "currency", "validStart", "validEnd", "expiresOn"] as const).map(field => <label className="field" key={field}>{({ restaurant: "Restaurant", address: "Address", dealText: "Deal", currency: "Currency (e.g. CAD)", validStart: "Starts (HH:MM)", validEnd: "Ends (HH:MM)", expiresOn: "Expiry (YYYY-MM-DD)" })[field]}<input value={draft[field] ?? ""} onChange={e => edit(index, { [field]: e.target.value || null })} /></label>)}
-      <label className="field">Price<input type="number" min="0" max="100000" step="0.01" value={draft.price ?? ""} onChange={e => edit(index, { price: e.target.value === "" ? null : Number(e.target.value) })} /></label>
-      <label className="field">Days<select value={draft.validDays === null ? "unknown" : draft.validDays.length === 0 ? "every" : "selected"} onChange={e => edit(index, { validDays: e.target.value === "unknown" ? null : e.target.value === "every" ? [] : ["mon"] })}><option value="unknown">Unknown</option><option value="every">Every day (confirmed)</option><option value="selected">Selected days</option></select></label>
-      {!!draft.validDays?.length && <div className="reel-days">{(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const).map(day => <label key={day}><input type="checkbox" checked={draft.validDays!.includes(day)} onChange={e => edit(index, { validDays: e.target.checked ? [...draft.validDays!, day] : draft.validDays!.length > 1 ? draft.validDays!.filter(d => d !== day) : null })} />{day}</label>)}</div>}
-      <label className="field">Conditions (one per line)<textarea value={draft.conditions?.join("\n") ?? ""} onChange={e => edit(index, { conditions: e.target.value.trim() ? e.target.value.split("\n").filter(Boolean) : null })} /></label><label><input type="checkbox" checked={draft.conditions?.length === 0} onChange={e => edit(index, { conditions: e.target.checked ? [] : null })} /> Confirm no conditions</label>
-    </fieldset>)}<button className="button primary" disabled={busy || changed}>{busy ? "Saving…" : "Save draft"}</button><p role="status">{message}</p>
-    {item.draftEdited && extracted && <details><summary>Model suggestion (not applied)</summary><p className="muted">This is the model’s separate suggestion. It never replaces your values.</p>{extracted.drafts.map((d, i) => <p key={i}><b>Offer {i + 1}</b>: {d.restaurant ?? "restaurant unknown"} · {d.dealText ?? "deal unknown"}{d.price !== null ? ` · ${d.price} ${d.currency ?? "currency unknown"}` : ""}</p>)}</details>}
-    <details><summary>Source evidence</summary>{extracted && extracted.evidence.map((e, i) => <p key={i}><b>Offer {e.draftIndex + 1}, {e.field} · {e.channel}{e.timestampSeconds !== null ? ` at ${e.timestampSeconds}s` : ""}</b><br />{e.quote}</p>)}{extracted?.warnings.map((w, i) => <p key={i}>{w}</p>)}<h3>Caption</h3><p>{item.caption || "No caption"}</p><h3>Relevant audio transcript</h3><p>{extracted ? (extracted.transcript || "No intelligible offer speech") : "No extraction yet"}</p></details>
-    <p className="muted">Edits leave the original extraction and evidence intact. This private draft is saved separately from the community feed.</p></form>;
+export type DraftItem = Pick<Doc<"reelItems">, "extractionJson" | "draftJson" | "caption"> &
+  Partial<Pick<Doc<"reelItems">, "generation" | "draftRevision" | "draftEdited" | "status">>;
+
+export function DraftReview({
+  item,
+  onSave,
+}: {
+  item: DraftItem;
+  onSave: (draftJson: string, expected: { generation: number; revision: number }) => Promise<unknown>;
+}) {
+  return <CanonicalReelReview item={item} onSave={onSave} />;
 }

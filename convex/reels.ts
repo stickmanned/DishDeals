@@ -101,10 +101,13 @@ export const saveDraft = mutation({ args: { itemId: v.id("reelItems"), draftJson
   const item = await owned(ctx, itemId);
   const check = checkSave(item, { generation: expectedGeneration, revision: expectedRevision });
   if (!check.ok) throw new ConvexError(SAVE_ERRORS[check.reason]);
-  // Only an existing private draft can be edited (any processing state, so edits survive retries).
-  let existing: unknown;
-  try { existing = item.draftJson === undefined ? undefined : JSON.parse(item.draftJson); } catch { throw new ConvexError("This draft is corrupt."); }
-  if (!Array.isArray(existing) || existing.length < 1) throw new ConvexError("No draft is ready.");
+  // A manual draft may be created when none exists yet. Any existing stored draft must still be
+  // strict 1..10 ReelDrafts within the size limit, otherwise it fails safely as corrupt. The only
+  // exception is the system's own untouched empty "[]" placeholder for a no_deal result.
+  if (item.draftJson !== undefined && !(item.draftJson === "[]" && !item.draftEdited)) {
+    if (!withinDraftLimit(item.draftJson)) throw new ConvexError("This draft is corrupt.");
+    try { reelDraft.array().min(1).max(10).parse(JSON.parse(item.draftJson)); } catch { throw new ConvexError("This draft is corrupt."); }
+  }
   if (!withinDraftLimit(draftJson)) throw new ConvexError("Draft is too large.");
   const drafts = reelDraft.array().min(1).max(10).parse(JSON.parse(draftJson));
   await ctx.db.patch(itemId, { draftJson: JSON.stringify(drafts), draftRevision: check.nextRevision, draftEdited: true, updatedAt: Date.now() }); return null;

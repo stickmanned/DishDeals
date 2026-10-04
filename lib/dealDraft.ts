@@ -348,6 +348,9 @@ export type DealDraftAction =
       lng: number;
     }
   | {
+      type: "INVALIDATE_LOCATION";
+    }
+  | {
       type: "SET_IMAGE_ID";
       imageId: string | null;
     }
@@ -869,6 +872,14 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
           lng: action.lng,
           confirmed: true,
         },
+      };
+    }
+
+    case "INVALIDATE_LOCATION": {
+      if (state.location === null) return state;
+      return {
+        ...state,
+        location: null,
       };
     }
 

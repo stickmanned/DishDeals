@@ -210,9 +210,12 @@ describe("strict shape and size", () => {
 });
 
 describe("states and retry keep edits", () => {
-  it("rejects a save when no draft exists yet", async () => {
+  it("creates a manual draft when none exists yet (approved N-FORM-B policy), bumping the revision", async () => {
     const s = await setup();
-    await expect(save(s.alice as never, s.itemId, [draft()], 1, 0)).rejects.toThrow("No draft");
+    await save(s.alice as never, s.itemId, [draft({ restaurant: "Manual" })], 1, 0);
+    const saved = await s.item();
+    expect(saved).toMatchObject({ draftRevision: 1, draftEdited: true });
+    expect(JSON.parse(saved!.draftJson!)[0].restaurant).toBe("Manual");
   });
   it("saves in failed state, and retry keeps draft, revision, edited flag and extraction", async () => {
     const s = await setup(); await s.ready();
