@@ -43,6 +43,7 @@ jobs:
           if-no-files-found: error
       - name: Prepare emulator
         run: |
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           # GitHub's Android SDK runner image already has accepted SDK licenses.
           SDK_MANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | sort -V | tail -1)
           test -n "$SDK_MANAGER"

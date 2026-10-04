@@ -28,13 +28,26 @@ def tree(label):
     return ET.fromstring(xml)
 
 
-def visible(label, expected, timeout=40):
+def visible(label, expected, timeout=40, scroll=False):
     deadline = time.monotonic() + timeout
+    swipes = 0
     while time.monotonic() < deadline:
         root = tree(label)
         for node in root.iter("node"):
-            if any(expected in node.get(key, "") for key in ("text", "content-desc")):
+            bounds = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
+            shown = len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]
+            if shown and any(expected in node.get(key, "") for key in ("text", "content-desc")):
                 return node
+        if scroll and swipes < 3:
+            for node in root.iter("node"):
+                bounds = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
+                if node.get("scrollable") == "true" and len(bounds) == 4:
+                    x = (bounds[0] + bounds[2]) // 2
+                    height = bounds[3] - bounds[1]
+                    adb("shell", "input", "swipe", str(x), str(bounds[1] + height * 3 // 4),
+                        str(x), str(bounds[1] + height // 3), "400")
+                    swipes += 1
+                    break
         time.sleep(1)
     raise AssertionError(f"Missing {expected!r} in {label}")
 
@@ -94,9 +107,16 @@ try:
     adb("shell", "input", "keyevent", "4")
     visible("back", "Find your next good meal.")
     screenshot("back-to-discover")
+    tap("map-navigation", "Map & AI")
+    visible("map-page", "Deal map", scroll=True)
+    time.sleep(5)
+    screenshot("map")
+    tap("reels-navigation", "Reels")
+    visible("reels", "Save a Reel.")
+    screenshot("reels")
     crashes = adb("logcat", "-b", "crash", "-d")
     assert "FATAL EXCEPTION" not in crashes, crashes
-    (OUT / "result.txt").write_text("PASS: installed APK, Discover, cold/warm text shares, draft protection, Back, no native crash. No offers submitted.\n")
+    (OUT / "result.txt").write_text("PASS: installed APK, Discover, cold/warm text shares, draft protection, Back, map and Reels navigation, no native crash. No offers submitted.\n")
 finally:
     (OUT / "logcat.txt").write_text(adb("logcat", "-d", check=False), encoding="utf-8")
     (OUT / "crashes.txt").write_text(adb("logcat", "-b", "crash", "-d", check=False), encoding="utf-8")

@@ -90,6 +90,14 @@ export function Shell({ children }: { children: ReactNode }) {
           <Icon name="plus" />
           <span>Post</span>
         </Link>
+        <Link href="/tools" aria-current={path.startsWith("/tools") ? "page" : undefined}>
+          <Icon name="pin" />
+          <span>Map &amp; AI</span>
+        </Link>
+        <Link href="/reels" aria-current={path.startsWith("/reels") ? "page" : undefined}>
+          <Icon name="camera" />
+          <span>Reels</span>
+        </Link>
         <Link
           href={profileHref}
           aria-current={
