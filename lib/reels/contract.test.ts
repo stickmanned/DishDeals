@@ -26,6 +26,6 @@ test("typed source constraints need source-supported evidence and an ISO start d
   const constraint = { draftIndex: 0, code: "FUTURE_START", detail: "Starts June 15", startsOn: "2026-06-15", channel: "caption", quote: "Starts June 15, 2026", timestampSeconds: null };
   expect(validateExtraction({ ...output, constraints: [constraint] }, caption, 12).constraints).toHaveLength(1);
   expect(validateExtraction({ ...output }, caption, 12).constraints).toBeUndefined();
-  for (const bad of [{ draftIndex: 1 }, { startsOn: null }, { startsOn: "2026-13-01" }, { code: "OTHER" }, { quote: "Starts next week" }, { channel: "visual" }])
+  for (const bad of [{ draftIndex: 1 }, { startsOn: null }, { startsOn: "2026-13-01" }, { code: "OTHER" }, { quote: "Starts next week" }, { channel: "visual" }, { quote: "Starts June 15", startsOn: "2026-06-15" }])
     expect(() => validateExtraction({ ...output, constraints: [{ ...constraint, ...bad }] }, caption, 12)).toThrow();
 });

@@ -104,6 +104,16 @@ describe("constraint parsing and source evidence (actual validateExtraction)", (
     expect(() => parse(base({ constraints: [relative] }))).toThrow("does not literally state the start date");
     expect(() => parse(base({ constraints: [{ ...futureStart, startsOn: "2026-06-16" }] }))).toThrow("does not literally state");
     expect(() => parse(base({ constraints: [{ ...futureStart, startsOn: "2027-06-15" }] }))).toThrow("does not literally state");
+    // A year the quote never states is not promoted to an exact startsOn, with or without a publication date.
+    const yearless = { ...futureStart, quote: "Starts June 15", startsOn: "2026-06-15" };
+    expect(() => parse(base({ constraints: [yearless] }), "Ramen Danbo. Starts June 15 for members")).toThrow("does not literally state");
+    expect(() => parse(base({ constraints: [{ ...futureStart, quote: "Starts June 15, 2025" }] }), "Ramen Danbo. Starts June 15, 2025")).toThrow("does not literally state");
+    // Ambiguous numeric MDY/DMY dates are rejected for either reading.
+    const numeric = (startsOn: string) => ({ ...futureStart, quote: "starts 06/07/2026", startsOn });
+    for (const iso of ["2026-06-07", "2026-07-06"]) expect(() => parse(base({ constraints: [numeric(iso)] }), "Ramen Danbo. starts 06/07/2026")).toThrow("does not literally state");
+    // A full unambiguous numeric date is fine, and so is the same quote kept as an unresolved constraint.
+    expect(parse(base({ constraints: [{ ...futureStart, quote: "starts 06/15/2026" }] }), "Ramen Danbo. starts 06/15/2026").constraints).toHaveLength(1);
+    expect(parse(base({ constraints: [{ ...unsupported, detail: "Starts June 15 (year not stated)", quote: "Starts June 15" }] }), "Ramen Danbo. Starts June 15 for members").constraints).toHaveLength(1);
     // The same relative statement is accepted as an unresolved, date-less constraint.
     expect(parse(base({ constraints: [{ ...unsupported, detail: "Starts next Monday (date unknown)", channel: "audio", quote: "Starting next Monday", timestampSeconds: 2 }] })).constraints).toHaveLength(1);
   });
@@ -115,24 +125,41 @@ describe("constraint parsing and source evidence (actual validateExtraction)", (
   });
 });
 
-describe("quoteSupportsDate", () => {
+describe("quoteSupportsDate (complete, unambiguous dates only)", () => {
   it.each([
     ["Starts June 15, 2026", "2026-06-15", true],
-    ["begins on 15th of June", "2026-06-15", true],
-    ["from Jun. 15", "2026-06-15", true],
-    ["15 JUNE", "2026-06-15", true],
-    ["Sept 3", "2026-09-03", true],
+    ["begins on 15th of June 2026", "2026-06-15", true],
+    ["from Jun. 15 2026", "2026-06-15", true],
+    ["15 JUNE, 2026", "2026-06-15", true],
+    ["Sept 3, 2026", "2026-09-03", true],
     ["starts 2026-06-15", "2026-06-15", true],
-    ["starts 06/15", "2026-06-15", true],
-    ["starts 6-5", "2026-06-05", true],
-    ["Starts June 150", "2026-06-15", false],
-    ["Starts June 1", "2026-06-15", false],
+    ["starts 06/15/2026", "2026-06-15", true],
+    ["starts 15/06/2026", "2026-06-15", true],
+    ["starts 6.6.2026", "2026-06-06", true],
+    // missing year: never promoted to a calendar date, even though a publication date could suggest one
+    ["Starts June 15", "2026-06-15", false],
+    ["Starts 15 June", "2026-06-15", false],
+    ["starts 06/15", "2026-06-15", false],
+    ["starts 6-5", "2026-06-05", false],
+    ["Sept 3", "2026-09-03", false],
+    // fabricated or conflicting year/day/month
     ["Starts June 15, 2025", "2026-06-15", false],
-    ["Starts July 15", "2026-06-15", false],
+    ["Starts June 15, 2026", "2027-06-15", false],
+    ["Starts June 150, 2026", "2026-06-15", false],
+    ["Starts June 1, 2026", "2026-06-15", false],
+    ["Starts July 15, 2026", "2026-06-15", false],
+    ["starts 2026-06-15", "2026-06-16", false],
+    ["starts 12026-06-15", "2026-06-15", false],
+    // ambiguous numeric order: both month/day readings are calendar-valid
+    ["starts 06/07/2026", "2026-06-07", false],
+    ["starts 06/07/2026", "2026-07-06", false],
+    ["starts 03-04-2026", "2026-03-04", false],
+    ["starts 06/15/2026", "2026-06-16", false],
+    // relative or unrelated
     ["starts next Monday", "2026-06-15", false],
     ["Starts tomorrow", "2026-06-15", false],
     ["call 604 555 1215", "2026-06-15", false],
-    ["Starts Marching on 15", "2026-03-15", false],
+    ["Starts Marching on 15, 2026", "2026-03-15", false],
   ])("%s -> %s is %s", (quote, iso, expected) => expect(quoteSupportsDate(quote, iso)).toBe(expected));
 });
 
@@ -165,7 +192,7 @@ describe("model request and transport (labeled synthetic SDK transport)", () => 
   });
 
   it("instructs the model on constraints without asking for scores or invented dates", () => {
-    for (const phrase of ["ALWAYS return the constraints array", "FUTURE_START", "UNSUPPORTED_CONSTRAINT", "never guess a date", "exact transcript substrings", "not confidence or probability", "leave the field null"])
+    for (const phrase of ["ALWAYS return the constraints array", "FUTURE_START", "UNSUPPORTED_CONSTRAINT", "never infer or guess a year or date", "including the four-digit year", "ambiguous numeric date", "even if a publication date was supplied", "exact transcript substrings", "not confidence or probability", "leave the field null"])
       expect(REEL_SYSTEM_INSTRUCTION).toContain(phrase);
     expect(REEL_SYSTEM_INSTRUCTION).toContain("Confidence is not requested");
   });
@@ -235,6 +262,20 @@ describe("adapter and canonical reducer/publish validator", () => {
     expect(validateForPublish(d).valid).toBe(false);
     d = resolveAll(d, "Confirmed members-only limit in the video");
     expect(validateForPublish(d).valid).toBe(true);
+  });
+
+  it("a year-less or ambiguous start is held as a blocking UNSUPPORTED_CONSTRAINT with no typed date", () => {
+    const caption = "Ramen Danbo. Starts June 15 for members. Also from 06/07/2026.";
+    for (const quote of ["Starts June 15", "from 06/07/2026"]) {
+      const note = { ...unsupported, detail: `Start date not fully stated: ${quote}`, quote };
+      const parsed = parse(base({ constraints: [note] }), caption);
+      expect(parsed.constraints![0]).toMatchObject({ code: "UNSUPPORTED_CONSTRAINT", startsOn: null });
+      const { drafts, sidecar } = reelExtractionToDealDrafts(parsed);
+      expect(drafts[0].reviewIssues).toEqual([expect.objectContaining({ code: "UNSUPPORTED_CONSTRAINT", blocking: true, resolved: false })]);
+      expect(drafts[0].reviewIssues.some(i => i.code === "FUTURE_START")).toBe(false);
+      expect(sidecar.constraints![0].startsOn).toBeNull();
+      expect(validateForPublish(publishReady(drafts[0])).valid).toBe(false);
+    }
   });
 
   it("a FUTURE_START on one offer never leaks to another, and typed notes keep warnings", () => {
