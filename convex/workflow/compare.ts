@@ -5,6 +5,7 @@ import { requireOwner } from "./auth";
 import { outcomeSchema } from "../../lib/workflow/contracts";
 import { comparisonInputSchema, type ComparisonResult } from "../../lib/workflow/compare-contracts";
 import { compareRestaurants } from "../../lib/workflow/compare";
+import { providerUsageAuthorized } from "../../lib/workflow/workflow";
 import { geminiComparison } from "../../lib/workflow/compare-gemini";
 import { WorkflowError } from "../../lib/workflow/errors";
 import type { SearchRecord } from "../../lib/workflow/search-contracts";
@@ -30,7 +31,7 @@ export const run = internalAction({ args: { inputJson: v.string(), owner: v.stri
   catch { throw new ConvexError({ code: "INVALID_INPUT", message: "Select two to five distinct deals and a comparison priority." }); }
   await ctx.runMutation(internal.workflow.search.reserve, { owner: args.owner });
   const records = await ctx.runQuery(internal.workflow.compare.selected, { dealIds: input.dealIds });
-  const key = process.env.GEMINI_API_KEY;
+  const key = providerUsageAuthorized(process.env) ? process.env.GEMINI_API_KEY : undefined;
   const ai = key?.trim() ? geminiComparison({ apiKey: key,
     model: process.env.GEMINI_COMPARISON_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash", deadline: Date.now() + 65000 }) : {};
   try { return await compareRestaurants(input, { records, ...ai }); }

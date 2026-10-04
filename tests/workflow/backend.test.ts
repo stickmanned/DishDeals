@@ -10,7 +10,7 @@ const token = "test-integration-token-at-least-32-characters";
 const auth = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 beforeEach(() => {
   vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-03T20:00:00Z"));
-  vi.stubEnv("GEMINI_API_KEY", "test-gemini"); vi.stubEnv("GEOAPIFY_API_KEY", "test-geo"); vi.stubEnv("WORKFLOW_API_TOKEN", token);
+  vi.stubEnv("GEMINI_API_KEY", "test-gemini"); vi.stubEnv("GEOAPIFY_API_KEY", "test-geo"); vi.stubEnv("WORKFLOW_API_TOKEN", token); vi.stubEnv("WORKFLOW_PROVIDER_USAGE_AUTHORIZED", "true");
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 function mockProviders(overrides = {}) {

@@ -33,16 +33,15 @@ it("retrieves URLs before structured extraction and never fetches the submitted 
   expect(result.deals).toHaveLength(1);
   expect(fetcher.mock.calls.every(([url]) => String(url).startsWith("https://generativelanguage.googleapis.com/"))).toBe(true);
 });
-it("uses a copied caption when Instagram is inaccessible and requires manual confirmation", async () => {
+it("extracts an Instagram post only from the supplied caption and never asks the provider to read the link", async () => {
   const url = "https://www.instagram.com/p/example";
-  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ candidates: [{ finishReason: "STOP",
-    content: { parts: [{ text: "Sign in to see this post" }] }, urlContextMetadata: { urlMetadata: [{ retrievedUrl: url, urlRetrievalStatus: "URL_RETRIEVAL_STATUS_ERROR" }] } }] }))
-    .mockResolvedValueOnce(modelResponse({ deals: [deal], rejectionReason: null }));
-  const result = await extractWithGemini(inputSchema.parse({ source: { type: "url", url, caption: input.source.text } }), { apiKey: "test", model: "primary", fetcher });
-  const extractedInput = JSON.parse(JSON.parse(fetcher.mock.calls[1][1]!.body as string).contents[0].parts[0].text);
-  expect(extractedInput.sourceText).toBe(input.source.text);
-  expect(result.deals[0].warnings.join(" ")).toContain("supplied text");
-  expect(fetcher.mock.calls.every(([target]) => String(target).startsWith("https://generativelanguage.googleapis.com/"))).toBe(true);
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(modelResponse({ deals: [deal], rejectionReason: null }));
+  const result = await extractWithGemini(inputSchema.parse({ source: { type: "text", text: input.source.text, sourceUrl: url } }), { apiKey: "test", model: "primary", fetcher });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  const body = JSON.parse(fetcher.mock.calls[0][1]!.body as string);
+  expect(body.tools).toBeUndefined();
+  expect(JSON.parse(body.contents[0].parts[0].text).sourceText).toBe(input.source.text);
+  expect(result.deals).toHaveLength(1);
 });
 it("falls back on invalid model JSON but never on a key error", async () => {
   const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(modelResponse({ wrong: true })).mockResolvedValueOnce(modelResponse({ deals: [deal], rejectionReason: null }));

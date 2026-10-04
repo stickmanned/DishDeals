@@ -5,6 +5,7 @@ import { requireOwner } from "./auth";
 import { outcomeSchema } from "../../lib/workflow/contracts";
 import { searchInputSchema, type SearchRecord, type SearchResult } from "../../lib/workflow/search-contracts";
 import { searchDeals } from "../../lib/workflow/search";
+import { providerUsageAuthorized } from "../../lib/workflow/workflow";
 import { geminiSearch } from "../../lib/workflow/search-gemini";
 import { supplementEmptySearch } from "../../lib/workflow/web-discovery";
 
@@ -34,7 +35,7 @@ export const run = internalAction({ args: { inputJson: v.string(), owner: v.stri
   if (!parsed.success) throw new ConvexError("Invalid search query or filters.");
   await ctx.runMutation(internal.workflow.search.reserve, { owner: args.owner });
   const records = await ctx.runQuery(internal.workflow.search.catalog, { focusDealId: parsed.data.focusDealId });
-  const now = new Date(), key = process.env.GEMINI_API_KEY;
+  const now = new Date(), key = providerUsageAuthorized(process.env) ? process.env.GEMINI_API_KEY : undefined;
   const config = key?.trim() ? { apiKey: key, model: process.env.GEMINI_SEARCH_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash",
     deadline: Date.now() + 90000 } : null;
   const ai = config ? geminiSearch(config, now) : {};

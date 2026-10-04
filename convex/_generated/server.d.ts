@@ -47,6 +47,7 @@ type Env = {
   readonly GEMINI_WEB_SEARCH_MODEL?: string;
   readonly GEMINI_COMPARISON_MODEL?: string;
   readonly WORKFLOW_API_TOKEN?: string;
+  readonly WORKFLOW_PROVIDER_USAGE_AUTHORIZED?: string;
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
 };

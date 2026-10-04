@@ -17,7 +17,7 @@ async function seed(t: ReturnType<typeof setup>, status: "published" | "needs_re
       status, timezone: "America/Vancouver", sourceUrl: "https://example.com/deals", createdAt: Date.now() });
   });
 }
-beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-03T20:00:00Z")); vi.stubEnv("WORKFLOW_API_TOKEN", token); vi.stubEnv("GEMINI_API_KEY", ""); });
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-03T20:00:00Z")); vi.stubEnv("WORKFLOW_API_TOKEN", token); vi.stubEnv("GEMINI_API_KEY", ""); vi.stubEnv("WORKFLOW_PROVIDER_USAGE_AUTHORIZED", "true"); });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 it("serves authenticated search without a key and excludes review/expired data", async () => {
   const t = setup(); const published = await seed(t); await seed(t, "needs_review"); await seed(t, "published", true);

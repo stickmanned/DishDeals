@@ -23,6 +23,7 @@ const app = defineApp({ env: {
   GEMINI_WEB_SEARCH_MODEL: v.optional(v.string()),
   GEMINI_COMPARISON_MODEL: v.optional(v.string()),
   WORKFLOW_API_TOKEN: v.optional(v.string()),
+  WORKFLOW_PROVIDER_USAGE_AUTHORIZED: v.optional(v.string()),
 } });
 app.use(workflow);
 app.use(geospatial);
