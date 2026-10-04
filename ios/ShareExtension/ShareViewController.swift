@@ -6,11 +6,37 @@ import UniformTypeIdentifiers
     private let done = UIButton(type: .system)
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 251/255, green: 247/255, blue: 242/255, alpha: 1)
-        status.numberOfLines = 0; status.textAlignment = .center; status.font = UIFont(name: "Figtree-Regular", size: 17) ?? .systemFont(ofSize: 17); status.text = "Received. Saving your Reel privately…"
-        done.setTitle("Done", for: .normal); done.addTarget(self, action: #selector(close), for: .touchUpInside); done.isHidden = true
-        let stack = UIStackView(arrangedSubviews: [status, done]); stack.axis = .vertical; stack.spacing = 24; stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack); NSLayoutConstraint.activate([stack.centerYAnchor.constraint(equalTo: view.centerYAnchor), stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 24), stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)])
+        view.backgroundColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? .systemBackground
+                : UIColor(red: 251/255, green: 247/255, blue: 242/255, alpha: 1)
+        }
+        status.numberOfLines = 0
+        status.textAlignment = .center
+        status.textColor = .label
+        let baseFont = UIFont(name: "Figtree-Regular", size: 17) ?? .systemFont(ofSize: 17, weight: .regular)
+        status.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: baseFont)
+        status.adjustsFontForContentSizeCategory = true
+        status.text = "Received. Saving your Reel privately…"
+        done.setTitle("Done", for: .normal)
+        let doneFont = UIFont(name: "Figtree-SemiBold", size: 17) ?? .boldSystemFont(ofSize: 17)
+        done.titleLabel?.font = UIFontMetrics(forTextStyle: .headline).scaledFont(for: doneFont)
+        done.titleLabel?.adjustsFontForContentSizeCategory = true
+        done.addTarget(self, action: #selector(close), for: .touchUpInside)
+        done.isHidden = true
+        let stack = UIStackView(arrangedSubviews: [status, done])
+        stack.axis = .vertical
+        stack.spacing = 24
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stack)
+        let guide = view.safeAreaLayoutGuide
+        NSLayoutConstraint.activate([
+            stack.centerYAnchor.constraint(equalTo: guide.centerYAnchor),
+            stack.leadingAnchor.constraint(equalTo: guide.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: guide.trailingAnchor, constant: -24),
+            stack.topAnchor.constraint(greaterThanOrEqualTo: guide.topAnchor, constant: 24),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: guide.bottomAnchor, constant: -24)
+        ])
         Task { await receive() }
     }
     private final class Once: @unchecked Sendable {
