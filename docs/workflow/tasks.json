@@ -1220,7 +1220,7 @@
         "convex/_generated/"
       ],
       "packet": "docs/tasks/N-RELEASE-B.md",
-      "pinnedBaseSha": "3148364ce985df1daf3f3530023322afd449dc6d",
+      "pinnedBaseSha": "5f3b23e942a25758f9cebe837ab7ccbfe71aff8d",
       "backendTarget": "proper-marmot-82 dev approved backed-up release only",
       "implementationState": "dependency-ready assigned packet",
       "nativeChecks": "pending relevant native build",
@@ -1242,7 +1242,7 @@
         "docs/handoffs/n-load-a.md"
       ],
       "packet": "docs/tasks/N-LOAD-A.md",
-      "pinnedBaseSha": "3148364ce985df1daf3f3530023322afd449dc6d",
+      "pinnedBaseSha": "5f3b23e942a25758f9cebe837ab7ccbfe71aff8d",
       "backendTarget": "local implementation only; no external writes",
       "implementationState": "dependency-ready assigned packet",
       "nativeChecks": "pending relevant native build",
@@ -1269,7 +1269,7 @@
         "docs/handoffs/t-14b.md"
       ],
       "packet": "docs/tasks/T-14B.md",
-      "pinnedBaseSha": "3148364ce985df1daf3f3530023322afd449dc6d",
+      "pinnedBaseSha": "5f3b23e942a25758f9cebe837ab7ccbfe71aff8d",
       "backendTarget": "local implementation only; no external writes",
       "implementationState": "dependency-ready assigned packet",
       "nativeChecks": "pending relevant native build",
@@ -1296,7 +1296,7 @@
         "docs/handoffs/t-15b.md"
       ],
       "packet": "docs/tasks/T-15B.md",
-      "pinnedBaseSha": "3148364ce985df1daf3f3530023322afd449dc6d",
+      "pinnedBaseSha": "5f3b23e942a25758f9cebe837ab7ccbfe71aff8d",
       "backendTarget": "local implementation only; no external writes",
       "implementationState": "dependency-ready assigned packet",
       "nativeChecks": "pending relevant native build",
