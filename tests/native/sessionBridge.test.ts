@@ -67,6 +67,12 @@ describe("postNativeMessage", () => {
     ["foreign host receipt", { type: "received", sourceUrl: "https://evil.example/reel/AbCdE12345/" }],
     ["garbage receipt", { type: "received", sourceUrl: "not a url" }],
     ["bad result id", { type: "result", itemId: "a/b", status: "ready" }],
+    ["result id with whitespace", { type: "result", itemId: " abc123 ", status: "ready" }],
+    ["result id too long", { type: "result", itemId: "a".repeat(129), status: "ready" }],
+    ["unknown result status", { type: "result", itemId: "abc123", status: "queued" as never }],
+    ["extracting result status", { type: "result", itemId: "abc123", status: "extracting" as never }],
+    ["missing result status", { type: "result", itemId: "abc123" } as never],
+    ["non-string result status", { type: "result", itemId: "abc123", status: 1 as never }],
   ])("refuses to send %s", (_n, message) => {
     const { win, posted } = fakeWindow();
     expect(postNativeMessage(message, win)).toBe("not_sent");
@@ -118,6 +124,15 @@ describe("saveReelLink (receipt only after a verified server save)", () => {
     expect(post).toHaveBeenCalledTimes(1);
   });
 
+  it("accepts the boundary item ids (1 and 128 alphanumerics) without altering them", async () => {
+    for (const itemId of ["a", "Z9", "a".repeat(128)]) {
+      const post = vi.fn(() => "sent" as const);
+      const out = await saveReelLink(REEL, 7, async () => ({ itemId }), post);
+      expect(out.itemId).toBe(itemId);
+      expect(post).toHaveBeenCalledTimes(1);
+    }
+  });
+
   it("reports not_sent honestly when there is no native bridge", async () => {
     const out = await saveReelLink(REEL, 7, async () => ({ itemId: "item1" }));
     expect(out).toEqual({ itemId: "item1", receipt: "not_sent" });
@@ -129,7 +144,10 @@ describe("saveReelLink (receipt only after a verified server save)", () => {
     expect(post).not.toHaveBeenCalled();
   });
 
-  it.each([null, undefined, {}, { itemId: "" }, { itemId: 5 }])("sends no receipt for an unverified result %j", async (result) => {
+  it.each([
+    null, undefined, {}, { itemId: "" }, { itemId: 5 }, { itemId: " " }, { itemId: " item1 " },
+    { itemId: "item 1" }, { itemId: "item-1" }, { itemId: "a/b" }, { itemId: "a".repeat(129) }, { itemId: "item1\n" },
+  ])("sends no receipt for an unverified or malformed result %j", async (result) => {
     const post = vi.fn(() => "sent" as const);
     await expect(saveReelLink(REEL, 7, async () => result as never, post)).rejects.toThrow();
     expect(post).not.toHaveBeenCalled();

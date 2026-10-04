@@ -14,6 +14,10 @@ export type NativeMessage =
 
 export type NativeDelivery = "sent" | "not_sent";
 
+// The same item id shape the Swift app and `/reels` routing accept.
+export const ITEM_ID_PATTERN = /^[A-Za-z0-9]{1,128}$/;
+const RESULT_STATUSES: readonly string[] = ["ready", "no_deal", "failed"];
+
 type BridgeWindow = {
   webkit?: {
     messageHandlers?: { dishdeals?: { postMessage?: (value: object) => void } };
@@ -32,7 +36,11 @@ function isValid(message: NativeMessage): boolean {
         return false;
       }
     case "result":
-      return /^[A-Za-z0-9]{1,128}$/.test(message.itemId);
+      return (
+        typeof message.itemId === "string" &&
+        ITEM_ID_PATTERN.test(message.itemId) &&
+        RESULT_STATUSES.includes(message.status)
+      );
     case "enableNotifications":
       return true;
   }
@@ -90,7 +98,8 @@ export async function saveReelLink(
 ): Promise<{ itemId: string; receipt: NativeDelivery }> {
   const sourceUrl = normalizeInstagramUrl(input);
   const result = await submit({ text: sourceUrl, retentionDays });
-  if (!result || typeof result.itemId !== "string" || !result.itemId) {
+  // The id is checked exactly as native routing checks it; never trimmed or repaired.
+  if (!result || typeof result.itemId !== "string" || !ITEM_ID_PATTERN.test(result.itemId)) {
     throw new Error("The server did not confirm the save.");
   }
   return { itemId: result.itemId, receipt: post({ type: "received", sourceUrl }) };

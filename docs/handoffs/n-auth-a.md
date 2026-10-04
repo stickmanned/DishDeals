@@ -3,7 +3,7 @@
 Branch `t-03-native-session-bridge`, base `2011bf9`. Local only: nothing pushed, no PR, no cloud, codegen, provider or token/env access. Functional controls only; no Swift, backend, schema, package, map or polish changes.
 
 ## States (kept separate)
-- **Implementation:** ready (local), with one named gap below (Harry's `/signin` and `/profile`).
+- **Implementation:** ready (local); the Shell identity mismatch below is open and out of scope.
 - **Local checks:** pass (synthetic).
 - **Native checks (Swift bridge, Keychain, WKWebView):** untested. **Real iPhone:** pending. No dependency on an Xcode runtime.
 
@@ -20,13 +20,20 @@ Branch `t-03-native-session-bridge`, base `2011bf9`. Local only: nothing pushed,
 ## Checks run in `/Users/william/Code/DishDeals-worktrees/native-session-bridge`
 - `npm ci --prefer-offline --no-audit --no-fund` (node_modules was absent; no package change).
 - `npx tsc --noEmit`, `npx eslint .`: clean.
-- `npx vitest run tests/native`: 37 passed. Covers: no window or handler, handler throwing (no console output), exact message payloads, refusal of empty/non-string tokens and unnormalized or foreign receipt URLs, the session decision table (loading, signed in, token not ready, signed out), link normalization and rejection, receipt-after-verified-save (one receipt, duplicate counts, no receipt on error or unverified result, no server call for invalid links), plus source guards (no private client or provider, no auto-submit, config guard before hooks, bridge mounted inside `AuthProvider`, bridge never logs). Four mutations (drop the loading guard, drop sign-out clear, report receipt before verification, reintroduce a private client) each failed a test.
-- `npm run check`: exit 0 (20 test files, 469 vitest tests, 23 workflow tests, `next build`; `/reels`, `/signin`, `/profile` build).
+- `npx vitest run tests/native`: 51 passed after the review corrections (37 in the first commit). Covers: no window or handler, handler throwing (no console output), exact message payloads, refusal of empty/non-string tokens and unnormalized or foreign receipt URLs, the session decision table (loading, signed in, token not ready, signed out), link normalization and rejection, receipt-after-verified-save (one receipt, duplicate counts, no receipt on error or unverified result, no server call for invalid links), plus source guards (no private client or provider, no auto-submit, config guard before hooks, bridge mounted inside `AuthProvider`, bridge never logs). Four mutations (drop the loading guard, drop sign-out clear, report receipt before verification, reintroduce a private client) each failed a test.
+- `npm run check` (first commit; not re-run for the corrective commit, which changed only `lib/nativeSession.ts`, its test and this handoff): exit 0 (20 test files, 469 vitest tests, 23 workflow tests, `next build`; `/reels`, `/signin`, `/profile` build).
 - `node /tmp/dishdeals-owner-check.mjs N-AUTH-A`: see the commit reply.
 - All doubles are synthetic (fake `window.webkit` handler, fake submit). This is not live Convex Auth, the Swift bridge, Keychain, WKWebView, Instagram, a provider or the phone. No browser check was run.
 
-## Named gap (outside my writable paths)
-Harry's `/signin` (`components/frontend/SignIn.tsx`) and `/profile` use the standalone `FrontendProvider` auth adapter, which `app/layout.tsx` does not pass (`<FrontendProvider>` without `auth`). `/signin` therefore reports "Account sign-in isn't available in this version yet" and never reaches the canonical session. Only the `/reels` sign-in form signs into the canonical session, and the root bridge now covers it on every route. Making `/signin` and `/profile` share that session needs an `AuthAdapter` built from the canonical `useAuthActions` plus `users.me` / `users.upsertProfile` in `components/frontend/*` and/or `app/layout.tsx` (Harry's files). The standalone workflow provider is left as the separate preview/unconfigured path and is never fed canonical IDs or identity.
+## Corrected note on `/signin` and `/profile` (earlier "named gap" was wrong)
+The actual routes `app/signin/page.tsx` and `app/profile/page.tsx` (Northstar's merge) are the real canonical pages: they use `useAuthActions`, `users.me` and `users.upsertProfile` with the root canonical session. So the root `CanonicalSessionBridge` covers sign-in at `/signin`, `/profile` and `/reels` alike. Harry's `components/frontend/SignIn.tsx` and `Profile.tsx` exist but no route mounts them, so my earlier statement that `/signin` reports "isn't available in this version yet" was wrong, and I made no change to those routes.
+
+Still open (not changed, outside my paths): the frontend `Shell` / `FrontendProvider` derive their own identity from the standalone preview state (`app.authenticated`, `app.profile.displayName`), not from the canonical session. The nav avatar and the Profile or Sign in link target in `Shell.tsx` can therefore disagree with the real canonical sign-in state. The standalone workflow provider stays a separate preview/unconfigured path and is never fed canonical IDs or identity. Fixing the Shell identity mismatch is a separate frontend/adapter ticket.
+
+## Review corrections applied (same scope)
+- `saveReelLink` now requires the returned `itemId` to match `^[A-Za-z0-9]{1,128}$` (exported as `ITEM_ID_PATTERN`, the shape the Swift app and `/reels` routing accept) before any receipt is reported. Whitespace, hyphens, slashes, newlines, empty or over-long ids are rejected as unverified and are never trimmed or repaired, so recovery copies are not cleaned on a malformed id.
+- The `result` message validator now also rejects any `status` other than `ready`, `no_deal` or `failed` at runtime, plus non-string ids and ids outside the pattern.
+- New regressions cover whitespace, hyphen, slash, newline, 129-character ids and the 1/128-character boundaries, and unknown, in-progress, missing and non-string result statuses.
 
 ## Unchanged and pending
 Backend ownership checks (`reels.*`) unchanged. Swift `WebShell` trusted-origin checks untouched. Still pending: Swift bridge and Keychain behavior on device, token expiry/refresh for the extension, the real Instagram payload, provider receipts, and the map/publish acceptance.
