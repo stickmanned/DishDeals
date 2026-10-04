@@ -2,6 +2,8 @@
 
 Status: ready for review and Mac/iPhone validation; the reported phone failures are not yet reproduced on that device.
 
+Delivery: implementation commit `1ae949e`, pushed to `origin/t-25-source-intake-debug`. Draft PR creation was attempted through the GitHub connector and rejected with HTTP 403, `Resource not accessible by integration`. No PR was created. Open the pushed branch for review; do not merge/deploy before the native checks. This is a connector permission limitation, not an automatic approval-review rejection.
+
 Explicit user assignment: investigate image selection/upload and Instagram native sharing carefully, including visible evidence of received inputs. Branch `t-25-source-intake-debug`; isolated checkout `C:/Users/fengy/.codex/worktrees/e6c4/DishDeals`; base `cc47c03`. No other ticket dispatched. Maestri is unavailable on this Windows host. The current task manifest is historical prepared work; it was not changed or used to dispatch workers.
 
 Writable scope: `lib/frontend/image.ts`, its new test, `components/frontend/Post.tsx`, `components/frontend/JobPanel.tsx`, `components/reels/ReelIntake.tsx`, `app/reels/page.tsx`, the three existing Swift files under `ios/`, this handoff and its screenshot. Preserve schema/API names, map integration, visual design, dependencies and all teammate changes. No backend code, credentials or cloud configuration changes.
