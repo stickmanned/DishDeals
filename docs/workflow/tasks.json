@@ -249,6 +249,28 @@
       "implementationState": "dispatched",
       "nativeChecks": "pending Harry source/Xcode",
       "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-07D",
+      "owner": "Mica",
+      "branch": "t-07-extraction-draft-adapter",
+      "worktree": "draft-adapter",
+      "status": "prepared",
+      "dependencies": [
+        "T-05A",
+        "T-07A"
+      ],
+      "allowedPaths": [
+        "lib/extractionDraft.ts",
+        "tests/import/extractionDraft.test.ts",
+        "docs/handoffs/t-07d.md"
+      ],
+      "packet": "docs/tasks/T-07D.md",
+      "pinnedBaseSha": "b55ea3c0d613f0878ca7a5924120416dc74546bf",
+      "backendTarget": "none; headless adapter/synthetic replay only",
+      "implementationState": "dispatched",
+      "nativeChecks": "pending Harry bindings",
+      "phoneAcceptance": "pending"
     }
   ],
   "completedDependencies": {
