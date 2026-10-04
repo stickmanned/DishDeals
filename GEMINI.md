@@ -1,0 +1,3 @@
+# DishDeals agent entry point
+
+Read AGENTS.md, the authoritative StormHacks plan, docs/agent-workflow.md, docs/team-integration.md and your exact assigned task packet. Inspect pwd, Git branch/status and task ownership before editing. Use the assigned isolated worktree, never the human main checkout. Fetch published teammate branches before duplicating a subsystem. Human teammates own polished frontend and all map integration. One bounded ticket, exact checks, honest handoff and stop. Run maestri list before connected peer requests; avoid circular blocking asks. Server secrets stay out of Git/chat. No deployments without task-specific authorization.
