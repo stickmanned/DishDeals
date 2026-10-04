@@ -1,0 +1,19 @@
+# Dependencies and generated output
+node_modules/
+dist/
+.next/
+.vinext/
+.wrangler/
+coverage/
+*.tsbuildinfo
+*.tgz
+
+# Local credentials and tool state
+.env*
+!.env.example
+.sites-runtime/
+.agents/
+.codex/
+*.log
+.DS_Store
+Thumbs.db
