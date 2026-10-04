@@ -1,5 +1,7 @@
 # N-INSTAGRAM-KIND
 
+Integration regression amendment: `convex/reels.test.ts`, `tests/import/nativeSession.test.ts`, `tests/native/sessionBridge.test.ts` additionally approved ONLY to reconcile old post-as-Reel normalization/dedup/context expectations. Preserve signer/consent/unsafe-input assertions. Add explicit post tracking-alias dedup, separate post/Reel identities, same-kind context lookup/receipt, valid canonical post request and genuinely invalid/noncanonical immediate rejection. No timeout increase or bypass. Combined root failure evidence `/tmp/dishdeals-posts-1551ffd-check.log`; unrelated Android timing tests remain Northstar-owned.
+
 Northstar amendment: `ios/ShareExtension/ShareViewController.swift` additionally approved ONLY for generic initial Instagram-link copy and resolved post/Reel receipt labels, preserving the integrated contrast fix and all payload/storage/lifecycle code. Success text may direct user to review/publish publicly, never claim automatic public publication. Both source-kind helpers must validate exact supported HTTPS hosts, no credentials/port and anchored direct paths; invalid input returns unknown, no substring fallback.
 
 Owner Mica. Checkout /Users/william/Code/DishDeals-worktrees/instagram-source-kind; branch t-13-instagram-source-kind; pinned base dcdda819e97de9c371726dd7ba33585912afe7d5.

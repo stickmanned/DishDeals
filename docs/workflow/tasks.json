@@ -1648,7 +1648,10 @@
         "tests/import/reelPublicEntry.test.tsx",
         "docs/handoffs/n-instagram-kind.md",
         "lib/reels/contract.test.ts",
-        "ios/ShareExtension/ShareViewController.swift"
+        "ios/ShareExtension/ShareViewController.swift",
+        "convex/reels.test.ts",
+        "tests/import/nativeSession.test.ts",
+        "tests/native/sessionBridge.test.ts"
       ],
       "packet": "docs/tasks/N-INSTAGRAM-KIND.md",
       "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",
