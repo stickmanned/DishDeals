@@ -1,0 +1,33 @@
+{
+  "candidateId": "CAND-08",
+  "canonicalProposal": {
+    "restaurant": "BierCraft UniverCity",
+    "address": "8902 University High St, Burnaby, BC V5A 4X6",
+    "dealText": "Thursday Daily Special: Manna Burger",
+    "priceCad": 5.5,
+    "validDays": ["thu"],
+    "validStart": null,
+    "validEnd": null,
+    "expiresOn": null,
+    "conditions": [
+      "Thursday feature",
+      "Dine-in / in-house special",
+      "UniverCity location on SFU campus"
+    ],
+    "sourceUrl": "https://biercraft.com/univercity/"
+  },
+  "provenance": {
+    "sourceUrl": "https://biercraft.com/univercity/",
+    "accessDate": "2026-10-03",
+    "adImageUrl": null,
+    "locationContext": "On Simon Fraser University (SFU) campus, Burnaby Mountain",
+    "currencyEvidence": "$5.50 displayed on daily specials menu; ISO currency unstated (pending CAD confirmation)",
+    "coordinatesStatus": "omitted_pending_pinyuan_pin",
+    "expiryStatus": "ongoing_daily_special_no_sunset_date",
+    "missingFields": [
+      "lat",
+      "lng",
+      "flyerPhoto"
+    ]
+  }
+}

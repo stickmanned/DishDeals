@@ -1,0 +1,32 @@
+{
+  "candidateId": "CAND-03",
+  "canonicalProposal": {
+    "restaurant": "Tentatsu Japanese Restaurant",
+    "address": "4266 Hastings St, Burnaby, BC",
+    "dealText": "10% off all Take Out orders of $30 & up (before taxes) - phone call orders only",
+    "priceCad": null,
+    "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+    "validStart": "11:00",
+    "validEnd": "21:30",
+    "expiresOn": null,
+    "conditions": [
+      "Take Out orders of $30 & up before taxes",
+      "Phone call orders only",
+      "Not valid for online order or delivery platforms"
+    ],
+    "sourceUrl": "https://www.tentatsusushi.com/"
+  },
+  "provenance": {
+    "sourceUrl": "https://www.tentatsusushi.com/",
+    "accessDate": "2026-10-03",
+    "adImageUrl": null,
+    "currencyEvidence": "$ symbol displayed in minimum spend ($30&up); percentage discount offer",
+    "coordinatesStatus": "omitted_pending_pinyuan_pin",
+    "expiryStatus": "ongoing_promotion_no_sunset_date",
+    "missingFields": [
+      "lat",
+      "lng",
+      "flyerPhoto"
+    ]
+  }
+}

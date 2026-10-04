@@ -1,0 +1,32 @@
+{
+  "candidateId": "CAND-02",
+  "canonicalProposal": {
+    "restaurant": "Tenen Restaurant",
+    "address": "7569 Royal Oak Ave, Burnaby, BC V5J 4J8",
+    "dealText": "Lunch Special: Soup of the Day (cup of choice daily soup)",
+    "priceCad": 7.95,
+    "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+    "validStart": "10:30",
+    "validEnd": null,
+    "expiresOn": null,
+    "conditions": [
+      "Lunch special menu item",
+      "Daily soup selection"
+    ],
+    "sourceUrl": "https://www.tenenrestaurant.com/lunchspecials"
+  },
+  "provenance": {
+    "sourceUrl": "https://www.tenenrestaurant.com/lunchspecials",
+    "accessDate": "2026-10-03",
+    "adImageUrl": null,
+    "currencyEvidence": "7.95 $ displayed on website; ISO currency unstated (pending CAD confirmation)",
+    "coordinatesStatus": "omitted_pending_pinyuan_pin",
+    "expiryStatus": "ongoing_lunch_special_no_sunset_date",
+    "missingFields": [
+      "lat",
+      "lng",
+      "validEnd",
+      "flyerPhoto"
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "candidateId": "CAND-04",
+  "canonicalProposal": {
+    "restaurant": "Argo Greek",
+    "address": "Unit 108 – 3790 Canada Way, Burnaby, BC V5G 1G4",
+    "dealText": "Lunch Special: Chicken Souvlaki Platter (served with Greek salad, rice, roasted potato, tzatziki & pita)",
+    "priceCad": 22.0,
+    "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+    "validStart": "11:30",
+    "validEnd": "14:30",
+    "expiresOn": null,
+    "conditions": [
+      "Available from 11:30am - 2:30pm",
+      "Smaller portion served during lunch hours only"
+    ],
+    "sourceUrl": "https://www.argogreek.ca/menu/"
+  },
+  "provenance": {
+    "sourceUrl": "https://www.argogreek.ca/menu/",
+    "accessDate": "2026-10-03",
+    "adImageUrl": null,
+    "currencyEvidence": "$22 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+    "coordinatesStatus": "omitted_pending_pinyuan_pin",
+    "expiryStatus": "ongoing_lunch_menu_no_sunset_date",
+    "missingFields": [
+      "lat",
+      "lng",
+      "flyerPhoto"
+    ]
+  }
+}

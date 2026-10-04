@@ -1,0 +1,307 @@
+[
+  {
+    "candidateId": "CAND-01",
+    "canonicalProposal": {
+      "restaurant": "Tenen Restaurant",
+      "address": "7569 Royal Oak Ave, Burnaby, BC V5J 4J8",
+      "dealText": "Lunch Special: Spaghetti Bolognese (pasta cooked with homemade meat sauce)",
+      "priceCad": 7.95,
+      "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "validStart": "10:30",
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Lunch special menu item",
+        "Dine-in or take-out as offered"
+      ],
+      "sourceUrl": "https://www.tenenrestaurant.com/lunchspecials"
+    },
+    "provenance": {
+      "sourceUrl": "https://www.tenenrestaurant.com/lunchspecials",
+      "accessDate": "2026-10-03",
+      "adImageUrl": null,
+      "currencyEvidence": "7.95 $ displayed on website; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_lunch_special_no_sunset_date",
+      "missingFields": ["lat", "lng", "validEnd", "flyerPhoto"]
+    }
+  },
+  {
+    "candidateId": "CAND-02",
+    "canonicalProposal": {
+      "restaurant": "Tenen Restaurant",
+      "address": "7569 Royal Oak Ave, Burnaby, BC V5J 4J8",
+      "dealText": "Lunch Special: Soup of the Day (cup of choice daily soup)",
+      "priceCad": 7.95,
+      "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "validStart": "10:30",
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Lunch special menu item",
+        "Daily soup selection"
+      ],
+      "sourceUrl": "https://www.tenenrestaurant.com/lunchspecials"
+    },
+    "provenance": {
+      "sourceUrl": "https://www.tenenrestaurant.com/lunchspecials",
+      "accessDate": "2026-10-03",
+      "adImageUrl": null,
+      "currencyEvidence": "7.95 $ displayed on website; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_lunch_special_no_sunset_date",
+      "missingFields": ["lat", "lng", "validEnd", "flyerPhoto"]
+    }
+  },
+  {
+    "candidateId": "CAND-03",
+    "canonicalProposal": {
+      "restaurant": "Tentatsu Japanese Restaurant",
+      "address": "4266 Hastings St, Burnaby, BC",
+      "dealText": "10% off all Take Out orders of $30 & up (before taxes) - phone call orders only",
+      "priceCad": null,
+      "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "validStart": "11:00",
+      "validEnd": "21:30",
+      "expiresOn": null,
+      "conditions": [
+        "Take Out orders of $30 & up before taxes",
+        "Phone call orders only",
+        "Not valid for online order or delivery platforms"
+      ],
+      "sourceUrl": "https://www.tentatsusushi.com/"
+    },
+    "provenance": {
+      "sourceUrl": "https://www.tentatsusushi.com/",
+      "accessDate": "2026-10-03",
+      "adImageUrl": null,
+      "currencyEvidence": "$ symbol displayed in minimum spend ($30&up); percentage discount offer",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_promotion_no_sunset_date",
+      "missingFields": ["lat", "lng", "flyerPhoto"]
+    }
+  },
+  {
+    "candidateId": "CAND-04",
+    "canonicalProposal": {
+      "restaurant": "Argo Greek",
+      "address": "Unit 108 – 3790 Canada Way, Burnaby, BC V5G 1G4",
+      "dealText": "Lunch Special: Chicken Souvlaki Platter (served with Greek salad, rice, roasted potato, tzatziki & pita)",
+      "priceCad": 22.0,
+      "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "validStart": "11:30",
+      "validEnd": "14:30",
+      "expiresOn": null,
+      "conditions": [
+        "Available from 11:30am - 2:30pm",
+        "Smaller portion served during lunch hours only"
+      ],
+      "sourceUrl": "https://www.argogreek.ca/menu/"
+    },
+    "provenance": {
+      "sourceUrl": "https://www.argogreek.ca/menu/",
+      "accessDate": "2026-10-03",
+      "adImageUrl": null,
+      "currencyEvidence": "$22 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_lunch_menu_no_sunset_date",
+      "missingFields": ["lat", "lng", "flyerPhoto"]
+    }
+  },
+  {
+    "candidateId": "CAND-05",
+    "canonicalProposal": {
+      "restaurant": "Argo Greek",
+      "address": "Unit 108 – 3790 Canada Way, Burnaby, BC V5G 1G4",
+      "dealText": "Lunch Special: 6 oz Lunch Skewer (Chicken or Lamb)",
+      "priceCad": 12.0,
+      "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "validStart": "11:30",
+      "validEnd": "14:30",
+      "expiresOn": null,
+      "conditions": [
+        "Available from 11:30am - 2:30pm",
+        "Smaller portion served during lunch hours only"
+      ],
+      "sourceUrl": "https://www.argogreek.ca/menu/"
+    },
+    "provenance": {
+      "sourceUrl": "https://www.argogreek.ca/menu/",
+      "accessDate": "2026-10-03",
+      "adImageUrl": null,
+      "currencyEvidence": "$12 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_lunch_menu_no_sunset_date",
+      "missingFields": ["lat", "lng", "flyerPhoto"]
+    }
+  },
+  {
+    "candidateId": "CAND-06",
+    "canonicalProposal": {
+      "restaurant": "Burnaby Mountain Restaurant",
+      "address": "7600 Halifax St, Burnaby, BC V5A 4M8",
+      "dealText": "Happy Hour: Truffle Fries (truffle oil, Grana Padano, parsley)",
+      "priceCad": 8.0,
+      "validDays": ["wed", "thu", "fri", "sat", "sun"],
+      "validStart": "14:30",
+      "validEnd": "16:30",
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour pricing Wednesday to Sunday 2:30pm - 4:30pm",
+        "Dine-in only"
+      ],
+      "sourceUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour"
+    },
+    "provenance": {
+      "sourceUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour",
+      "accessDate": "2026-10-03",
+      "adImageUrl": "https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg",
+      "currencyEvidence": "$8.00 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_happy_hour_no_sunset_date",
+      "missingFields": ["lat", "lng", "flyerPhoto"]
+    }
+  },
+  {
+    "candidateId": "CAND-07",
+    "canonicalProposal": {
+      "restaurant": "Burnaby Mountain Restaurant",
+      "address": "7600 Halifax St, Burnaby, BC V5A 4M8",
+      "dealText": "Happy Hour: Classic Cheeseburger (all-beef patty, brioche bun, cheddar, lettuce, tomato, pickles, BMC sauce)",
+      "priceCad": 15.0,
+      "validDays": ["wed", "thu", "fri", "sat", "sun"],
+      "validStart": "14:30",
+      "validEnd": "16:30",
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour pricing Wednesday to Sunday 2:30pm - 4:30pm",
+        "Dine-in only",
+        "Add-on bacon +$2 or mushrooms +$2 optional"
+      ],
+      "sourceUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour"
+    },
+    "provenance": {
+      "sourceUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour",
+      "accessDate": "2026-10-03",
+      "adImageUrl": "https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg",
+      "currencyEvidence": "$15.00 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_happy_hour_no_sunset_date",
+      "missingFields": ["lat", "lng", "flyerPhoto"]
+    }
+  },
+  {
+    "candidateId": "CAND-08",
+    "canonicalProposal": {
+      "restaurant": "BierCraft UniverCity",
+      "address": "8902 University High St, Burnaby, BC V5A 4X6",
+      "dealText": "Thursday Daily Special: Manna Burger",
+      "priceCad": 5.5,
+      "validDays": ["thu"],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Thursday feature",
+        "Dine-in / in-house special",
+        "UniverCity location on SFU campus"
+      ],
+      "sourceUrl": "https://biercraft.com/univercity/"
+    },
+    "provenance": {
+      "sourceUrl": "https://biercraft.com/univercity/",
+      "accessDate": "2026-10-03",
+      "adImageUrl": null,
+      "locationContext": "On Simon Fraser University (SFU) campus, Burnaby Mountain",
+      "currencyEvidence": "$5.50 displayed on daily specials menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_daily_special_no_sunset_date",
+      "missingFields": ["lat", "lng", "flyerPhoto"]
+    }
+  },
+  {
+    "candidateId": "CAND-09",
+    "canonicalProposal": {
+      "restaurant": "BierCraft UniverCity",
+      "address": "8902 University High St, Burnaby, BC V5A 4X6",
+      "dealText": "Wednesday Daily Special: One Pound of Wings",
+      "priceCad": 12.0,
+      "validDays": ["wed"],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": null,
+      "conditions": [
+        "Wednesday feature",
+        "Dine-in / in-house special",
+        "UniverCity location on SFU campus"
+      ],
+      "sourceUrl": "https://biercraft.com/univercity/"
+    },
+    "provenance": {
+      "sourceUrl": "https://biercraft.com/univercity/",
+      "accessDate": "2026-10-03",
+      "adImageUrl": null,
+      "locationContext": "On Simon Fraser University (SFU) campus, Burnaby Mountain",
+      "currencyEvidence": "$12.00 displayed on daily specials menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_daily_special_no_sunset_date",
+      "missingFields": ["lat", "lng", "flyerPhoto"]
+    }
+  },
+  {
+    "candidateId": "CAND-10",
+    "canonicalProposal": {
+      "restaurant": "Time & Place Burnaby",
+      "address": "6083 McKay Ave, Burnaby, BC V5H 2W7",
+      "dealText": "Happy Hour: Mediterranean Beef Kebobs",
+      "priceCad": 5.0,
+      "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "validStart": "16:00",
+      "validEnd": "18:00",
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour pricing (Mon-Fri 4pm-6pm, Sat-Sun 5pm-6pm)",
+        "Dine-in lounge/restaurant",
+        "Located in Hilton Vancouver Metrotown"
+      ],
+      "sourceUrl": "https://www.timeandplaceburnaby.com/"
+    },
+    "provenance": {
+      "sourceUrl": "https://www.timeandplaceburnaby.com/",
+      "accessDate": "2026-10-03",
+      "adImageUrl": null,
+      "currencyEvidence": "$5 displayed on Happy Hour food menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_happy_hour_no_sunset_date",
+      "missingFields": ["lat", "lng", "flyerPhoto"]
+    }
+  },
+  {
+    "candidateId": "CAND-11",
+    "canonicalProposal": {
+      "restaurant": "Acqua Restaurant & Bar",
+      "address": "4201 Lougheed Hwy, Burnaby, BC V5C 3Y6",
+      "dealText": "Happy Hour: Fresh Oysters ($1.50 each)",
+      "priceCad": 1.5,
+      "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+      "validStart": "16:00",
+      "validEnd": "18:00",
+      "expiresOn": null,
+      "conditions": [
+        "Happy Hour pricing: Sun-Mon 4pm-6pm, Tue-Sat 4pm-6pm & 9pm-10pm",
+        "Dine-in bar/patio",
+        "Located at Executive Suites Hotel Burnaby"
+      ],
+      "sourceUrl": "https://acquarestaurantandbar.com/"
+    },
+    "provenance": {
+      "sourceUrl": "https://acquarestaurantandbar.com/",
+      "accessDate": "2026-10-03",
+      "adImageUrl": null,
+      "currencyEvidence": "$1.50 each displayed on Happy Hour food menu; ISO currency unstated (pending CAD confirmation)",
+      "coordinatesStatus": "omitted_pending_pinyuan_pin",
+      "expiryStatus": "ongoing_happy_hour_no_sunset_date",
+      "missingFields": ["lat", "lng", "flyerPhoto"]
+    }
+  }
+]

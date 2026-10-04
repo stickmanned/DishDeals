@@ -1,0 +1,32 @@
+{
+  "candidateId": "CAND-11",
+  "canonicalProposal": {
+    "restaurant": "Acqua Restaurant & Bar",
+    "address": "4201 Lougheed Hwy, Burnaby, BC V5C 3Y6",
+    "dealText": "Happy Hour: Fresh Oysters ($1.50 each)",
+    "priceCad": 1.5,
+    "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+    "validStart": "16:00",
+    "validEnd": "18:00",
+    "expiresOn": null,
+    "conditions": [
+      "Happy Hour pricing: Sun-Mon 4pm-6pm, Tue-Sat 4pm-6pm & 9pm-10pm",
+      "Dine-in bar/patio",
+      "Located at Executive Suites Hotel Burnaby"
+    ],
+    "sourceUrl": "https://acquarestaurantandbar.com/"
+  },
+  "provenance": {
+    "sourceUrl": "https://acquarestaurantandbar.com/",
+    "accessDate": "2026-10-03",
+    "adImageUrl": null,
+    "currencyEvidence": "$1.50 each displayed on Happy Hour food menu; ISO currency unstated (pending CAD confirmation)",
+    "coordinatesStatus": "omitted_pending_pinyuan_pin",
+    "expiryStatus": "ongoing_happy_hour_no_sunset_date",
+    "missingFields": [
+      "lat",
+      "lng",
+      "flyerPhoto"
+    ]
+  }
+}
