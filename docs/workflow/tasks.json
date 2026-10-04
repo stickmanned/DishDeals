@@ -1599,7 +1599,8 @@
         "tests/backend/dealMine.test.ts",
         "tests/backend/dealRetention.test.ts",
         "tests/import/dealRetention.test.ts",
-        "docs/handoffs/n-posts-backend.md"
+        "docs/handoffs/n-posts-backend.md",
+        "tests/backend/dealWrites.test.ts"
       ],
       "packet": "docs/tasks/N-POSTS-BACKEND.md",
       "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",

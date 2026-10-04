@@ -1,5 +1,7 @@
 # N-POSTS-BACKEND
 
+Northstar amendment: `tests/backend/dealWrites.test.ts` additionally approved ONLY to update the hard-coded export-list assertion for approved listMine/internal cleanup exports. No weakening of CRUD/security assertions.
+
 Owner Loom. Checkout /Users/william/Code/DishDeals-worktrees/posts-expiry-backend; branch t-10-posts-expiry-backend; pinned base dcdda819e97de9c371726dd7ba33585912afe7d5.
 
 Writable ONLY: `convex/deals.ts`, `convex/crons.ts`, `lib/dealRetention.ts`, `tests/backend/dealMine.test.ts`, `tests/backend/dealRetention.test.ts`, `tests/import/dealRetention.test.ts`, `docs/handoffs/n-posts-backend.md`.
@@ -9,4 +11,3 @@ ONE bounded backend contract ticket. Base dcdda819e97de9c371726dd7ba33585912afe7
 William explicitly chooses published deal auto-deletion SEVEN calendar days after the END of expiresOn in America/Vancouver. No expiresOn or malformed legacy date -> NO automatic deletion. Calculate safe absolute timestamp with existing installed timezone/date utilities or Intl, calendar/DST semantics: expiresOn2026-10-04 is usable through localOct4, seven full subsequent calendar days Oct5..11 retained, eligible at Oct12 00:00 Vancouver. Keep price/time/day validity client-side unchanged. No schema changes. Local implementation only, no cloud/backup/provider/account/user-data reads in this ticket.
 
 Add bounded cron cleanup of canonical published deals, including existing rows, without starvation (paged sweep with continuation; small page size). Internal-only deletion must re-read current date/eligibility at execution, skip renewed/removed/no-expiry deals, never early delete; reuse same votes/geospatial/shared-image release invariants as author remove. One deal per deletion transaction avoids combined unbounded vote/storage deletes. Explicit owner manual remove remains possible. Do NOT touch legacy workflow maintenance or private reel retention; state distinction. Tests-first with synthetic/in-memory data, cutoff +/-1ms, DST both transitions, expiry edit extended/cleared, stale queued cleanup, votes/index cleanup, image still referenced by another deal, signer isolation/anonymous reject for listMine. Original bug evidence user sees missing authored list; source shows no canonical retention. Record failure tests before fix, exact targeted tests/typecheck/lint, no empty suites. Independently reviewed writes before integration.20min blocker then handoff; scoped commit, no push/sync, no STATUS/shared board edits.
-

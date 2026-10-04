@@ -2,6 +2,8 @@
 
 # DishDeals team integration boundaries
 
+October4 authored-posts amendment: William requests post/Reel distinction, Your posts/editing in Post, public deal publishing and deletion **7 days after expiry**. See [ADR0005](decisions/0005-authored-posts-and-retention.md). New bounded owners: Loom canonical listMine/retention backend, Cinder authored-posts mounting, Mica TS/Swift source-kind normalization. Preserve existing review/publish/map/editor work and Harry's polish. Automatic Gemini extraction from William's URL-only share remains blocked by missing accessible content and the existing no-Instagram-fetch rule; no scraping or fabricated extraction. Native rebuild, human web release and real phone/provider checks are separate gates.
+
 The authoritative specification is `StormHacks Project Plan Instagram Deal Saver.md`. The human's current scope adjustment is: agents build the functional core incrementally; human teammates own high-quality frontend and all map integration. Keep the source plan intact and document ticket splits here or in the ticket handoff.
 
 | Owner | Lane | Boundary |
