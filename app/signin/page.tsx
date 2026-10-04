@@ -42,14 +42,16 @@ function SignInForm() {
   }
 
   return (
-    <main>
-      <h1>{flow === "signIn" ? "Sign in" : "Sign up"}</h1>
-      <form onSubmit={onSubmit}>
-        <label>
+    <main className="narrow-page">
+      <div className="page-heading">
+        <h1>{flow === "signIn" ? "Sign in" : "Sign up"}</h1>
+      </div>
+      <form className="panel form-stack" onSubmit={onSubmit}>
+        <label className="field">
           Email
           <input name="email" type="email" autoComplete="email" required />
         </label>
-        <label>
+        <label className="field">
           Password
           <input
             name="password"
@@ -60,17 +62,18 @@ function SignInForm() {
           />
         </label>
         <input name="flow" type="hidden" value={flow} />
-        <button type="submit" disabled={busy}>
-          {flow === "signIn" ? "Sign in" : "Sign up"}
+        {error && <p role="alert">{error}</p>}
+        <button type="submit" className="button primary" disabled={busy}>
+          {busy ? "Please wait…" : flow === "signIn" ? "Sign in" : "Sign up"}
+        </button>
+        <button
+          type="button"
+          className="button secondary"
+          onClick={() => setFlow(flow === "signIn" ? "signUp" : "signIn")}
+        >
+          {flow === "signIn" ? "Need an account? Sign up" : "Have an account? Sign in"}
         </button>
       </form>
-      {error && <p role="alert">{error}</p>}
-      <button
-        type="button"
-        onClick={() => setFlow(flow === "signIn" ? "signUp" : "signIn")}
-      >
-        {flow === "signIn" ? "Need an account? Sign up" : "Have an account? Sign in"}
-      </button>
     </main>
   );
 }
