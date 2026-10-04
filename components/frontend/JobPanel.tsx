@@ -81,7 +81,8 @@ export function JobPanel({
           {processing
             ? "Checking the offer and its restaurant. It can take a few minutes. There’s no need to submit it again."
             : job.status === "failed"
-              ? "Check the source, your connection, and the submission limit before trying again."
+              ? (job.error && typeof job.error === "object" && "message" in job.error && typeof job.error.message === "string"
+                ? job.error.message : "Add the post text or an optional image, then try again.")
               : job.deals.length
                 ? "Each offer has its own status. Review the details before approving."
                 : (job.result?.rejectionReason ??
@@ -129,7 +130,7 @@ export function JobPanel({
           </button>
         )}
         <button className="button outline" onClick={onNew}>
-          Use a clearer source
+          Add details or try another source
         </button>
       </div>
       <Link href="/" className="text-link" style={{ marginTop: 20 }}>

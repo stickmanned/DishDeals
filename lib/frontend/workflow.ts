@@ -80,6 +80,13 @@ export const jobSchema = z.object({
 });
 export type JobData = z.infer<typeof jobSchema>;
 export type WorkflowSource =
+  | {
+      type: "url";
+      url: string;
+      caption?: string;
+      sourceUrl?: string;
+      publishedAt?: string;
+    }
   | { type: "text"; text: string; sourceUrl?: string; publishedAt?: string }
   | {
       type: "image";
@@ -91,6 +98,7 @@ export type WorkflowSource =
     };
 
 export function retryAllowed(job: JobData, now = Date.now()) {
+  if (job.error && typeof job.error === "object" && "code" in job.error && job.error.code === "SOURCE_UNREADABLE") return false;
   if (
     job.deals.some((d) => d.status === "published" || d.status === "rejected")
   )

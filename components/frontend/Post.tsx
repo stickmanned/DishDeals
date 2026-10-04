@@ -6,25 +6,17 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { draftFromDeal, emptyDraft, previewDeal } from "@/lib/frontend/draft";
 import { demoDeals } from "@/lib/frontend/demoDeals";
 import { prepareWorkflowImage } from "@/lib/frontend/image";
-import { safeSourceUrl, type WorkflowSource } from "@/lib/frontend/workflow";
+import { type WorkflowSource } from "@/lib/frontend/workflow";
+import { buildSharedSource } from "@/lib/frontend/share-source";
 import { useFrontend } from "./FrontendProvider";
-import { Gate, PreviewNote } from "./Shell";
+import { PreviewNote } from "./Shell";
 import { Icon } from "./Icon";
 import { DraftForm } from "./DraftForm";
 import { JobPanel } from "./JobPanel";
 import { Dialog } from "./Dialog";
 export function Post({ editId, jobId }: { editId?: string; jobId?: string }) {
   const app = useFrontend();
-  return (
-    <>
-    <div className="page-width"><Link href="/reels" className="back-link">Save an Instagram Reel privately</Link></div>
-    <PostView
-      key={`${app.mode}:${editId ?? "new"}`}
-      editId={editId}
-      jobId={jobId}
-    />
-    </>
-  );
+  return <PostView key={`${app.mode}:${editId ?? "new"}`} editId={editId} jobId={jobId} />;
 }
 function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
   const app = useFrontend();
@@ -45,8 +37,6 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
     [discardOpen, setDiscardOpen] = useState(false),
     [duplicate, setDuplicate] = useState(false);
   const {
-    sourceMode,
-    setSourceMode,
     sourceUrl,
     setSourceUrl,
     publishedAt,
@@ -74,15 +64,6 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, step]);
-  if (!app.authenticated)
-    return (
-      <div className="narrow-page">
-        <Gate
-          title="A good find is better shared."
-          next={jobId ? `/post?job=${encodeURIComponent(jobId)}` : "/post"}
-        />
-      </div>
-    );
   if (editId && !ownDeal)
     return (
       <div className="narrow-page">
@@ -129,59 +110,25 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError("");
-    if (sourceMode === "image" && !app.sourceImage) {
-      setError("Choose a screenshot or photo first.");
-      return;
-    }
-    if (sourceMode === "text" && app.sourceText.trim().length < 10) {
-      setError("Paste at least 10 characters of the offer text.");
-      return;
-    }
-    if (app.sourceText.length > (sourceMode === "text" ? 30000 : 10000)) {
-      setError(
-        sourceMode === "text"
-          ? "Keep the offer text under 30,000 characters."
-          : "Keep the image caption under 10,000 characters.",
-      );
-      return;
-    }
-    if (sourceUrl && !safeSourceUrl(sourceUrl)) {
-      setError(
-        "Use a public HTTPS source link under 2,048 characters, without account details or a custom port.",
-      );
+    let source: WorkflowSource;
+    try {
+      source = buildSharedSource({ text: app.sourceText, image: app.sourceImage, sourceUrl, publishedAt });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Add a link, some details, or an optional image.");
       return;
     }
     if (app.mode === "preview") {
+      if (!app.authenticated) app.signInPreview();
       setStep("review");
       return;
     }
-    if (!app.live) {
-      setError("Submissions aren’t available in this version yet.");
-      return;
-    }
-    if (
-      sourceMode === "image" &&
-      !app.sourceImage.startsWith("data:image/jpeg;base64,")
-    ) {
-      setError("Choose your screenshot again before submitting it.");
-      return;
-    }
-    const provenance = {
-      ...(sourceUrl ? { sourceUrl } : {}),
-      ...(publishedAt ? { publishedAt } : {}),
-    };
-    const source: WorkflowSource =
-      sourceMode === "text"
-        ? { type: "text", text: app.sourceText.trim(), ...provenance }
-        : {
-            type: "image",
-            mimeType: "image/jpeg",
-            data: app.sourceImage.split(",")[1],
-            ...(app.sourceText ? { caption: app.sourceText } : {}),
-            ...provenance,
-          };
+    if (!app.live) { setError("Sharing is temporarily unavailable. Please try again."); return; }
     setBusy(true);
     try {
+      if (!app.authenticated) {
+        if (!app.auth?.signInGuest) throw new Error("A guest session could not be started.");
+        await app.auth.signInGuest();
+      }
       const result = await app.live.submit(source);
       app.setActiveJobId(result.jobId);
       router.replace(`/post?job=${encodeURIComponent(result.jobId)}`);
@@ -246,7 +193,7 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
         <p>
           {step === "review"
             ? "The restaurant, the offer, the fine print. Make it useful."
-            : "A screenshot, a flyer, or the offer in your own words."}
+            : "Paste a link or tell us what you found. An image is optional."}
         </p>
       </div>
       {app.mode === "live" && currentJobId && app.live ? (
@@ -273,127 +220,36 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
         </div>
       ) : (
         <>
-          <div className="post-choices">
-            <button
-              className={`source-choice ${sourceMode === "image" ? "active" : ""}`}
-              aria-pressed={sourceMode === "image"}
-              onClick={() => setSourceMode("image")}
-            >
-              <Icon name="photo" /> Image
-              <small>A screenshot, photo, or flyer</small>
-            </button>
-            <button
-              className={`source-choice ${sourceMode === "text" ? "active" : ""}`}
-              aria-pressed={sourceMode === "text"}
-              onClick={() => setSourceMode("text")}
-            >
-              <Icon name="text" /> Offer text
-              <small>Copy the words that matter</small>
-            </button>
-          </div>
           <form className="panel post-panel form-stack" onSubmit={submit}>
             <p className="step-label">01 / THE SOURCE</p>
-            {sourceMode === "image" && (
-              <>
-                {app.sourceImage ? (
-                  <>
-                    <div className="attachment-preview">
-                      <Image
-                        src={app.sourceImage}
-                        unoptimized
-                        alt="Selected screenshot or flyer"
-                        fill
-                        sizes="600px"
-                      />
-                    </div>
-                    <div className="attachment-tools">
-                      <span>{filename || "Selected source image"}</span>
-                      <button
-                        type="button"
-                        className="text-link"
-                        onClick={() => {
-                          app.setSourceImage("");
-                          setFilename("");
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className="upload-zone"
-                    onClick={() => fileRef.current?.click()}
-                    disabled={busy}
-                  >
-                    <Icon name="upload" size={32} />
-                    <b>
-                      {busy
-                        ? "Preparing your image…"
-                        : "Choose a screenshot or photo"}
-                    </b>
-                    <small>PNG, JPG, or WebP · up to 10 MB</small>
-                  </button>
-                )}
-                <div className="inline-actions">
-                  <button
-                    className="text-link"
-                    type="button"
-                    onClick={() => fileRef.current?.click()}
-                  >
-                    Choose {app.sourceImage ? "another" : "a file"}
-                  </button>
-                  <button
-                    className="text-link"
-                    type="button"
-                    onClick={() => cameraRef.current?.click()}
-                  >
-                    <Icon name="camera" size={16} /> Take a photo
-                  </button>
-                </div>
-                <input
-                  hidden
-                  ref={fileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(e) => void choose(e.target.files?.[0])}
-                />
-                <input
-                  hidden
-                  ref={cameraRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(e) => void choose(e.target.files?.[0])}
-                />
-              </>
-            )}
             <label className="field">
-              {sourceMode === "text"
-                ? "Offer text"
-                : "Anything else in the post?"}
-              <textarea
-                value={app.sourceText}
-                onChange={(e) => app.setSourceText(e.target.value)}
-                maxLength={sourceMode === "text" ? 30000 : 10000}
-                minLength={sourceMode === "text" ? 10 : undefined}
-                required={sourceMode === "text"}
-                placeholder={
-                  sourceMode === "text"
-                    ? "Paste the restaurant’s offer, including price, dates, and conditions."
-                    : "Optional caption or details that help explain the offer."
-                }
-              />
-              <small>
-                {sourceMode === "text"
-                  ? "10–30,000 characters. We use only the text you provide."
-                  : "We never fetch Instagram links. Supply the image or copied offer text."}
-              </small>
+              Link or details
+              <textarea value={app.sourceText} onChange={(e) => app.setSourceText(e.target.value)}
+                maxLength={30000} rows={4}
+                placeholder="Paste an Instagram share, a restaurant link, or the offer in your own words." />
+              <small>Public links, copied captions, menus and flyers all work. No image required.</small>
             </label>
+            {app.sourceImage && <>
+              <div className="attachment-preview">
+                <Image src={app.sourceImage} unoptimized alt="Optional source image" fill sizes="600px" />
+              </div>
+              <div className="attachment-tools"><span>{filename || "Selected image"}</span>
+                <button type="button" className="text-link" onClick={() => { app.setSourceImage(""); setFilename(""); }}>Remove image</button>
+              </div>
+            </>}
+            <div className="inline-actions">
+              <button type="button" className="button outline" onClick={() => fileRef.current?.click()} disabled={busy}>
+                <Icon name="photo" size={18} /> {busy ? "Preparing image…" : app.sourceImage ? "Change image" : "Add image (optional)"}
+              </button>
+              <button type="button" className="text-link" onClick={() => cameraRef.current?.click()} disabled={busy}>
+                <Icon name="camera" size={16} /> Take a photo
+              </button>
+            </div>
+            <input hidden ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => void choose(e.target.files?.[0])} />
+            <input hidden ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={(e) => void choose(e.target.files?.[0])} />
             <details className="help-details">
               <summary>
-                Original post date and source link{" "}
+                More details (optional){" "}
                 <Icon name="arrow" size={14} />
               </summary>
               <div className="form-stack">
@@ -423,7 +279,7 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
                     onChange={(e) => setSourceUrl(e.target.value)}
                   />
                   <small>
-                    Attribution only. We don’t read social media links.
+                    Optional attribution if the link is not already in your details.
                   </small>
                 </label>
               </div>
@@ -438,7 +294,7 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
                 ? "Preparing…"
                 : app.mode === "preview"
                   ? "Review a local draft"
-                  : "Submit source"}
+                  : "Find the offer"}
               <Icon name="arrow" size={18} />
             </button>
             <p className="quiet-note">
@@ -465,7 +321,7 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
       <p className="local-draft">
         {dirty
           ? "Your draft stays in this tab as you browse."
-          : "Screen recordings aren’t supported by this workflow yet."}
+          : "Instagram posts that require login may need their caption or an optional image."}
       </p>
       {dirty && (
         <button
