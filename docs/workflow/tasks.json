@@ -526,9 +526,10 @@
       "packet": "docs/tasks/N-FORM-UI.md",
       "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
       "backendTarget": "local checks only; no cloud/provider actions authorized",
-      "implementationState": "dispatched; exact isolated checkout prepared at 1eb2e7c",
+      "implementationState": "corrected f4a368c reviewed locally integrated",
       "nativeChecks": "pending real runtime execution",
-      "phoneAcceptance": "pending William iPhone"
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Northstar combined check at553a4e6 PASS637Vitest/23workflow/typecheck/lint/build; browser QA denied and unrun"
     },
     {
       "id": "N-MAP-A",
@@ -557,9 +558,10 @@
       "packet": "docs/tasks/N-MAP-A.md",
       "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
       "backendTarget": "local checks only; no cloud/provider actions authorized",
-      "implementationState": "dispatched; exact isolated checkout prepared at 1eb2e7c",
+      "implementationState": "84fab5f independently reviewed and locally integrated f81a56b; mandatory parent invalidation correction follows",
       "nativeChecks": "pending real runtime execution",
-      "phoneAcceptance": "pending William iPhone"
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Worker clean root/child install and build PASS; 24 root map tests, 3 child tests, typecheck/lint/workflow PASS; rendered/native pending"
     },
     {
       "id": "T-08G-CORE",
@@ -580,7 +582,7 @@
       "packet": "docs/tasks/T-08G-CORE.md",
       "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
       "backendTarget": "local checks only; no cloud/provider actions authorized",
-      "implementationState": "dispatched; exact isolated checkout prepared at 1eb2e7c",
+      "implementationState": "9cf0a69 reviewed; capped full-body timeout/cache/config/privacy corrections requested; not integrated",
       "nativeChecks": "pending real runtime execution",
       "phoneAcceptance": "pending William iPhone"
     },
@@ -668,9 +670,32 @@
       "packet": "docs/tasks/N-SOURCE-A.md",
       "pinnedBaseSha": "5190dfaf2695a75e5f211809cae33e35a10394c6",
       "backendTarget": "local synthetic tests only; cloud/provider authorization pending",
-      "implementationState": "dispatched to Loom after reviewed draft guards",
+      "implementationState": "830063a reviewed; finite upload/body timeout and bounded metadata corrections requested; not yet integrated",
       "nativeChecks": "pending real WKWebView file picker",
       "phoneAcceptance": "pending real native receipt/recording/VLM"
+    },
+    {
+      "id": "T-14A",
+      "owner": "Mica",
+      "branch": "t-14-recording-frame-core",
+      "worktree": "recording-frame-core",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02",
+        "T-07A"
+      ],
+      "allowedPaths": [
+        "lib/image.ts",
+        "tests/media/",
+        "docs/handoffs/t-14a.md"
+      ],
+      "packet": "docs/tasks/T-14A.md",
+      "pinnedBaseSha": "553a4e6654fd84d040577750a17f564242182e25",
+      "backendTarget": "browser helpers/local tests only; no provider/cloud",
+      "implementationState": "ee1ca52 reviewed; cleanup/late-event/encoder-deadline corrections requested; not integrated",
+      "nativeChecks": "pending actual WKWebView media decoding",
+      "phoneAcceptance": "pending real10second recording and Harry reveal"
     }
   ],
   "completedDependencies": {

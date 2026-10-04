@@ -28,7 +28,7 @@ export interface DealLocationPickerProps {
    * candidate selection, or device location hint) so the parent form can invalidate
    * previously confirmed coordinates and prevent publishing stale locations.
    */
-  onInvalidate?: () => void;
+  onInvalidate: () => void;
   className?: string;
   style?: CSSProperties;
   engine?: "auto" | "maplibre" | "raster";

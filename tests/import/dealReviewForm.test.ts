@@ -165,6 +165,22 @@ describe("dealReviewForm pure helpers and state machine (N-FORM-UI)", () => {
   });
 
   describe("all-suggestion price display helper (getPriceDisplayOnAcceptAll)", () => {
+    it("retains a manually edited price when another offer proposes a price", () => {
+      let draft = dealDraftReducer(createDraft(), {
+        type: "SET_FIELD", field: "priceCad", value: 8,
+      });
+      draft = {
+        ...draft,
+        fields: {
+          ...draft.fields,
+          priceCad: { ...draft.fields.priceCad, suggestion: { value: 15.99 } },
+        },
+      };
+      const accepted = dealDraftReducer(draft, { type: "ACCEPT_ALL_SUGGESTIONS" });
+      expect(accepted.fields.priceCad.value).toBe(8);
+      expect(getPriceDisplayOnAcceptAll(draft)).toBe("8");
+    });
+
     it("returns suggested price when present", () => {
       let draft = createDraft();
       draft = {

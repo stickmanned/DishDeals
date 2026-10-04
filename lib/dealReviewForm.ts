@@ -6,6 +6,7 @@
  */
 
 import {
+  dealDraftReducer,
   validateForPublish,
   type DealDraft,
   type FieldState,
@@ -113,11 +114,9 @@ export function parsePriceInput(raw: string): {
  * Returns the suggested price if available, otherwise retains or reflects canonical price.
  */
 export function getPriceDisplayOnAcceptAll(draft: DealDraft): string {
-  const priceSuggestion = draft.fields.priceCad.suggestion;
-  if (priceSuggestion !== undefined) {
-    return priceSuggestion.value !== null ? String(priceSuggestion.value) : "";
-  }
-  return draft.fields.priceCad.value !== null ? String(draft.fields.priceCad.value) : "";
+  const accepted = dealDraftReducer(draft, { type: "ACCEPT_ALL_SUGGESTIONS" });
+  const price = accepted.fields.priceCad.value;
+  return price !== null ? String(price) : "";
 }
 
 /**

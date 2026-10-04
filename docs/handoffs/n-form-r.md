@@ -1,0 +1,5 @@
+# N-FORM-R local review correction
+
+Northstar, workflow/t-00-agent-workflow, base f81a56b. Selecting an offer now leaves canonical price and partial input untouched until acceptance. Accept-all price display follows the actual canonical reducer and preserves manual values. DealLocationPicker requires its parent invalidation callback before a proposed pin can replace a confirmed location.
+
+Actual targeted command `npx vitest run tests/import/dealReviewForm.test.ts tests/map`: PASS 60 tests. `npm run build`: PASS, map package and existing Next routes compiled. Initial standalone typecheck failed because stale generated `.next/dev/types` described zero routes after the removed temporary QA route; `next typegen` refreshed production types only. Removed those two stale ignored generated development files, leaving source unchanged; fresh typecheck/lint results recorded in the next checkpoint. Combined suite runs after pending source/geocode/media integrations. No rendered browser, tile, WKWebView or phone acceptance evidence.

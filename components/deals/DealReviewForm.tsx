@@ -142,15 +142,8 @@ export function DealReviewForm({
 
   function handleSelectOffer(offerIndex: number) {
     onAction({ type: "SELECT_OFFER", offerIndex });
-    const selected = draft.extraction.unselectedOffers?.[offerIndex];
-    if (selected) {
-      setLocalPrice(
-        selected.priceCad !== null && selected.priceCad !== undefined
-          ? String(selected.priceCad)
-          : ""
-      );
-      setPriceInputError("");
-    }
+    // Selecting an offer proposes values; explicit acceptance changes inputs.
+    // Preserve partial manual price text and its error until the user acts.
   }
 
   function handleDayToggle(day: Weekday) {

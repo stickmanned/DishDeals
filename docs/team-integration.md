@@ -102,3 +102,8 @@ Loom owns N-SHARE-DRAFT, an approved additive private `reelItems` revision/edite
 ### Supported reel source path
 
 Northstar selects native link receipt plus user-attached recording of that reel, under William’s source-path discretion. It supplies real video/audio/caption without enabling the prohibited Instagram resolver. Reuse Harry’s native intake and VLM video pipeline; add an explicit attachment transition with authenticated storage ownership. This choice does not authorize provider/cloud usage or claim actual media receipt from Instagram. Its actual transitions and source association require real-phone verification. Screenshot/flyer acceptance remains separate.
+
+
+### October 4 local integration checkpoint
+
+William added his Apple Account in Xcode. Device trust, Team provisioning and installation remain pending. Reviewed canonical common form and private edit guards are integrated; map component continuation84fab5f is now locally integratedf81a56b. Location-picker callback `onInvalidate` is required before binding to publish validation. Selecting an extraction offer proposes fields without changing price input until acceptance. Next bounded functional mounting reuses Harry navigation/style and Pinyuan component; Northstar authorizes functional route/data bindings, Harry polish remains owned. Real source/phone, cloud target and HTTPS configuration still do not have passing evidence.
