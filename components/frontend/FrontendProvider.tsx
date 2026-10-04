@@ -3,6 +3,8 @@
 import {
   createContext,
   useContext,
+  useEffect,
+  useRef,
   useMemo,
   useState,
   type ReactNode,
@@ -280,10 +282,28 @@ function LiveRuntime(props: Omit<Parameters<typeof Runtime>[0], "live">) {
 
 function AuthenticatedFrontend({ children, mode, setMode }: { children: ReactNode; mode: "preview" | "live"; setMode: FrontendState["setMode"] }) {
   const actions = useAuthActions();
+  const session = useConvexAuth();
+  const confirmed = useRef(false);
+  const waiting = useRef(new Set<() => void>());
+  useEffect(() => {
+    confirmed.current = session.isAuthenticated;
+    if (session.isAuthenticated) for (const ready of waiting.current) ready();
+  }, [session.isAuthenticated]);
   const auth: AuthAdapter = {
     signIn: async (email, password, create) => { const data = new FormData(); data.set("email", email); data.set("password", password); data.set("flow", create ? "signUp" : "signIn"); await actions.signIn("password", data); },
     signOut: actions.signOut,
-    signInGuest: async () => { await actions.signIn("anonymous"); },
+    signInGuest: async () => {
+      if (confirmed.current) return;
+      await actions.signIn("anonymous");
+      if (confirmed.current) return;
+      // signIn resolves when tokens are saved; protected requests must wait for server confirmation.
+      await new Promise<void>((resolve, reject) => {
+        const ready = () => { clearTimeout(timeout); waiting.current.delete(ready); resolve(); };
+        const timeout = setTimeout(() => { waiting.current.delete(ready); reject(new Error("Guest sign-in could not finish. Please try again.")); }, 15000);
+        waiting.current.add(ready);
+        if (confirmed.current) ready();
+      });
+    },
   };
   return <LiveRuntime mode={mode} setMode={setMode} auth={auth}>{children}</LiveRuntime>;
 }
