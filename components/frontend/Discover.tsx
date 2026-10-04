@@ -137,7 +137,7 @@ export function Discover() {
           <span aria-live="polite">
             {app.loading
               ? "Finding deals…"
-              : `${deals.length} ${app.mode === "preview" ? "example " : ""}deals`}
+              : `${deals.length} ${app.mode === "preview" ? "example " : ""}deal${deals.length === 1 ? "" : "s"}`}
           </span>
         </div>
         {app.loading || !ready ? (
