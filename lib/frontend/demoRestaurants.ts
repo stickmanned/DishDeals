@@ -1,0 +1,83 @@
+/**
+ * Real Burnaby restaurants used to make the preview feel like a live neighbourhood.
+ * Source: City of Burnaby business licences (approved restaurant licences), project spreadsheet
+ * `Restaurant_Filtered_Business_Licences`. Licence coordinates were converted from NAD83 UTM zone 10N
+ * to WGS84, so every unit in a building shares that building's point.
+ * Only names, addresses and positions are real; offers built from them live in demoDeals.ts.
+ */
+export type DemoCuisine =
+  | "ramen" | "sushi" | "pizza" | "burger" | "mexican" | "tea" | "coffee" | "bakery" | "bbq"
+  | "chinese" | "viet" | "indian" | "mediterranean" | "chicken" | "sandwich" | "diner" | "finedining";
+
+export type DemoRestaurant = { name: string; address: string; lat: number; lng: number; cuisine: DemoCuisine };
+
+export const demoRestaurants: DemoRestaurant[] = [
+  { name: "The Ramen Butcher", address: "4518 Hastings Street", lat: 49.28073, lng: -123.00252, cuisine: "ramen" },
+  { name: "Jinya Ramen Bar", address: "4567 Lougheed Highway", lat: 49.26808, lng: -123.00022, cuisine: "ramen" },
+  { name: "Horin Tonkotsu Ramen", address: "4500 Kingsway", lat: 49.2291, lng: -123.00486, cuisine: "ramen" },
+  { name: "Zubu Ramen Bar", address: "4575 Central Boulevard", lat: 49.22536, lng: -122.99783, cuisine: "ramen" },
+  { name: "Kinton Ramen Gilmore", address: "4112 Lougheed Highway", lat: 49.26532, lng: -123.01314, cuisine: "ramen" },
+  { name: "Toyo Sushi", address: "3978 Hastings Street", lat: 49.28063, lng: -123.01794, cuisine: "sushi" },
+  { name: "Sushi QT Cafe", address: "7255 Canada Way", lat: 49.22413, lng: -122.94169, cuisine: "sushi" },
+  { name: "Sushi S", address: "4739 Willingdon Avenue", lat: 49.24264, lng: -123.00393, cuisine: "sushi" },
+  { name: "Isami Sushi", address: "4603 Kingsway", lat: 49.22972, lng: -123.00177, cuisine: "sushi" },
+  { name: "Nemo Sushi Bar", address: "5935 Hastings Street", lat: 49.28062, lng: -122.97771, cuisine: "sushi" },
+  { name: "Okoman Japanese Restaurant", address: "3355 North Road", lat: 49.25401, lng: -122.89387, cuisine: "sushi" },
+  { name: "Sushi Garden", address: "4635 Kingsway", lat: 49.2292, lng: -123.00083, cuisine: "sushi" },
+  { name: "Pizza Maru Lougheed", address: "4331 North Road", lat: 49.24511, lng: -122.89321, cuisine: "pizza" },
+  { name: "Mr. Pan Pizza & Curry House", address: "3718 Canada Way", lat: 49.25446, lng: -123.02251, cuisine: "pizza" },
+  { name: "Pizza Hut", address: "8917 Cornerstone Mews", lat: 49.2779, lng: -122.91164, cuisine: "pizza" },
+  { name: "Freshslice Pizza", address: "4820 Kingsway", lat: 49.22536, lng: -122.99783, cuisine: "pizza" },
+  { name: "Sopra Sotto Pizza", address: "4022 Hastings Street", lat: 49.2808, lng: -123.0156, cuisine: "pizza" },
+  { name: "White Spot", address: "5550 Kingsway", lat: 49.22295, lng: -122.98403, cuisine: "burger" },
+  { name: "Bin 4 Burger Lounge", address: "2350 Boundary Road", lat: 49.26421, lng: -123.02221, cuisine: "burger" },
+  { name: "A&W (SFU)", address: "9055 University High Street", lat: 49.27837, lng: -122.90972, cuisine: "burger" },
+  { name: "A&W", address: "8605 Glenlyon Pky", lat: 49.20644, lng: -123.01125, cuisine: "burger" },
+  { name: "La Querida Mexican Restaurant", address: "4500 Kingsway", lat: 49.2291, lng: -123.00486, cuisine: "mexican" },
+  { name: "Quesada Burritos & Tacos", address: "7155 Kingsway", lat: 49.21903, lng: -122.95622, cuisine: "mexican" },
+  { name: "Chronic Tacos", address: "4820 Kingsway", lat: 49.22536, lng: -122.99783, cuisine: "mexican" },
+  { name: "La Taqueria Pinche Taco Shop", address: "4580 Brentwood Boulevard", lat: 49.26739, lng: -123.00183, cuisine: "mexican" },
+  { name: "Alfa Tea Burnaby", address: "4429 Kingsway", lat: 49.23132, lng: -123.00562, cuisine: "tea" },
+  { name: "Presotea", address: "4700 Kingsway", lat: 49.22675, lng: -123.00117, cuisine: "tea" },
+  { name: "Tealips Cafe", address: "7139 Arcola Way", lat: 49.21983, lng: -122.95682, cuisine: "tea" },
+  { name: "Little Tea House", address: "4700 Kingsway", lat: 49.22675, lng: -123.00117, cuisine: "tea" },
+  { name: "Esta Cafe", address: "4466 Beresford Street", lat: 49.22521, lng: -123.00386, cuisine: "coffee" },
+  { name: "JJ Bean Coffee Roasters", address: "4299 Hastings Street", lat: 49.28131, lng: -123.00906, cuisine: "coffee" },
+  { name: "Ambit Cafe", address: "6552 Hastings Street", lat: 49.27967, lng: -122.96794, cuisine: "coffee" },
+  { name: "Waves Coffee House", address: "4250 Kingsway", lat: 49.23139, lng: -123.00952, cuisine: "coffee" },
+  { name: "Season's Apple Cafe", address: "8699 10th Avenue", lat: 49.23104, lng: -122.90635, cuisine: "coffee" },
+  { name: "Cotti Coffee", address: "9855 Austin Road", lat: 49.25125, lng: -122.89585, cuisine: "coffee" },
+  { name: "Hooray Coffee", address: "6450 Roberts Street", lat: 49.24381, lng: -122.96974, cuisine: "coffee" },
+  { name: "Small Victory Bakery", address: "4580 Brentwood Boulevard", lat: 49.26739, lng: -123.00183, cuisine: "bakery" },
+  { name: "Sizzle Korean BBQ", address: "4501 North Road", lat: 49.24395, lng: -122.89377, cuisine: "bbq" },
+  { name: "CM1 Korean Bistro", address: "6285 Nelson Avenue", lat: 49.22744, lng: -122.99475, cuisine: "bbq" },
+  { name: "Sizzle Pan Korean BBQ", address: "7625 Edmonds Street", lat: 49.22326, lng: -122.94325, cuisine: "bbq" },
+  { name: "Space Chicken", address: "7747 6th Street", lat: 49.22061, lng: -122.93021, cuisine: "chicken" },
+  { name: "Nando's Chicken", address: "5761 Marine Way", lat: 49.19934, lng: -122.97642, cuisine: "chicken" },
+  { name: "Norland Grill", address: "2701 Norland Avenue", lat: 49.25914, lng: -122.9827, cuisine: "diner" },
+  { name: "Plum Garden Noodle House", address: "8939 Cornerstone Mews", lat: 49.2779, lng: -122.91164, cuisine: "chinese" },
+  { name: "Top Wok Dim Sum Express", address: "8605 Glenlyon Pky", lat: 49.20644, lng: -123.01125, cuisine: "chinese" },
+  { name: "Chef Hung Beef Noodle Restaurant", address: "9055 University High Street", lat: 49.27837, lng: -122.90972, cuisine: "chinese" },
+  { name: "Grand Neptune Seafood Restaurant", address: "4331 Dominion Street", lat: 49.25639, lng: -123.00732, cuisine: "chinese" },
+  { name: "Chunkey Indo-chinese Food", address: "7080 Kingsway", lat: 49.218, lng: -122.95806, cuisine: "indian" },
+  { name: "Pearl Hot Pot", address: "7154 Sperling Avenue", lat: 49.21884, lng: -122.96442, cuisine: "chinese" },
+  { name: "Obanhmi", address: "4994 Newton Street", lat: 49.22671, lng: -122.99298, cuisine: "viet" },
+  { name: "Pho Pasteur Restaurant", address: "3853 Hastings Street", lat: 49.28137, lng: -123.01928, cuisine: "viet" },
+  { name: "Pho 99", address: "8901 Cornerstone Mews", lat: 49.2779, lng: -122.91164, cuisine: "viet" },
+  { name: "Pho 24", address: "4250 Kingsway", lat: 49.23139, lng: -123.00952, cuisine: "viet" },
+  { name: "Chettinadu Dosa Palace", address: "5081 Canada Way", lat: 49.23932, lng: -122.96375, cuisine: "indian" },
+  { name: "Manjal South Indian Kitchen", address: "7613 Edmonds Street", lat: 49.22326, lng: -122.94325, cuisine: "indian" },
+  { name: "Kurrywala Indian Cuisine", address: "7660 6th Street", lat: 49.2219, lng: -122.93086, cuisine: "indian" },
+  { name: "The Gray Olive", address: "4190 Hastings Street", lat: 49.28078, lng: -123.01163, cuisine: "mediterranean" },
+  { name: "A Kabul Shawarma Donair", address: "7339 Edmonds Street", lat: 49.21925, lng: -122.95085, cuisine: "mediterranean" },
+  { name: "Saray Turkish Cuisine", address: "6633 Hastings Street", lat: 49.28065, lng: -122.96566, cuisine: "mediterranean" },
+  { name: "Papa Greek", address: "7515 Market Crossing", lat: 49.19847, lng: -122.97955, cuisine: "mediterranean" },
+  { name: "Dragon Bowl Metro", address: "4929 Kingsway", lat: 49.22671, lng: -122.99323, cuisine: "chinese" },
+  { name: "Hart House on Deer Lake", address: "6664 Deer Lake Avenue", lat: 49.23803, lng: -122.96691, cuisine: "finedining" },
+  { name: "Xing Fu Tang", address: "4208 Dawson Street", lat: 49.2639, lng: -123.01093, cuisine: "tea" },
+  { name: "Subway Sandwiches", address: "5093 Canada Way", lat: 49.23926, lng: -122.96343, cuisine: "sandwich" },
+  { name: "Uncle Willy's", address: "6411 Nelson Avenue", lat: 49.22552, lng: -122.99474, cuisine: "diner" },
+  { name: "Mon Paris Patisserie", address: "4396 Beresford Street", lat: 49.22591, lng: -123.00598, cuisine: "bakery" },
+  { name: "88 Town", address: "5640 Kingsway", lat: 49.22269, lng: -122.98231, cuisine: "chinese" },
+  { name: "Firehouse Subs", address: "4273 Dawson Street", lat: 49.26487, lng: -123.00942, cuisine: "sandwich" },
+];

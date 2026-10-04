@@ -1,0 +1,25 @@
+{
+  "isDeal": true,
+  "deals": [
+    {
+      "restaurant": "Chipotle Mexican Grill",
+      "address": null,
+      "dealText": "Burrito Day Promotion: $6 Entree with code BURRITO",
+      "priceCad": null,
+      "validDays": ["thu"],
+      "validStart": null,
+      "validEnd": null,
+      "expiresOn": "2026-10-04",
+      "conditions": [
+        "Online orders only via mobile app",
+        "Single-use promo code"
+      ],
+      "confidence": {
+        "restaurant": 0.95,
+        "priceCad": 0.15,
+        "hours": 0.20,
+        "expiresOn": 0.85
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- SYNTHETIC share fixture for simulator QA only. Serve on localhost; no Instagram fetch, no real Reel or media. -->
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Synthetic share fixture</title>
+<h1>SYNTHETIC share fixture</h1>
+<p id="out">idle</p>
+<script>
+const L = "https://www.instagram.com/reel/SYNTH12345/";
+const cases = {
+  url: { url: L },
+  textUrl: { text: "SYNTHETIC caption test", url: L },
+  textOnly: { text: "SYNTHETIC text " + L },
+  unsupported: { url: "https://example.com/not-a-reel" },
+  twoLinks: { text: "SYNTHETIC " + L + " and https://www.instagram.com/reel/SYNTH99999/" },
+  plain: { text: "SYNTHETIC plain text without link" },
+};
+for (const [name, data] of Object.entries(cases)) {
+  const b = document.createElement("button");
+  b.id = name; b.textContent = name; b.style.cssText = "display:block;font-size:22px;margin:12px;padding:12px";
+  b.onclick = async () => { try { await navigator.share(data); out.textContent = name + ": shared/closed"; } catch (e) { out.textContent = name + ": " + e.name; } };
+  document.body.append(b);
+}
+out.textContent = "navigator.share " + (navigator.share ? "available" : "UNAVAILABLE") + "; secure=" + isSecureContext;
+</script>

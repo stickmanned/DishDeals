@@ -30,6 +30,26 @@ import type { DataModel } from "./dataModel.js";
 type Env = {
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
+  readonly GEMINI_API_KEY: string | undefined;
+  readonly GEMINI_COMPARISON_MODEL: string | undefined;
+  readonly GEMINI_FALLBACK_MODEL: string | undefined;
+  readonly GEMINI_IMAGE_FALLBACK_MODEL: string | undefined;
+  readonly GEMINI_IMAGE_MODEL: string | undefined;
+  readonly GEMINI_MODEL: string | undefined;
+  readonly GEMINI_REEL_MODEL: string | undefined;
+  readonly GEMINI_SEARCH_MODEL: string | undefined;
+  readonly GEMINI_WEB_SEARCH_MODEL: string | undefined;
+  readonly GEOAPIFY_API_KEY: string | undefined;
+  readonly GEOCODE_ENDPOINT: string | undefined;
+  readonly GEOCODE_USAGE_AUTHORIZED: string | undefined;
+  readonly GEOCODE_USER_AGENT: string | undefined;
+  readonly IMAGE_PROVIDER_USAGE_AUTHORIZED: string | undefined;
+  readonly REEL_MEDIA_USAGE_AUTHORIZED: string | undefined;
+  readonly REEL_PROVIDER_USAGE_AUTHORIZED: string | undefined;
+  readonly REEL_WEB_ORIGIN: string | undefined;
+  readonly SCRAPECREATORS_API_KEY: string | undefined;
+  readonly WORKFLOW_API_TOKEN: string | undefined;
+  readonly WORKFLOW_PROVIDER_USAGE_AUTHORIZED: string | undefined;
 };
 
 /**

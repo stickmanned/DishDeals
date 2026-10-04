@@ -1,5 +1,5 @@
 {
-  "baseRef": "origin/main",
+  "baseRef": "t-00-agent-workflow",
   "baselineCommit": "356ec1b",
   "worktreeParent": "../DishDeals-worktrees",
   "tasks": [
@@ -25,10 +25,23 @@
         "components/ConvexClientProvider.tsx",
         "app/layout.tsx",
         "tests/auth/",
-        "docs/handoffs/t-03.md"
+        "docs/handoffs/t-03.md",
+        "convex/auth.config.ts",
+        "convex/_generated/api.d.ts",
+        "lib/profile.ts",
+        "tests/profile/",
+        "package.json",
+        "package-lock.json"
       ],
       "packet": "docs/tasks/T-03.md",
-      "issue": "https://github.com/stickmanned/DishDeals/issues/1"
+      "issue": "https://github.com/stickmanned/DishDeals/issues/1",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local checks only; no cloud target authorized",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending runtime agreement/toolchain",
+      "phoneAcceptance": "William real iPhone report Oct4: sign-in, profile and tab/relaunch persistence passed",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone",
+      "blocker": "None for reported auth persistence; other protected feature acceptance tracked separately"
     },
     {
       "id": "T-04A",
@@ -46,7 +59,13 @@
         "docs/handoffs/t-04a.md"
       ],
       "packet": "docs/tasks/T-04A.md",
-      "issue": "https://github.com/stickmanned/DishDeals/issues/2"
+      "issue": "https://github.com/stickmanned/DishDeals/issues/2",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local checks only; no cloud target authorized",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending runtime agreement/toolchain",
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-04B",
@@ -64,7 +83,13 @@
         "docs/handoffs/t-04b.md"
       ],
       "packet": "docs/tasks/T-04B.md",
-      "issue": "https://github.com/stickmanned/DishDeals/issues/2"
+      "issue": "https://github.com/stickmanned/DishDeals/issues/2",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local checks only; no cloud target authorized",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending runtime agreement/toolchain",
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
     },
     {
       "id": "T-05R",
@@ -82,7 +107,1587 @@
         "docs/handoffs/t-05r.md"
       ],
       "packet": "docs/tasks/T-05R.md",
-      "issue": "https://github.com/stickmanned/DishDeals/issues/3"
+      "issue": "https://github.com/stickmanned/DishDeals/issues/3",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local checks only; no cloud target authorized",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending runtime agreement/toolchain",
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
+    },
+    {
+      "id": "T-07A",
+      "owner": "Mica",
+      "branch": "t-07-draft-state",
+      "worktree": "post-core",
+      "status": "prepared",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "lib/dealDraft.ts",
+        "lib/dealDraft.test.ts",
+        "docs/handoffs/t-07a.md"
+      ],
+      "packet": "docs/tasks/T-07A.md",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "no backend writes; pure logic only",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending integration",
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
+    },
+    {
+      "id": "T-05A",
+      "owner": "Loom",
+      "branch": "t-05-extraction-core",
+      "worktree": "extraction-core",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-05R"
+      ],
+      "allowedPaths": [
+        "lib/extractCore.ts",
+        "lib/prompt.ts",
+        "tests/extraction/",
+        "docs/handoffs/t-05a.md"
+      ],
+      "packet": "docs/tasks/T-05A.md",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local only; no cloud/provider calls",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending integration",
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
+    },
+    {
+      "id": "T-06A",
+      "owner": "Prism",
+      "branch": "t-06-real-deal-sources",
+      "worktree": "deal-sources",
+      "status": "prepared",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/data/",
+        "fixtures/source-candidates/",
+        "docs/handoffs/t-06a.md"
+      ],
+      "packet": "docs/tasks/T-06A.md",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "local only; no cloud/provider calls",
+      "implementationState": "reviewed9dcdc80 locally integrated2011bf9; 11 genuine source candidates, pending CAD/pins/photos",
+      "nativeChecks": "pending integration",
+      "phoneAcceptance": "pending",
+      "localChecks": "primary source verification; JSON parity/CADnull/ownership PASS"
+    },
+    {
+      "id": "T-09A",
+      "owner": "Cinder",
+      "branch": "t-09-deal-selection",
+      "worktree": "selection",
+      "status": "prepared",
+      "dependencies": [
+        "T-04A",
+        "T-04B"
+      ],
+      "allowedPaths": [
+        "lib/dealSelection.ts",
+        "lib/dealSelection.test.ts",
+        "docs/handoffs/t-09a.md"
+      ],
+      "packet": "docs/tasks/T-09A.md",
+      "pinnedBaseSha": "56f23c31da4ba78d2883a117574a795034da9836",
+      "backendTarget": "none; pure logic",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending UI integration",
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
+    },
+    {
+      "id": "T-11A",
+      "owner": "Loom",
+      "branch": "t-11-votes-backend",
+      "worktree": "votes-core",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-03"
+      ],
+      "allowedPaths": [
+        "convex/votes.ts",
+        "tests/backend/votes.test.ts",
+        "convex/_generated/api.d.ts",
+        "docs/handoffs/t-11a.md"
+      ],
+      "packet": "docs/tasks/T-11A.md",
+      "pinnedBaseSha": "56f23c31da4ba78d2883a117574a795034da9836",
+      "backendTarget": "in-memory convex-test only; no cloud authorization",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending Harry UI bindings",
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
+    },
+    {
+      "id": "T-19A",
+      "owner": "Cinder",
+      "branch": "t-19-demo-runbook",
+      "worktree": "demo-runbook",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/demo/setup-and-release.md",
+        "docs/demo/demo-script.md",
+        "docs/demo/submission-draft.md",
+        "docs/handoffs/t-19a.md"
+      ],
+      "packet": "docs/tasks/T-19A.md",
+      "pinnedBaseSha": "5f26c892647a0336f18e5e4340ea544a7d94f7c0",
+      "backendTarget": "none; documentation only",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending Harry source/Xcode",
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
+    },
+    {
+      "id": "T-07D",
+      "owner": "Mica",
+      "branch": "t-07-extraction-draft-adapter",
+      "worktree": "draft-adapter",
+      "status": "prepared",
+      "dependencies": [
+        "T-05A",
+        "T-07A"
+      ],
+      "allowedPaths": [
+        "lib/extractionDraft.ts",
+        "tests/import/extractionDraft.test.ts",
+        "docs/handoffs/t-07d.md"
+      ],
+      "packet": "docs/tasks/T-07D.md",
+      "pinnedBaseSha": "b55ea3c0d613f0878ca7a5924120416dc74546bf",
+      "backendTarget": "none; headless adapter/synthetic replay only",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending Harry bindings",
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
+    },
+    {
+      "id": "T-10A",
+      "owner": "Loom",
+      "branch": "t-10-deal-detail-read",
+      "worktree": "detail-read",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-03",
+        "T-11A"
+      ],
+      "allowedPaths": [
+        "convex/deals.ts",
+        "tests/backend/dealGet.test.ts",
+        "convex/_generated/api.d.ts",
+        "docs/handoffs/t-10a.md"
+      ],
+      "packet": "docs/tasks/T-10A.md",
+      "pinnedBaseSha": "212428b1d85567e9964873c1f56e1989e5ba2fae",
+      "backendTarget": "in-memory only; no cloud",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending Harry/Pinyuan",
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
+    },
+    {
+      "id": "T-15A",
+      "owner": "Cinder",
+      "branch": "t-15-solana-tip-request",
+      "worktree": "tip-request",
+      "status": "prepared",
+      "dependencies": [
+        "T-03"
+      ],
+      "allowedPaths": [
+        "lib/tipRequest.ts",
+        "lib/tipRequest.test.ts",
+        "docs/integration/solana-devnet.md",
+        "docs/handoffs/t-15a.md"
+      ],
+      "packet": "docs/tasks/T-15A.md",
+      "pinnedBaseSha": "212428b1d85567e9964873c1f56e1989e5ba2fae",
+      "backendTarget": "none; no wallet/RPC/provider calls",
+      "implementationState": "reviewed locally integrated; full-ticket native/live acceptance pending",
+      "nativeChecks": "pending Harry runtime/wallet UI",
+      "phoneAcceptance": "pending real devnet tip",
+      "localChecks": "Northstar combined integration npm run check PASS:432Vitest/23workflow/typecheck/lint/build at93c8987; no live/provider/nativeUI/phone"
+    },
+    {
+      "id": "N-IOS-A",
+      "owner": "Loom",
+      "branch": "t-13-native-contract-review",
+      "worktree": "native-contract-review",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/handoffs/n-ios-a.md"
+      ],
+      "packet": "docs/tasks/N-IOS-A.md",
+      "pinnedBaseSha": "547a74df5d279ad40758394430979645e416f2c5",
+      "backendTarget": "read-only source inspection; no cloud/provider",
+      "implementationState": "reviewed source contracts at601a615; canonical UI/backend integration pending",
+      "nativeChecks": "pending compile; installed Xcode/SDK, runtime downloading",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-BUILD-A",
+      "owner": "Cinder",
+      "branch": "t-13-native-sdk-check",
+      "worktree": "native-sdk-check",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/handoffs/n-build-a.md"
+      ],
+      "packet": "docs/tasks/N-BUILD-A.md",
+      "pinnedBaseSha": "547a74df5d279ad40758394430979645e416f2c5",
+      "backendTarget": "no cloud/provider",
+      "implementationState": "reviewed",
+      "nativeChecks": "actual app/extension SwiftSDK typechecks PASS",
+      "phoneAcceptance": "pending signing/phone"
+    },
+    {
+      "id": "N-BUILD-B",
+      "owner": "Cinder",
+      "branch": "t-13-native-project-build",
+      "worktree": "native-project-build",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/handoffs/n-build-b.md"
+      ],
+      "packet": "docs/tasks/N-BUILD-B.md",
+      "pinnedBaseSha": "8b6df6279eecc5f37772f5b65816f5e53f6e1561",
+      "backendTarget": "no cloud/provider",
+      "implementationState": "reviewed unsigned generic simulator SDK build PASS, no runtime execution",
+      "nativeChecks": "xcodegen2.46.0 + xcodebuild app/embeddedextension PASS; simulator execution pending",
+      "phoneAcceptance": "pending signing",
+      "localChecks": "source unchanged; nativeartifactverified; docs46b4c69"
+    },
+    {
+      "id": "N-FORM-A",
+      "owner": "Mica",
+      "branch": "t-07-reel-draft-adapter",
+      "worktree": "reel-draft-adapter",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "lib/reels/toDealDraft.ts",
+        "tests/import/reelDraft.test.ts",
+        "docs/handoffs/n-form-a.md"
+      ],
+      "packet": "docs/tasks/N-FORM-A.md",
+      "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
+      "backendTarget": "local synthetic checks only; no cloud/provider",
+      "implementationState": "reviewed locally integrated at 1eb2e7c; full native/live acceptance pending",
+      "nativeChecks": "native session/form integration pending",
+      "phoneAcceptance": "pending",
+      "localChecks": "combined check at a3c549d: 496 Vitest, 23 workflow, typecheck/lint/build PASS; T-04R independent 83 targeted PASS"
+    },
+    {
+      "id": "N-AUTH-A",
+      "owner": "Loom",
+      "branch": "t-03-native-session-bridge",
+      "worktree": "native-session-bridge",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "components/reels/ReelIntake.tsx",
+        "components/CanonicalSessionBridge.tsx",
+        "components/ConvexClientProvider.tsx",
+        "lib/nativeSession.ts",
+        "tests/native/sessionBridge.test.ts",
+        "docs/handoffs/n-auth-a.md"
+      ],
+      "packet": "docs/tasks/N-AUTH-A.md",
+      "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
+      "backendTarget": "local synthetic checks only; no cloud/provider",
+      "implementationState": "reviewed locally integrated at 1eb2e7c; full native/live acceptance pending",
+      "nativeChecks": "native session/form integration pending",
+      "phoneAcceptance": "pending",
+      "localChecks": "combined check at a3c549d: 496 Vitest, 23 workflow, typecheck/lint/build PASS; T-04R independent 83 targeted PASS"
+    },
+    {
+      "id": "T-04R",
+      "owner": "Cinder",
+      "branch": "t-04-time-rule-review",
+      "worktree": "time-rule-review",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/handoffs/t-04r.md"
+      ],
+      "packet": "docs/tasks/T-04R.md",
+      "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
+      "backendTarget": "local synthetic checks only; no cloud/provider",
+      "implementationState": "reviewed locally integrated at 1eb2e7c; full native/live acceptance pending",
+      "nativeChecks": "native session/form integration pending",
+      "phoneAcceptance": "pending",
+      "localChecks": "combined check at a3c549d: 496 Vitest, 23 workflow, typecheck/lint/build PASS; T-04R independent 83 targeted PASS"
+    },
+    {
+      "id": "T-06B-ASSETS",
+      "owner": "Prism",
+      "branch": "t-06-source-menu-assets",
+      "worktree": "source-menu-assets",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "fixtures/source-assets/",
+        "docs/data/source-assets.md",
+        "docs/handoffs/t-06b-assets.md"
+      ],
+      "packet": "docs/tasks/T-06B-ASSETS.md",
+      "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
+      "backendTarget": "public primary-source GET only; no cloud/provider",
+      "implementationState": "reviewed locally integrated at 1eb2e7c; full native/live acceptance pending",
+      "nativeChecks": "pending integration",
+      "phoneAcceptance": "pending realuploads/photos/pins",
+      "localChecks": "combined check at a3c549d: 496 Vitest, 23 workflow, typecheck/lint/build PASS; T-04R independent 83 targeted PASS"
+    },
+    {
+      "id": "N-SHARE-DRAFT",
+      "owner": "Loom",
+      "branch": "t-13-reel-draft-guards",
+      "worktree": "reel-draft-guards",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "convex/schema.ts",
+        "convex/reels.ts",
+        "components/reels/ReelIntake.tsx",
+        "convex/reels.test.ts",
+        "tests/backend/reelDraftRevisions.test.ts",
+        "lib/reels/draftRevision.ts",
+        "tests/import/draftRevision.test.ts",
+        "docs/handoffs/n-share-draft.md"
+      ],
+      "packet": "docs/tasks/N-SHARE-DRAFT.md",
+      "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
+      "backendTarget": "local checks only; no cloud/provider actions authorized",
+      "implementationState": "review corrections accepted; e022b0b locally integrated",
+      "nativeChecks": "pending real runtime execution",
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "worker corrected check PASS588 tests/23workflow/typecheck/lint/build; root combined pending"
+    },
+    {
+      "id": "N-FORM-UI",
+      "owner": "Mica",
+      "branch": "t-07-common-review-form",
+      "worktree": "common-review-form",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "components/deals/DealReviewForm.tsx",
+        "lib/dealReviewForm.ts",
+        "tests/import/dealReviewForm.test.ts",
+        "docs/handoffs/n-form-ui.md"
+      ],
+      "packet": "docs/tasks/N-FORM-UI.md",
+      "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
+      "backendTarget": "local checks only; no cloud/provider actions authorized",
+      "implementationState": "corrected f4a368c reviewed locally integrated",
+      "nativeChecks": "pending real runtime execution",
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Northstar combined check at33b894d PASS904Vitest/23workflow/typecheck/lint/build; no rendered UI/native/phone/provider proof"
+    },
+    {
+      "id": "N-MAP-A",
+      "owner": "Cinder",
+      "branch": "t-08-published-map-location",
+      "worktree": "published-map-location",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "map-component/",
+        "components/maps/DealLocationPicker.tsx",
+        "components/maps/PublishedDealMap.tsx",
+        "lib/mapAdapter.ts",
+        "tests/map/",
+        "package.json",
+        "package-lock.json",
+        "docs/integration/map-contract.md",
+        "docs/handoffs/n-map-a.md",
+        "eslint.config.mjs",
+        "tsconfig.json",
+        "vitest.config.ts"
+      ],
+      "packet": "docs/tasks/N-MAP-A.md",
+      "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
+      "backendTarget": "local checks only; no cloud/provider actions authorized",
+      "implementationState": "84fab5f independently reviewed and locally integrated f81a56b; mandatory parent invalidation correction follows",
+      "nativeChecks": "pending real runtime execution",
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Northstar combined check at33b894d PASS904Vitest/23workflow/typecheck/lint/build; no rendered UI/native/phone/provider proof"
+    },
+    {
+      "id": "T-08G-CORE",
+      "owner": "Prism",
+      "branch": "t-08-geocode-policy-core",
+      "worktree": "geocode-policy-core",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "lib/geocodeCore.ts",
+        "tests/geocode/",
+        "docs/integration/geocode-policy.md",
+        "docs/handoffs/t-08g-core.md"
+      ],
+      "packet": "docs/tasks/T-08G-CORE.md",
+      "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
+      "backendTarget": "local checks only; no cloud/provider actions authorized",
+      "implementationState": "e5e65fc reviewed/integratede01480e; durable backend wrapper pending",
+      "nativeChecks": "pending real runtime execution",
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Northstar combined check at33b894d PASS904Vitest/23workflow/typecheck/lint/build; no rendered UI/native/phone/provider proof"
+    },
+    {
+      "id": "T-09B",
+      "owner": "Northstar",
+      "branch": "t-00-agent-workflow",
+      "worktree": "workflow",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-03"
+      ],
+      "allowedPaths": [
+        "convex/deals.ts",
+        "tests/backend/dealRecent.test.ts",
+        "docs/tasks/T-09B.md",
+        "docs/handoffs/t-09b.md",
+        "docs/workflow/"
+      ],
+      "packet": "docs/tasks/T-09B.md",
+      "pinnedBaseSha": "d846514",
+      "backendTarget": "in-memory checks only; no cloud",
+      "implementationState": "coordinator integration ready; listRecent implemented, nearby/index separate",
+      "localChecks": "npm run check PASS: 510 Vitest, 23 workflow, typecheck/lint/build",
+      "nativeChecks": "pending WKWebView integration",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-STORE-A",
+      "owner": "Northstar",
+      "branch": "t-00-agent-workflow",
+      "worktree": "workflow",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "ios/Shared/ShareStore.swift",
+        "ios/App/DinedealsApp.swift",
+        "ios/ShareExtension/ShareViewController.swift",
+        "tests/native/ShareStoreChecks.swift",
+        "docs/tasks/N-STORE-A.md",
+        "docs/handoffs/n-store-a.md"
+      ],
+      "packet": "docs/tasks/N-STORE-A.md",
+      "pinnedBaseSha": "740391b",
+      "backendTarget": "none; no HTTP/cloud/provider",
+      "implementationState": "locally implemented",
+      "localChecks": "18 synthetic Foundation checks PASS",
+      "nativeChecks": "actual unsigned generic Simulator SDK app+extension build PASS",
+      "phoneAcceptance": "pending signing/runtime/iPhone"
+    },
+    {
+      "id": "N-SOURCE-A",
+      "owner": "Loom",
+      "branch": "t-13-supplied-reel-media",
+      "worktree": "supplied-reel-media",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02",
+        "N-SHARE-DRAFT"
+      ],
+      "allowedPaths": [
+        "convex/schema.ts",
+        "convex/reels.ts",
+        "convex/reelActions.ts",
+        "convex/reelWorkflow.ts",
+        "convex/reelSource.ts",
+        "convex/http.ts",
+        "convex/convex.config.ts",
+        "convex/_generated/api.d.ts",
+        "convex/_generated/server.d.ts",
+        "components/reels/ReelIntake.tsx",
+        "lib/reels/suppliedMedia.ts",
+        "tests/backend/reelSource.test.ts",
+        "tests/import/suppliedMedia.test.ts",
+        "convex/reels.test.ts",
+        "docs/integration/supplied-reel-media.md",
+        "docs/handoffs/n-source-a.md",
+        ".env.example"
+      ],
+      "packet": "docs/tasks/N-SOURCE-A.md",
+      "pinnedBaseSha": "5190dfaf2695a75e5f211809cae33e35a10394c6",
+      "backendTarget": "local synthetic tests only; cloud/provider authorization pending",
+      "implementationState": "83629a4 corrections reviewed and locally integrated7535260",
+      "nativeChecks": "pending real WKWebView file picker",
+      "phoneAcceptance": "pending real native receipt/recording/VLM",
+      "localChecks": "Northstar combined check at33b894d PASS904Vitest/23workflow/typecheck/lint/build; no rendered UI/native/phone/provider proof"
+    },
+    {
+      "id": "T-14A",
+      "owner": "Mica",
+      "branch": "t-14-recording-frame-core",
+      "worktree": "recording-frame-core",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02",
+        "T-07A"
+      ],
+      "allowedPaths": [
+        "lib/image.ts",
+        "tests/media/",
+        "docs/handoffs/t-14a.md"
+      ],
+      "packet": "docs/tasks/T-14A.md",
+      "pinnedBaseSha": "553a4e6654fd84d040577750a17f564242182e25",
+      "backendTarget": "browser helpers/local tests only; no provider/cloud",
+      "implementationState": "50af99e reviewed/integrated33b894d; actual cancellation coroutine regression covered",
+      "nativeChecks": "pending actual WKWebView media decoding",
+      "phoneAcceptance": "pending real10second recording and Harry reveal",
+      "localChecks": "Northstar combined check at33b894d PASS904Vitest/23workflow/typecheck/lint/build; no rendered UI/native/phone/provider proof"
+    },
+    {
+      "id": "N-MAP-B",
+      "owner": "Cinder",
+      "branch": "t-21-saved-deal-map",
+      "worktree": "map-route-bindings",
+      "status": "prepared",
+      "dependencies": [
+        "N-MAP-A",
+        "T-09B",
+        "T-10A",
+        "T-11A"
+      ],
+      "allowedPaths": [
+        "app/map/",
+        "app/deal/[id]/page.tsx",
+        "components/maps/CanonicalDealMapPage.tsx",
+        "components/deals/CanonicalDealDetails.tsx",
+        "components/frontend/Shell.tsx",
+        "lib/mapPage.ts",
+        "tests/map/mapPage.test.ts",
+        "map-component/vite.config.ts",
+        "map-component/src/MapLibreView.tsx",
+        "scripts/map-assets.mjs",
+        "docs/integration/map-route.md",
+        "docs/handoffs/n-map-b.md"
+      ],
+      "packet": "docs/tasks/N-MAP-B.md",
+      "pinnedBaseSha": "44133042340c5d4a140453a63aa445edc163e637",
+      "backendTarget": "local source/tests only; no cloud",
+      "implementationState": "reviewed locally integrated fcc0cc6; full-ticket native/provider/phone acceptance pending",
+      "nativeChecks": "pending runtime/WKWebView",
+      "phoneAcceptance": "pending",
+      "externalBlocker": "Gemini CLI confirmed quota error, no model switch/recruit; preserve work",
+      "localChecks": "Northstar combined1250Vitest/23workflow/type/lint/build PASS; synthetic/in-memory only; actual private constraints save/reload regression included"
+    },
+    {
+      "id": "T-09C",
+      "owner": "Loom",
+      "branch": "t-09-canonical-deal-writes",
+      "worktree": "canonical-deal-writes",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-03",
+        "T-09B",
+        "T-10A",
+        "N-SOURCE-A"
+      ],
+      "allowedPaths": [
+        "convex/deals.ts",
+        "convex/schema.ts",
+        "convex/convex.config.ts",
+        "convex/_generated/api.d.ts",
+        "lib/dealWrite.ts",
+        "tests/backend/dealWrites.test.ts",
+        "tests/backend/dealNearby.test.ts",
+        "package.json",
+        "package-lock.json",
+        "docs/integration/canonical-deal-writes.md",
+        "docs/handoffs/t-09c.md"
+      ],
+      "packet": "docs/tasks/T-09C.md",
+      "pinnedBaseSha": "75352608f1cbd8b8a573996efa4745d76ee5f451",
+      "backendTarget": "actual in-memory component tests only; no cloud",
+      "implementationState": "db5de05 reviewed locally integrated84415d9",
+      "nativeChecks": "pending native form/map",
+      "phoneAcceptance": "pending",
+      "localChecks": "Root npm run check PASS983Vitest/23workflow/typecheck/lint/build at84415d9 (synthetic actual component)"
+    },
+    {
+      "id": "N-FORM-B",
+      "owner": "Mica",
+      "branch": "t-07-reel-common-form",
+      "worktree": "reel-common-form",
+      "status": "prepared",
+      "dependencies": [
+        "N-FORM-UI",
+        "N-FORM-A",
+        "N-SOURCE-A",
+        "N-MAP-A",
+        "N-SHARE-DRAFT"
+      ],
+      "allowedPaths": [
+        "components/reels/ReelIntake.tsx",
+        "components/reels/CanonicalReelReview.tsx",
+        "lib/reels/reviewDraft.ts",
+        "lib/dealDraft.ts",
+        "tests/import/reviewDraft.test.ts",
+        "tests/import/locationInvalidation.test.ts",
+        "convex/reels.ts",
+        "tests/backend/reelManualDraft.test.ts",
+        "docs/integration/reel-common-form.md",
+        "docs/handoffs/n-form-b.md",
+        "tests/backend/reelDraftRevisions.test.ts"
+      ],
+      "packet": "docs/tasks/N-FORM-B.md",
+      "pinnedBaseSha": "33b894d40f7e1075c6579a297657c227dc3e4f65",
+      "backendTarget": "local synthetic checks only; no cloud",
+      "implementationState": "reviewed locally integrated 02f0511; full-ticket native/provider/phone acceptance pending",
+      "nativeChecks": "pending rendered map/form",
+      "phoneAcceptance": "pending",
+      "externalBlocker": "Gemini exhausted; William authorized in-place Claude Code replacement",
+      "localChecks": "Northstar combined1250Vitest/23workflow/type/lint/build PASS; synthetic/in-memory only; actual private constraints save/reload regression included"
+    },
+    {
+      "id": "N-SOURCE-C",
+      "owner": "Prism",
+      "branch": "t-05-reel-source-constraints",
+      "worktree": "reel-source-constraints",
+      "status": "prepared",
+      "dependencies": [
+        "N-SOURCE-A",
+        "N-FORM-A"
+      ],
+      "allowedPaths": [
+        "lib/reels/contract.ts",
+        "lib/reels/contract.test.ts",
+        "lib/reels/toDealDraft.ts",
+        "convex/reelActions.ts",
+        "tests/import/reelConstraints.test.ts",
+        "docs/integration/reel-source-constraints.md",
+        "docs/handoffs/n-source-c.md",
+        "tests/import/reelDraft.test.ts"
+      ],
+      "packet": "docs/tasks/N-SOURCE-C.md",
+      "pinnedBaseSha": "33b894d40f7e1075c6579a297657c227dc3e4f65",
+      "backendTarget": "synthetic parser/model transport only; no provider/cloud",
+      "implementationState": "reviewed locally integrated 4ad8731; full-ticket native/provider/phone acceptance pending",
+      "nativeChecks": "pending actual media/extraction",
+      "phoneAcceptance": "pending",
+      "externalBlocker": "Gemini exhausted; William authorized in-place Claude Code replacement",
+      "localChecks": "Northstar combined1250Vitest/23workflow/type/lint/build PASS; synthetic/in-memory only; actual private constraints save/reload regression included"
+    },
+    {
+      "id": "T-07B",
+      "owner": "Loom",
+      "branch": "t-07-owned-image-extraction",
+      "worktree": "image-extraction",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-03",
+        "T-05A",
+        "T-09C"
+      ],
+      "allowedPaths": [
+        "convex/deals.ts",
+        "convex/dealUploads.ts",
+        "convex/dealImage.ts",
+        "convex/extract.ts",
+        "convex/http.ts",
+        "convex/convex.config.ts",
+        "convex/_generated/api.d.ts",
+        "convex/_generated/server.d.ts",
+        "convex/crons.ts",
+        "lib/dealImageUpload.ts",
+        "tests/backend/dealImageUpload.test.ts",
+        "tests/backend/extractAction.test.ts",
+        "tests/import/dealImageUpload.test.ts",
+        "docs/integration/image-extraction.md",
+        "docs/handoffs/t-07b.md",
+        ".env.example",
+        "lib/extractCore.ts",
+        "tests/backend/dealWrites.test.ts",
+        "convex/schema.ts"
+      ],
+      "packet": "docs/tasks/T-07B.md",
+      "pinnedBaseSha": "84415d9b542a9e3abafa51f59d85df0817025286",
+      "backendTarget": "local synthetic checks only; no cloud/provider",
+      "implementationState": "reviewed locally integrated 86a1e6b; full-ticket native/provider/phone acceptance pending",
+      "nativeChecks": "pending actual image decoding/file picker",
+      "phoneAcceptance": "pending real screenshot/flyer",
+      "localChecks": "Northstar combined1250Vitest/23workflow/type/lint/build PASS; synthetic/in-memory only; actual private constraints save/reload regression included"
+    },
+    {
+      "id": "T-16A",
+      "owner": "Northstar",
+      "branch": "t-00-agent-workflow",
+      "worktree": "workflow",
+      "status": "prepared",
+      "dependencies": [
+        "T-05A",
+        "T-07D"
+      ],
+      "allowedPaths": [
+        "lib/demoCache.ts",
+        "tests/import/demoCache.test.ts",
+        "fixtures/demo/README.md",
+        "docs/handoffs/t-16a.md",
+        "docs/tasks/T-16A.md",
+        "docs/workflow/"
+      ],
+      "packet": "docs/tasks/T-16A.md",
+      "pinnedBaseSha": "b9adbf9693372d73d80d5fe69ae818f32d7ecfa4",
+      "implementationState": "cache helper locally implemented; actual fixtures/UI pending",
+      "backendTarget": "none, no provider",
+      "nativeChecks": "pending UI binding",
+      "phoneAcceptance": "pending genuine fixtures/device",
+      "localChecks": "11 targeted synthetic tests/typecheck/targeted lint PASS"
+    },
+    {
+      "id": "T-08G-B",
+      "owner": "Loom",
+      "branch": "t-08-durable-geocode-core",
+      "worktree": "durable-geocode",
+      "status": "prepared",
+      "dependencies": [
+        "T-08G-CORE",
+        "T-07B"
+      ],
+      "allowedPaths": [
+        "convex/geocode.ts",
+        "convex/geocodeState.ts",
+        "convex/schema.ts",
+        "convex/convex.config.ts",
+        "convex/_generated/api.d.ts",
+        "convex/_generated/server.d.ts",
+        ".env.example",
+        "tests/backend/geocodeAction.test.ts",
+        "docs/integration/durable-geocode.md",
+        "docs/handoffs/t-08g-b.md"
+      ],
+      "packet": "docs/tasks/T-08G-B.md",
+      "pinnedBaseSha": "e4d9cec3820c58d8557bb9cec68bd26aa1a2b6ae",
+      "backendTarget": "local tests only; no cloud/provider target authorized",
+      "implementationState": "reviewed integrated92ccdfc; failclosed backwardsclock correction; actualprovider/native UI pending",
+      "nativeChecks": "unrun",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-07C",
+      "owner": "Cinder",
+      "branch": "t-07-canonical-image-form",
+      "worktree": "canonical-image-form",
+      "status": "prepared",
+      "dependencies": [
+        "T-07B",
+        "N-FORM-UI",
+        "N-MAP-A"
+      ],
+      "allowedPaths": [
+        "app/post/page.tsx",
+        "components/deals/CanonicalPost.tsx",
+        "lib/imageDraftFlow.ts",
+        "tests/import/imageDraftFlow.test.ts",
+        "docs/integration/canonical-image-form.md",
+        "docs/handoffs/t-07c.md"
+      ],
+      "packet": "docs/tasks/T-07C.md",
+      "pinnedBaseSha": "2c97c07aecfb5055769724d83f01eb8482da388a",
+      "backendTarget": "local tests only; no deployment/provider authorized",
+      "implementationState": "reviewed and locally integrated; original live acceptance pending",
+      "nativeChecks": "pending WKWebView",
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Northstar combined1451Vitest/23workflow/typecheck/lint/build PASS; synthetic/in-memory, no native/provider/phone proof"
+    },
+    {
+      "id": "T-10B",
+      "owner": "Mica",
+      "branch": "t-10-author-controls",
+      "worktree": "author-controls",
+      "status": "prepared",
+      "dependencies": [
+        "T-09C",
+        "N-MAP-B",
+        "N-FORM-UI"
+      ],
+      "allowedPaths": [
+        "components/deals/CanonicalDealDetails.tsx",
+        "components/deals/CanonicalDealEdit.tsx",
+        "app/deal/[id]/edit/page.tsx",
+        "lib/dealEdit.ts",
+        "tests/import/dealEdit.test.ts",
+        "docs/integration/author-controls.md",
+        "docs/handoffs/t-10b.md"
+      ],
+      "packet": "docs/tasks/T-10B.md",
+      "pinnedBaseSha": "2c97c07aecfb5055769724d83f01eb8482da388a",
+      "backendTarget": "local tests only; no cloud target authorized",
+      "implementationState": "reviewed and locally integrated; original live acceptance pending",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined1451Vitest/23workflow/typecheck/lint/build PASS; synthetic/in-memory, no native/provider/phone proof"
+    },
+    {
+      "id": "N-REMOTE-A",
+      "owner": "Prism",
+      "branch": "t-19-backend-preservation-review",
+      "worktree": "backend-preservation-review",
+      "status": "prepared",
+      "dependencies": [
+        "N-SOURCE-C",
+        "T-09C"
+      ],
+      "allowedPaths": [
+        "docs/integration/backend-preservation.md",
+        "docs/integration/backend-preservation.patch",
+        "docs/handoffs/n-remote-a.md"
+      ],
+      "packet": "docs/tasks/N-REMOTE-A.md",
+      "pinnedBaseSha": "2c97c07aecfb5055769724d83f01eb8482da388a",
+      "backendTarget": "read-only published source review only; no cloud commands",
+      "implementationState": "reviewed and locally integrated; original live acceptance pending",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined1451Vitest/23workflow/typecheck/lint/build PASS; synthetic/in-memory, no native/provider/phone proof"
+    },
+    {
+      "id": "N-FORM-C",
+      "owner": "Loom",
+      "branch": "t-07-reel-publish-bindings",
+      "worktree": "reel-publish-bindings",
+      "status": "prepared",
+      "dependencies": [
+        "T-08G-B",
+        "N-FORM-B",
+        "N-SOURCE-C",
+        "T-09C"
+      ],
+      "allowedPaths": [
+        "components/reels/ReelIntake.tsx",
+        "components/reels/CanonicalReelReview.tsx",
+        "lib/reels/publish.ts",
+        "tests/import/reelPublish.test.ts",
+        "docs/integration/reel-publish-bindings.md",
+        "docs/handoffs/n-form-c.md"
+      ],
+      "packet": "docs/tasks/N-FORM-C.md",
+      "pinnedBaseSha": "92ccdfc0f0d5df8f5da314c7c1f1ac950f509e89",
+      "backendTarget": "local checks only; cloud/provider not authorized",
+      "implementationState": "reviewed and locally integrated; original live acceptance pending",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined1451Vitest/23workflow/typecheck/lint/build PASS; synthetic/in-memory, no native/provider/phone proof"
+    },
+    {
+      "id": "N-REMOTE-B",
+      "owner": "Prism",
+      "branch": "t-19-backend-preservation-integration",
+      "worktree": "backend-preservation-integration",
+      "status": "prepared",
+      "dependencies": [
+        "N-REMOTE-A",
+        "T-08G-B"
+      ],
+      "allowedPaths": [
+        "convex/workflow/",
+        "convex/workflowTables.ts",
+        "convex/trial.ts",
+        "lib/workflow/",
+        "tests/workflow/",
+        "convex/schema.ts",
+        "convex/convex.config.ts",
+        "convex/_generated/api.d.ts",
+        "convex/_generated/server.d.ts",
+        "convex/http.ts",
+        "convex/crons.ts",
+        "convex/auth.ts",
+        ".env.example",
+        "tests/backend/dealImageUpload.test.ts",
+        "tests/auth/publishedProvider.test.ts",
+        "docs/integration/backend-preservation-applied.md",
+        "docs/handoffs/n-remote-b.md"
+      ],
+      "packet": "docs/tasks/N-REMOTE-B.md",
+      "pinnedBaseSha": "475146057701b7f4ea6d7e8e3484b40cd9ba6447",
+      "backendTarget": "LOCAL ONLY; no deployment, provider or remote Git authorized",
+      "implementationState": "reviewed locally integrated25cc20b; published schema/functions/route compatibility retained",
+      "nativeChecks": "unrun",
+      "phoneAcceptance": "pending",
+      "localChecks": "Root combined1554Vitest/23workflow/typecheck/lint/build PASS; no cloud/provider/native/phone"
+    },
+    {
+      "id": "N-SHARE-C",
+      "owner": "Cinder",
+      "branch": "t-13-native-supplied-context",
+      "worktree": "native-supplied-context",
+      "status": "prepared",
+      "dependencies": [
+        "N-STORE-A",
+        "N-SOURCE-A"
+      ],
+      "allowedPaths": [
+        "ios/Shared/ShareStore.swift",
+        "ios/ShareExtension/ShareViewController.swift",
+        "ios/App/DinedealsApp.swift",
+        "tests/native/ShareStoreChecks.swift",
+        "docs/integration/native-supplied-context.md",
+        "docs/handoffs/n-share-c.md"
+      ],
+      "packet": "docs/tasks/N-SHARE-C.md",
+      "pinnedBaseSha": "25cc20b65be346b699f7760b9465a461f0465df0",
+      "backendTarget": "LOCAL ONLY; no external writes/provider use",
+      "implementationState": "reviewed and locally integrated; full live/phone acceptance pending",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-SOURCE-D",
+      "owner": "Loom",
+      "branch": "t-05-native-context-ingestion",
+      "worktree": "native-context-ingestion",
+      "status": "prepared",
+      "dependencies": [
+        "N-SOURCE-C",
+        "N-SOURCE-A",
+        "N-REMOTE-B"
+      ],
+      "allowedPaths": [
+        "convex/schema.ts",
+        "convex/reels.ts",
+        "convex/reelActions.ts",
+        "lib/reels/nativeContext.ts",
+        "lib/reels/contract.ts",
+        "lib/nativeSession.ts",
+        "components/reels/ReelIntake.tsx",
+        "tests/backend/reelNativeContext.test.ts",
+        "tests/import/nativeContext.test.ts",
+        "tests/import/nativeSession.test.ts",
+        "lib/reels/contract.test.ts",
+        "docs/integration/native-context-ingestion.md",
+        "docs/handoffs/n-source-d.md",
+        "convex/reelWorkflow.ts",
+        "convex/reels.test.ts",
+        "tests/backend/reelSource.test.ts"
+      ],
+      "packet": "docs/tasks/N-SOURCE-D.md",
+      "pinnedBaseSha": "25cc20b65be346b699f7760b9465a461f0465df0",
+      "backendTarget": "LOCAL ONLY; no external writes/provider use",
+      "implementationState": "reviewed and locally integrated; full live/phone acceptance pending",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-RELEASE-A",
+      "owner": "Mica",
+      "branch": "t-19-native-release-preparation",
+      "worktree": "native-release-preparation",
+      "status": "prepared",
+      "dependencies": [
+        "N-REMOTE-B",
+        "N-IOS"
+      ],
+      "allowedPaths": [
+        "docs/release/",
+        "docs/handoffs/n-release-a.md",
+        "scripts/check-release-config.mjs",
+        "tests/setup/releaseConfig.test.ts"
+      ],
+      "packet": "docs/tasks/N-RELEASE-A.md",
+      "pinnedBaseSha": "25cc20b65be346b699f7760b9465a461f0465df0",
+      "backendTarget": "LOCAL ONLY; no external writes/provider use",
+      "implementationState": "reviewed and locally integrated; full live/phone acceptance pending",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-12A",
+      "owner": "Prism",
+      "branch": "t-12-canonical-seed",
+      "worktree": "canonical-seed",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-09C"
+      ],
+      "allowedPaths": [
+        "convex/seed.ts",
+        "lib/seed.ts",
+        "fixtures/seed.json",
+        "fixtures/seed.README.md",
+        "tests/backend/seed.test.ts",
+        "tests/import/seed.test.ts",
+        "docs/integration/seed-preparation.md",
+        "docs/handoffs/t-12a.md"
+      ],
+      "packet": "docs/tasks/T-12A.md",
+      "pinnedBaseSha": "ce80c4d0d80b404033fee785f23b2b4640b74a88",
+      "backendTarget": "local actual in-memory component only",
+      "implementationState": "reviewed and locally integrated; full live/phone acceptance pending",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending real data/map"
+    },
+    {
+      "id": "N-SIM-A",
+      "owner": "Cinder",
+      "branch": "t-17-native-simulator-qa",
+      "worktree": "native-simulator-qa",
+      "status": "prepared",
+      "dependencies": [
+        "N-SHARE-C"
+      ],
+      "allowedPaths": [
+        "docs/qa/simulator/",
+        "docs/handoffs/n-sim-a.md",
+        "tests/native/simulator/"
+      ],
+      "packet": "docs/tasks/N-SIM-A.md",
+      "pinnedBaseSha": "4241d266962bb2d7fe2e7d945c9e02ae7a139197",
+      "backendTarget": "NONE; controlled synthetic simulator only",
+      "implementationState": "reviewed and locally integrated; full live/phone acceptance pending",
+      "nativeChecks": "Actual unsigned simulator app+extension build/install passed; placeholder-host flow and App Group save blocked",
+      "phoneAcceptance": "pending realInstagram iOS26.6.1"
+    },
+    {
+      "id": "N-RELEASE-B",
+      "owner": "Loom",
+      "branch": "t-19-dev-backend-release",
+      "worktree": "dev-backend-release",
+      "status": "prepared",
+      "dependencies": [
+        "N-SOURCE-D",
+        "N-RELEASE-A"
+      ],
+      "allowedPaths": [
+        "docs/release/backend/",
+        "docs/handoffs/n-release-b.md",
+        "convex/_generated/",
+        "lib/profile.ts"
+      ],
+      "packet": "docs/tasks/N-RELEASE-B.md",
+      "pinnedBaseSha": "5f3b23e942a25758f9cebe837ab7ccbfe71aff8d",
+      "backendTarget": "proper-marmot-82 dev approved backed-up release only",
+      "implementationState": "dependency-ready assigned packet",
+      "nativeChecks": "pending relevant native build",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "N-LOAD-A",
+      "owner": "Cinder",
+      "branch": "t-18-native-load-recovery",
+      "worktree": "native-load-recovery",
+      "status": "prepared",
+      "dependencies": [
+        "N-SIM-A"
+      ],
+      "allowedPaths": [
+        "ios/App/DinedealsApp.swift",
+        "tests/native/WebLoadChecks.swift",
+        "docs/integration/native-load-recovery.md",
+        "docs/handoffs/n-load-a.md"
+      ],
+      "packet": "docs/tasks/N-LOAD-A.md",
+      "pinnedBaseSha": "5f3b23e942a25758f9cebe837ab7ccbfe71aff8d",
+      "backendTarget": "local implementation only; no external writes",
+      "implementationState": "dependency-ready assigned packet",
+      "nativeChecks": "pending relevant native build",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-14B",
+      "owner": "Prism",
+      "branch": "t-14-recording-frame-bindings",
+      "worktree": "recording-frame-bindings",
+      "status": "prepared",
+      "dependencies": [
+        "T-14A",
+        "T-07C"
+      ],
+      "allowedPaths": [
+        "components/deals/CanonicalPost.tsx",
+        "components/deals/RecordingFrames.tsx",
+        "lib/imageDraftFlow.ts",
+        "lib/recordingFrameFlow.ts",
+        "tests/import/imageDraftFlow.test.ts",
+        "tests/import/recordingFrameFlow.test.ts",
+        "docs/integration/recording-frame-bindings.md",
+        "docs/handoffs/t-14b.md"
+      ],
+      "packet": "docs/tasks/T-14B.md",
+      "pinnedBaseSha": "5f3b23e942a25758f9cebe837ab7ccbfe71aff8d",
+      "backendTarget": "local implementation only; no external writes",
+      "implementationState": "dependency-ready assigned packet",
+      "nativeChecks": "pending relevant native build",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-15B",
+      "owner": "Mica",
+      "branch": "t-15-tip-qr-receipt",
+      "worktree": "tip-qr-receipt",
+      "status": "prepared",
+      "dependencies": [
+        "T-15A",
+        "T-10B"
+      ],
+      "allowedPaths": [
+        "components/TipQR.tsx",
+        "components/deals/CanonicalDealDetails.tsx",
+        "lib/tipReceipt.ts",
+        "tests/import/tipReceipt.test.ts",
+        "package.json",
+        "package-lock.json",
+        "docs/integration/tip-qr-receipt.md",
+        "docs/handoffs/t-15b.md"
+      ],
+      "packet": "docs/tasks/T-15B.md",
+      "pinnedBaseSha": "5f3b23e942a25758f9cebe837ab7ccbfe71aff8d",
+      "backendTarget": "local implementation only; no external writes",
+      "implementationState": "review correction assigned: tip generation/singleflight/strict pending-RPC deadline",
+      "nativeChecks": "pending relevant native build",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-13B",
+      "owner": "Prism",
+      "branch": "t-13-android-share-target",
+      "worktree": "android-share-target",
+      "status": "prepared",
+      "dependencies": [
+        "T-07C",
+        "T-14B"
+      ],
+      "allowedPaths": [
+        "public/manifest.webmanifest",
+        "public/sw.js",
+        "public/share-icon-192.png",
+        "public/share-icon-512.png",
+        "components/PwaShareRegistration.tsx",
+        "components/deals/AndroidShareImport.tsx",
+        "components/deals/CanonicalPost.tsx",
+        "app/layout.tsx",
+        "lib/androidShareInbox.ts",
+        "tests/import/androidShareInbox.test.ts",
+        "tests/setup/androidShareTarget.test.ts",
+        "docs/integration/android-share-target.md",
+        "docs/handoffs/t-13b.md",
+        "next.config.ts"
+      ],
+      "packet": "docs/tasks/T-13B.md",
+      "pinnedBaseSha": "33471604da6a7a926631f79c25aa1a6fe375022d",
+      "backendTarget": "NONE; local source and synthetic tests only",
+      "implementationState": "review correction assigned: receive timeout/TTL/UI stale guards; headers amendment",
+      "nativeChecks": "Android installed PWA unrun; iOS primary separate",
+      "phoneAcceptance": "pending actual Android share"
+    },
+    {
+      "id": "T-16B",
+      "owner": "Loom",
+      "branch": "t-16-demo-cache-bindings",
+      "worktree": "demo-cache-bindings",
+      "status": "prepared",
+      "dependencies": [
+        "T-16A",
+        "T-14B"
+      ],
+      "allowedPaths": [
+        "components/deals/CanonicalPost.tsx",
+        "lib/imageDraftFlow.ts",
+        "lib/demoCache.ts",
+        "lib/demoCacheFlow.ts",
+        "tests/import/demoCacheFlow.test.ts",
+        "tests/import/imageDraftFlow.test.ts",
+        "tests/import/demoCache.test.ts",
+        "docs/integration/demo-cache-bindings.md",
+        "docs/handoffs/t-16b.md"
+      ],
+      "packet": "docs/tasks/T-16B.md",
+      "pinnedBaseSha": "896e55dd19b8d42e09d9e0bc38c145593a92edd7",
+      "backendTarget": "NONE; local source/tests only",
+      "implementationState": "dependency-ready bounded packet",
+      "nativeChecks": "relevant integrated runtime pending",
+      "phoneAcceptance": "pending real device"
+    },
+    {
+      "id": "T-03D",
+      "owner": "Cinder",
+      "branch": "t-03-auth-return-path",
+      "worktree": "auth-return-path",
+      "status": "prepared",
+      "dependencies": [
+        "T-03"
+      ],
+      "allowedPaths": [
+        "app/signin/page.tsx",
+        "app/profile/page.tsx",
+        "lib/authReturn.ts",
+        "tests/auth/authReturn.test.ts",
+        "docs/integration/auth-return-path.md",
+        "docs/handoffs/t-03d.md"
+      ],
+      "packet": "docs/tasks/T-03D.md",
+      "pinnedBaseSha": "896e55dd19b8d42e09d9e0bc38c145593a92edd7",
+      "backendTarget": "NONE; local source/tests only",
+      "implementationState": "dependency-ready bounded packet",
+      "nativeChecks": "relevant integrated runtime pending",
+      "phoneAcceptance": "pending real device"
+    },
+    {
+      "id": "N-CONFIG-D",
+      "owner": "Cinder",
+      "branch": "t-19-regional-release-config",
+      "worktree": "regional-release-config",
+      "status": "prepared",
+      "dependencies": [
+        "N-RELEASE-A"
+      ],
+      "allowedPaths": [
+        "scripts/check-release-config.mjs",
+        "tests/setup/releaseConfig.test.ts",
+        "docs/release/native-release-plan.md",
+        "docs/release/manual-hosting.md",
+        "docs/handoffs/n-config-d.md"
+      ],
+      "packet": "docs/tasks/N-CONFIG-D.md",
+      "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
+      "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
+      "implementationState": "Reviewed locally integrated c40d1c2; bounded scope complete; full-phone acceptance separate",
+      "nativeChecks": "pending actual simulator",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "N-CORE-SIM",
+      "owner": "Mica",
+      "branch": "t-17-core-simulator-readiness",
+      "worktree": "core-simulator-readiness",
+      "status": "prepared",
+      "dependencies": [
+        "N-LOAD-A"
+      ],
+      "allowedPaths": [
+        "docs/qa/core-simulator-readiness.md",
+        "docs/handoffs/n-core-sim.md"
+      ],
+      "packet": "docs/tasks/N-CORE-SIM.md",
+      "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
+      "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
+      "implementationState": "demo core readiness bounded slice assigned",
+      "nativeChecks": "pending actual simulator",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "N-CORE-BACKEND",
+      "owner": "Loom",
+      "branch": "t-19-core-backend-readiness",
+      "worktree": "core-backend-readiness",
+      "status": "prepared",
+      "dependencies": [
+        "N-RELEASE-B"
+      ],
+      "allowedPaths": [
+        "docs/qa/core-backend-readiness.md",
+        "docs/handoffs/n-core-backend.md"
+      ],
+      "packet": "docs/tasks/N-CORE-BACKEND.md",
+      "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
+      "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
+      "implementationState": "Reviewed locally integrated 3f6f10d; bounded scope complete; full-phone acceptance separate",
+      "nativeChecks": "pending actual simulator",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "N-CORE-REVIEW",
+      "owner": "Prism",
+      "branch": "t-17-core-auth-write-review",
+      "worktree": "core-auth-write-review",
+      "status": "prepared",
+      "dependencies": [
+        "N-AUTH-C"
+      ],
+      "allowedPaths": [
+        "docs/qa/core-auth-write-review.md",
+        "docs/handoffs/n-core-review.md"
+      ],
+      "packet": "docs/tasks/N-CORE-REVIEW.md",
+      "pinnedBaseSha": "832fc0bba304ef7d9bb16e952d3590d362dcc829",
+      "backendTarget": "dev proper-marmot-82 read-only unless packet explicitly authorizes",
+      "implementationState": "Reviewed locally integrated d30629e; bounded scope complete; full-phone acceptance separate",
+      "nativeChecks": "pending actual simulator",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "N-SOURCE-TEXT",
+      "owner": "Loom",
+      "branch": "t-05-shared-text-extraction",
+      "worktree": "shared-text-extraction",
+      "status": "prepared",
+      "dependencies": [
+        "N-CORE-BACKEND",
+        "N-CORE-REVIEW"
+      ],
+      "allowedPaths": [
+        "convex/extract.ts",
+        "tests/backend/extractAction.test.ts",
+        "docs/handoffs/n-source-text.md"
+      ],
+      "packet": "docs/tasks/N-SOURCE-TEXT.md",
+      "pinnedBaseSha": "700c46801254010ac1433c7a4ae0f2313a3a52cd",
+      "backendTarget": "NONE; local source/tests only, no cloud/provider invocation",
+      "implementationState": "Reviewed locally integrated 6c3f605; implementation ready",
+      "nativeChecks": "Native capture reused unchanged",
+      "phoneAcceptance": "Pending human web deploy/live extraction/publish; no native source change",
+      "blocker": "Live/phone extraction pending; bare-link automatic retrieval unavailable"
+    },
+    {
+      "id": "N-TEXT-FORM",
+      "owner": "Cinder",
+      "branch": "t-07-caption-form",
+      "worktree": "caption-form",
+      "status": "prepared",
+      "allowedPaths": [
+        "lib/imageDraftFlow.ts",
+        "components/deals/CanonicalPost.tsx",
+        "app/post/page.tsx",
+        "lib/postSource.ts",
+        "tests/import/imageDraftFlow.test.ts",
+        "tests/import/postSource.test.ts",
+        "docs/handoffs/n-text-form.md"
+      ],
+      "packet": "docs/tasks/N-TEXT-FORM.md",
+      "dependencies": [
+        "N-CORE-REVIEW"
+      ],
+      "pinnedBaseSha": "700c46801254010ac1433c7a4ae0f2313a3a52cd",
+      "backendTarget": "NONE; local source/tests only",
+      "implementationState": "reviewed locally integrated at6fb14cb; combined check PASS2070Vitest/23workflow/typecheck/lint/build",
+      "nativeChecks": "web/shared logic checks passed; native-phone UI/provider acceptance pending",
+      "phoneAcceptance": "pending human web release and actual supplied-caption extraction/review/pin/publish/map"
+    },
+    {
+      "id": "N-PUBLIC-ENTRY",
+      "owner": "Cinder",
+      "branch": "t-07-reel-public-entry",
+      "worktree": "reel-public-entry",
+      "status": "prepared",
+      "allowedPaths": [
+        "components/reels/ReelIntake.tsx",
+        "components/reels/CanonicalReelReview.tsx",
+        "tests/import/reelPublicEntry.test.tsx",
+        "docs/handoffs/n-public-entry.md"
+      ],
+      "packet": "docs/tasks/N-PUBLIC-ENTRY.md",
+      "dependencies": [
+        "N-CORE-REVIEW"
+      ],
+      "pinnedBaseSha": "700c46801254010ac1433c7a4ae0f2313a3a52cd",
+      "backendTarget": "NONE; local source/tests only",
+      "implementationState": "Reviewed locally integrated dd93d85; implementation ready",
+      "nativeChecks": "No native source change",
+      "phoneAcceptance": "Pending human web deploy/live extraction/publish; no native source change"
+    },
+    {
+      "id": "N-SHARE-CONTRAST",
+      "owner": "Mica",
+      "branch": "t-18-share-receipt-contrast",
+      "worktree": "share-receipt-contrast",
+      "status": "prepared",
+      "dependencies": [
+        "N-CORE-SIM"
+      ],
+      "allowedPaths": [
+        "ios/ShareExtension/ShareViewController.swift",
+        "docs/qa/share-receipt-contrast.md",
+        "docs/handoffs/n-share-contrast.md",
+        "tests/native/ShareReceiptContrastChecks.swift"
+      ],
+      "packet": "docs/tasks/N-SHARE-CONTRAST.md",
+      "pinnedBaseSha": "8a46e5304949e8c2fa9a84e0333a8e7a6682c982",
+      "backendTarget": "NONE",
+      "implementationState": "reviewed locally integrated at6fb14cb; combined check PASS2070Vitest/23workflow/typecheck/lint/build",
+      "nativeChecks": "Mica actual UIKit original FAIL/fixed PASS; exact fixed app+extension unsigned simulator build PASS; controlled receipt captures only",
+      "phoneAcceptance": "pending William signed rebuild/install and Instagram receipt light/dark check"
+    },
+    {
+      "id": "N-TEXT-SYNC",
+      "owner": "Loom",
+      "branch": "t-19-core-backend-readiness",
+      "worktree": "core-backend-readiness",
+      "status": "prepared",
+      "dependencies": [
+        "N-SOURCE-TEXT"
+      ],
+      "allowedPaths": [
+        "docs/qa/text-backend-sync.md",
+        "docs/handoffs/n-text-sync.md"
+      ],
+      "packet": "docs/tasks/N-TEXT-SYNC.md",
+      "pinnedBaseSha": "3f6f10dce64a1ba21accb492aa47a196dbfac019",
+      "backendTarget": "Explicit dev proper-marmot-82 regional only; fresh private backup; no schema changes",
+      "implementationState": "Authorized sole serialized development function sync",
+      "nativeChecks": "No native source change",
+      "phoneAcceptance": "Pending genuine extraction after web form release"
+    },
+    {
+      "id": "N-POSTS-BACKEND",
+      "owner": "Loom",
+      "branch": "t-10-posts-expiry-backend",
+      "worktree": "posts-expiry-backend",
+      "status": "prepared",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "convex/deals.ts",
+        "convex/crons.ts",
+        "lib/dealRetention.ts",
+        "tests/backend/dealMine.test.ts",
+        "tests/backend/dealRetention.test.ts",
+        "tests/import/dealRetention.test.ts",
+        "docs/handoffs/n-posts-backend.md",
+        "tests/backend/dealWrites.test.ts",
+        "tests/backend/dealImageUpload.test.ts"
+      ],
+      "packet": "docs/tasks/N-POSTS-BACKEND.md",
+      "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",
+      "backendTarget": "local implementation only; proper-marmot-82 dev sync separately reviewed",
+      "phoneAcceptance": "pending William real iPhone",
+      "implementationState": "reviewed locally integrated; combined corrected gate running; live/phone pending"
+    },
+    {
+      "id": "N-POSTS-UI",
+      "owner": "Cinder",
+      "branch": "t-10-my-posts-section",
+      "worktree": "my-posts-section",
+      "status": "prepared",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "components/deals/MyPublishedDeals.tsx",
+        "app/post/page.tsx",
+        "tests/import/myPublishedDeals.test.tsx",
+        "docs/handoffs/n-posts-ui.md"
+      ],
+      "packet": "docs/tasks/N-POSTS-UI.md",
+      "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",
+      "backendTarget": "local implementation only; proper-marmot-82 dev sync separately reviewed",
+      "phoneAcceptance": "pending William real iPhone",
+      "implementationState": "reviewed locally integrated; combined corrected gate running; live/phone pending"
+    },
+    {
+      "id": "N-INSTAGRAM-KIND",
+      "owner": "Mica",
+      "branch": "t-13-instagram-source-kind",
+      "worktree": "instagram-source-kind",
+      "status": "prepared",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "lib/reels/contract.ts",
+        "ios/Shared/ShareStore.swift",
+        "components/reels/ReelIntake.tsx",
+        "tests/native/ShareStoreChecks.swift",
+        "tests/import/postSource.test.ts",
+        "tests/import/reelPublicEntry.test.tsx",
+        "docs/handoffs/n-instagram-kind.md",
+        "lib/reels/contract.test.ts",
+        "ios/ShareExtension/ShareViewController.swift",
+        "convex/reels.test.ts",
+        "tests/import/nativeSession.test.ts",
+        "tests/native/sessionBridge.test.ts"
+      ],
+      "packet": "docs/tasks/N-INSTAGRAM-KIND.md",
+      "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",
+      "backendTarget": "local implementation only; proper-marmot-82 dev sync separately reviewed",
+      "phoneAcceptance": "pending William real iPhone",
+      "implementationState": "reviewed locally integrated; combined corrected gate running; live/phone pending"
+    },
+    {
+      "id": "N-INSTAGRAM-PAGE-PROBE",
+      "owner": "Loom",
+      "branch": "t-05-instagram-page-probe",
+      "worktree": "instagram-page-probe",
+      "status": "ready",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "convex/instagramPageProbe.ts",
+        "lib/instagramPageProbe.ts",
+        "tests/extraction/instagramPageProbe.test.ts",
+        "docs/handoffs/n-instagram-page-probe.md"
+      ],
+      "packet": "docs/tasks/N-INSTAGRAM-PAGE-PROBE.md",
+      "pinnedBaseSha": "4341076fca3a6d238d02f9af0cac97cb8dcb86bd",
+      "backendTarget": "local only in implementation; subsequent backed-up dev sync and max2 live Gemini calls separately scheduled",
+      "implementationState": "assigned bounded internal diagnostic",
+      "phoneAcceptance": "not application flow; no phone proof"
     }
-  ]
+  ],
+  "completedDependencies": {
+    "T-00": "integrated",
+    "T-01": "DONE \u2014 William confirmation",
+    "T-02": "DONE \u2014 William confirmation"
+  },
+  "localIntegrationBase": "83035c1eeed1c17915764ae0321594315fd5a81b",
+  "authority": "local implementation/tests/commits/reviewed integration; no remote or cloud writes",
+  "workerRouting": "Oct4 latest: Loom Codex GPT6.1Sol/high; Prism ClaudeCode Sonnet5.5/high; Cinder+Mica Antigravity Gemini3.8Flash/high. Same Maestri nodes, requested command approvals bypassed. Northstar GPT6.1Sol/high unchanged.",
+  "releaseAuthority": "Latest William directive: Northstar-only fast-forward push origin t-00-agent-workflow, never main/force; dev proper-marmot-82 sync+seed allowed, dashboard backup before schema change; small-budget live Gemini calls; production web deploy HUMAN only; no account creation/signin by agents; geocoding OFF until real contact supplied."
 }

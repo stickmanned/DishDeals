@@ -1,0 +1,11 @@
+# Harry combined PR read-only review — October4
+
+William reported a new combined PR; Northstar fetched published refs read-only. [PR12](https://github.com/stickmanned/DishDeals/pull/12), head49e45f195df27ee2e01d9c86a7ff15f9b7f82033, base83035c1, branch t-24-combined-build. Remote quality CI SUCCESS observed; PR body is unfilled template. Handoff reports198application tests/23workflow/static build locally, explicitly not phone/provider evidence. No comment, remote merge/push/deployment performed.
+
+Head combines cpy frontend/extraction/search workflow branch3b0a034, Business-Data2e1f2af spreadsheet and Harrys-Frontendffe54c1 brand/reference assets. Native Swift source has no delta from Harry547a74d already incorporated. Business license source is not extracted deals, confirmed pins or validated seed data; it is not imported live. Reference assets are preserved remotely and need no duplicate app/scaffold.
+
+This PR does not contain Northstar's later canonical auth/profile/permissions, owned uploads/manual revision protection, hardened AppGroup/Keychain storage, canonical shared review form/constraints, or new canonical deal CRUD/geospatial component. It still uses alternate workflow publishing/maps and legacy native/resolver code. Broad replacement would regress reviewed integration. Preserve ADR0001 and existing canonical tables/APIs; adapt compatible UI/public-source/backend modules only in new bounded packets, and preserve teammate deployed workflow tables/functions/data before any authorized cloud synchronization. Native branch URLs/Teams remain placeholders; green web CI is not signed install or live iPhone proof.
+
+New cpy public link/text/image and search/comparison capabilities remain additional supported source/secondary features to reconcile, with quota/source/auth constraints visible. Avoid reopening settled T01/T02. Recheck published refs at integration milestones/user updates.
+
+October4 read-only fetch confirms human merged PR12 into maincc47c030d929db130632cf18d124797673414ee2. Northstar did not publish/merge it remotely. Published source remains preserved; the later reviewed local integration is not silently replaced. Concrete preservation artifact assigned Prism NREMOTEA before any deployment.

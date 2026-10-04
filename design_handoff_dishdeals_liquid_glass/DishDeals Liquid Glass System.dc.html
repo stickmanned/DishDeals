@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></link><style>body{margin:0;background:#F8F4EF;font-family:Inter,system-ui,sans-serif;color:#171210}a{color:#F22E4F}a:hover{color:#C81F3D}</style></helmet>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<filter id="lg-lens" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="7" result="n"></feTurbulence><feGaussianBlur in="n" stdDeviation="3" result="nb"></feGaussianBlur><feDisplacementMap in="SourceGraphic" in2="nb" scale="34" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap></filter>
+<filter id="lg-lens-soft" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="1" seed="3" result="n"></feTurbulence><feGaussianBlur in="n" stdDeviation="2" result="nb"></feGaussianBlur><feDisplacementMap in="SourceGraphic" in2="nb" scale="14" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap></filter>
+</defs></svg>
+<div style="max-width:1200px;margin:0 auto;padding:40px 32px 72px;display:flex;flex-direction:column;gap:48px;font-family:Inter,system-ui,sans-serif;color:#171210">
+
+<header style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between">
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;gap:10px;font-weight:700;font-size:26px;letter-spacing:-0.02em"><span style="width:32px;height:32px;border-radius:50%;background:#F22E4F;display:flex;align-items:center;justify-content:center"><span style="width:12px;height:12px;border-radius:50%;background:#fff"></span></span><span>dish<span style="color:#F22E4F">deals</span></span></div>
+    <h1 style="margin:0;font-size:48px;font-weight:400;letter-spacing:-0.03em">Liquid Glass system</h1>
+    <p style="margin:0;max-width:640px;font-size:16px;line-height:1.55;color:#6b625b">Layered translucent material for floating controls. Each surface refracts, blurs and tints what is behind it, and catches light on its edge. Content stays opaque.</p>
+  </div>
+  <span style="padding:8px 14px;border-radius:999px;background:rgba(242,46,79,.12);color:#C81F3D;font-size:12px;font-weight:600;letter-spacing:.06em">GLASS · v2.1</span>
+</header>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px"><h2 style="margin:0;font-size:24px;letter-spacing:-0.02em">1 · The material</h2>
+    <div onClick="{{ toggleLens }}" style="cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;user-select:none"><span>Refraction</span><span style="width:48px;height:28px;border-radius:999px;background:{{ lensTrack }};position:relative;transition:background .25s"><span style="position:absolute;top:2px;left:{{ lensKnob }};width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(23,18,16,.3);transition:left .25s"></span></span></div>
+  </div>
+  <div style="position:relative;overflow:hidden;border-radius:36px;min-height:460px;background:#FFF0D3;display:flex;align-items:center;justify-content:center;padding:32px">
+    <div style="position:absolute;width:380px;height:380px;border-radius:50%;background:#F22E4F;left:6%;top:-80px"></div>
+    <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:#FFC857;right:8%;top:40px"></div>
+    <div style="position:absolute;width:340px;height:340px;border-radius:50%;background:#FF8A5B;left:36%;bottom:-120px"></div>
+    <div style="position:absolute;width:180px;height:180px;border-radius:50%;background:#171210;left:62%;bottom:30px"></div>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-around;font-size:84px;font-weight:700;letter-spacing:-0.04em;line-height:1;color:#171210;opacity:.9;white-space:nowrap;overflow:hidden"><div>tacos $6 · ramen $9 · pizza $5</div><div style="margin-left:-160px">pho $8 · bao $4 · falafel $7</div><div>sushi $12 · arepa $6 · curry $9</div></div>
+    <div style="position:relative;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;width:100%;max-width:960px">
+      <div style="position:relative;padding:24px;border-radius:32px;min-height:170px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;background:rgba(255,255,255,.14);backdrop-filter:{{ bfClear }};-webkit-backdrop-filter:blur(2px) saturate(190%);border:1px solid rgba(255,255,255,.5);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.85),inset -1px -1px 1px rgba(255,255,255,.35),inset 0 0 22px rgba(255,255,255,.2),0 10px 30px rgba(23,18,16,.14),0 2px 6px rgba(23,18,16,.08)"><span style="position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.5),rgba(255,255,255,0) 35%,rgba(255,255,255,0) 65%,rgba(255,255,255,.28))"></span><b style="position:relative;font-size:18px">Clear</b><span style="position:relative;font-size:13px">Icon-only controls over media</span></div>
+      <div style="position:relative;padding:24px;border-radius:32px;min-height:170px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;background:rgba(255,255,255,.42);backdrop-filter:{{ bfRegular }};-webkit-backdrop-filter:blur(14px) saturate(190%);border:1px solid rgba(255,255,255,.6);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),inset -1px -1px 1px rgba(255,255,255,.4),inset 0 0 22px rgba(255,255,255,.25),0 10px 30px rgba(23,18,16,.14),0 2px 6px rgba(23,18,16,.08)"><span style="position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.5),rgba(255,255,255,0) 35%,rgba(255,255,255,0) 65%,rgba(255,255,255,.28))"></span><b style="position:relative;font-size:18px">Regular</b><span style="position:relative;font-size:13px">Default for text-bearing bars</span></div>
+      <div style="position:relative;padding:24px;border-radius:32px;min-height:170px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;background:rgba(242,46,79,.72);color:#fff;backdrop-filter:{{ bfRegular }};-webkit-backdrop-filter:blur(14px) saturate(190%);border:1px solid rgba(255,255,255,.55);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.7),inset -1px -1px 1px rgba(255,255,255,.25),inset 0 0 22px rgba(255,255,255,.15),0 12px 32px rgba(242,46,79,.4)"><span style="position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.45),rgba(255,255,255,0) 35%,rgba(255,255,255,0) 65%,rgba(255,255,255,.2))"></span><b style="position:relative;font-size:18px">Tinted</b><span style="position:relative;font-size:13px">Primary action, brand red</span></div>
+      <div style="position:relative;padding:24px;border-radius:32px;min-height:170px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;background:rgba(23,18,16,.72);color:#fff;backdrop-filter:{{ bfRegular }};-webkit-backdrop-filter:blur(14px) saturate(160%);border:1px solid rgba(255,255,255,.28);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.45),inset -1px -1px 1px rgba(255,255,255,.1),0 12px 32px rgba(23,18,16,.3)"><span style="position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(135deg,rgba(255,255,255,.28),rgba(255,255,255,0) 35%)"></span><b style="position:relative;font-size:18px">Dark</b><span style="position:relative;font-size:13px">Selected state, toasts</span></div>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+  <h2 style="margin:0;font-size:24px;letter-spacing:-0.02em">2 · Anatomy: six layers, back to front</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:12px">
+    <sc-for list="{{ layers }}" as="l" hint-placeholder-count="6"><div style="background:#fff;border-radius:20px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start"><span style="flex:none;width:32px;height:32px;border-radius:50%;background:#171210;color:#fff;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ l.n }}</span><div style="display:flex;flex-direction:column;gap:4px"><b style="font-size:16px">{{ l.name }}</b><span style="font-size:14px;line-height:1.5;color:#6b625b">{{ l.desc }}</span></div></div></sc-for>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+  <h2 style="margin:0;font-size:24px;letter-spacing:-0.02em">3 · Tokens</h2>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:20px">
+    <div style="background:#fff;border-radius:24px;padding:22px;display:flex;flex-direction:column;gap:10px">
+      <b style="font-size:16px">Glass</b>
+      <sc-for list="{{ glassTokens }}" as="t" hint-placeholder-count="8"><div style="display:flex;justify-content:space-between;gap:16px;font-size:13px;padding:8px 0;border-top:1px solid #f0e9e1"><code style="font-family:ui-monospace,Menlo,monospace;color:#C81F3D">{{ t.k }}</code><span style="color:#4a413b;text-align:right">{{ t.v }}</span></div></sc-for>
+    </div>
+    <div style="background:#fff;border-radius:24px;padding:22px;display:flex;flex-direction:column;gap:10px">
+      <b style="font-size:16px">Shape, motion, type</b>
+      <sc-for list="{{ otherTokens }}" as="t" hint-placeholder-count="8"><div style="display:flex;justify-content:space-between;gap:16px;font-size:13px;padding:8px 0;border-top:1px solid #f0e9e1"><code style="font-family:ui-monospace,Menlo,monospace;color:#C81F3D">{{ t.k }}</code><span style="color:#4a413b;text-align:right">{{ t.v }}</span></div></sc-for>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+  <h2 style="margin:0;font-size:24px;letter-spacing:-0.02em">4 · Components</h2>
+  <div style="position:relative;overflow:hidden;border-radius:36px;padding:32px;background:#F8F4EF;display:flex;flex-direction:column;gap:28px">
+    <div style="position:absolute;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,#F22E4F,rgba(242,46,79,0) 70%);top:-100px;right:-80px;opacity:.65"></div>
+    <div style="position:absolute;width:460px;height:460px;border-radius:50%;background:radial-gradient(circle,#FFC857,rgba(255,200,87,0) 70%);bottom:-140px;left:-120px;opacity:.85"></div>
+    <div style="position:absolute;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,#FF8A5B,rgba(255,138,91,0) 70%);top:35%;left:45%;opacity:.55"></div>
+
+    <div style="position:relative;display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#C81F3D">TOP BAR + SEARCH</span>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+        <div style="position:relative;flex:1;min-width:260px;display:flex;align-items:center;gap:12px;padding:0 20px;height:52px;border-radius:999px;background:rgba(255,255,255,.42);backdrop-filter:url(#lg-lens-soft) blur(14px) saturate(190%);-webkit-backdrop-filter:blur(14px) saturate(190%);border:1px solid rgba(255,255,255,.6);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),inset -1px -1px 1px rgba(255,255,255,.4),inset 0 0 20px rgba(255,255,255,.25),0 10px 30px rgba(23,18,16,.12)"><span style="width:18px;height:18px;border-radius:50%;border:2.5px solid #171210;box-sizing:border-box"></span><span style="font-size:16px;color:#4a413b;flex:1">Tacos, ramen, pizza…</span></div>
+        <span style="width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.18);backdrop-filter:url(#lg-lens-soft) blur(6px) saturate(190%);-webkit-backdrop-filter:blur(6px) saturate(190%);border:1px solid rgba(255,255,255,.55);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.85),inset -1px -1px 1px rgba(255,255,255,.3),0 8px 24px rgba(23,18,16,.14);font-size:20px;font-weight:300">+</span>
+      </div>
+    </div>
+
+    <div style="position:relative;display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#C81F3D">SEGMENTED CONTROL · TOGGLE · BUTTONS</span>
+      <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:center">
+        <div style="position:relative;display:flex;padding:4px;border-radius:999px;background:rgba(255,255,255,.3);backdrop-filter:blur(14px) saturate(180%);-webkit-backdrop-filter:blur(14px) saturate(180%);border:1px solid rgba(255,255,255,.5);box-shadow:inset 0 1px 2px rgba(23,18,16,.08)">
+          <span style="position:absolute;top:4px;bottom:4px;left:{{ thumbLeft }};width:calc((100% - 8px) / 3);border-radius:999px;background:rgba(255,255,255,.8);box-shadow:inset 1px 1px 1px #fff,0 4px 12px rgba(23,18,16,.15);transition:left .35s cubic-bezier(.3,1.4,.5,1)"></span>
+          <sc-for list="{{ segs }}" as="s" hint-placeholder-count="3"><span onClick="{{ s.pick }}" style="position:relative;cursor:pointer;width:96px;text-align:center;padding:12px 0;font-size:14px;font-weight:{{ s.w }};user-select:none">{{ s.label }}</span></sc-for>
+        </div>
+        <div onClick="{{ toggleSw }}" style="cursor:pointer;width:64px;height:36px;border-radius:999px;position:relative;background:{{ swTrack }};border:1px solid rgba(255,255,255,.55);box-shadow:inset 0 1px 3px rgba(23,18,16,.2);transition:background .25s"><span style="position:absolute;top:3px;left:{{ swKnob }};width:36px;height:28px;border-radius:999px;background:rgba(255,255,255,.92);box-shadow:inset 1px 1px 1px #fff,0 3px 10px rgba(23,18,16,.3);transition:left .3s cubic-bezier(.3,1.4,.5,1)"></span></div>
+        <span style="padding:0 28px;height:52px;display:flex;align-items:center;border-radius:999px;background:rgba(242,46,79,.82);color:#fff;font-size:16px;font-weight:600;border:1px solid rgba(255,255,255,.55);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.65),inset -1px -1px 1px rgba(255,255,255,.2),0 10px 28px rgba(242,46,79,.4)" style-hover="filter:brightness(1.06)">Publish deal</span>
+        <span style="padding:0 28px;height:52px;display:flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.42);backdrop-filter:blur(14px) saturate(190%);-webkit-backdrop-filter:blur(14px) saturate(190%);font-size:16px;font-weight:500;border:1px solid rgba(255,255,255,.6);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),inset -1px -1px 1px rgba(255,255,255,.4),0 8px 24px rgba(23,18,16,.12)">Edit</span>
+      </div>
+    </div>
+
+    <div style="position:relative;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+      <div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#C81F3D">FILTER CHIPS</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="padding:12px 18px;border-radius:999px;background:rgba(23,18,16,.82);color:#fff;font-size:15px;font-weight:500;border:1px solid rgba(255,255,255,.25);box-shadow:inset 1px 1px 1px rgba(255,255,255,.4)">Any price</span><span style="padding:12px 18px;border-radius:999px;background:rgba(255,255,255,.4);backdrop-filter:blur(12px) saturate(190%);-webkit-backdrop-filter:blur(12px) saturate(190%);font-size:15px;font-weight:500;border:1px solid rgba(255,255,255,.6);box-shadow:inset 1px 1px 1px rgba(255,255,255,.9)">Open now</span><span style="padding:12px 18px;border-radius:999px;background:rgba(255,255,255,.4);backdrop-filter:blur(12px) saturate(190%);-webkit-backdrop-filter:blur(12px) saturate(190%);font-size:15px;font-weight:500;border:1px solid rgba(255,255,255,.6);box-shadow:inset 1px 1px 1px rgba(255,255,255,.9)">Filters</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#C81F3D">MAP PINS</span>
+        <div style="display:flex;gap:12px"><span style="width:44px;height:44px;border-radius:50%;background:rgba(242,46,79,.88);border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;box-shadow:0 8px 20px rgba(242,46,79,.45)">$6</span><span style="width:44px;height:44px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;box-shadow:0 8px 20px rgba(23,18,16,.2)">$9</span><span style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.4);backdrop-filter:blur(10px) saturate(190%);-webkit-backdrop-filter:blur(10px) saturate(190%);border:1px solid rgba(255,255,255,.7);box-shadow:inset 1px 1px 1px #fff,0 6px 16px rgba(23,18,16,.15);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">$5</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#C81F3D">TOAST</span>
+        <div style="padding:14px 20px;border-radius:20px;background:rgba(23,18,16,.78);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);color:#fff;font-size:14px;border:1px solid rgba(255,255,255,.25);box-shadow:inset 1px 1px 1px rgba(255,255,255,.35),0 12px 30px rgba(23,18,16,.3)">Deal published · visible nearby</div>
+      </div>
+    </div>
+
+    <div style="position:relative;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-end">
+      <div style="display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#C81F3D">TAB BAR</span>
+        <div style="display:flex;gap:4px;padding:8px;border-radius:999px;background:rgba(255,255,255,.4);backdrop-filter:url(#lg-lens-soft) blur(16px) saturate(190%);-webkit-backdrop-filter:blur(16px) saturate(190%);border:1px solid rgba(255,255,255,.6);box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.9),inset -1px -1px 1px rgba(255,255,255,.4),0 14px 36px rgba(23,18,16,.16)"><span style="padding:12px 22px;border-radius:999px;background:rgba(255,255,255,.8);box-shadow:inset 1px 1px 1px #fff,0 3px 10px rgba(23,18,16,.12);font-size:14px;font-weight:600;color:#C81F3D">Explore</span><span style="padding:12px 22px;font-size:14px;font-weight:500">Saved</span><span style="padding:12px 22px;font-size:14px;font-weight:500">Post</span><span style="padding:12px 22px;font-size:14px;font-weight:500">Profile</span></div>
+      </div>
+      <div style="flex:1;min-width:300px;max-width:440px;display:flex;flex-direction:column;gap:10px"><span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#C81F3D">SHEET (glass handle and header, opaque body)</span>
+        <div style="border-radius:32px;overflow:hidden;box-shadow:0 20px 50px rgba(23,18,16,.2)"><div style="padding:12px 20px 14px;background:rgba(255,255,255,.55);backdrop-filter:blur(20px) saturate(190%);-webkit-backdrop-filter:blur(20px) saturate(190%);border-bottom:1px solid rgba(255,255,255,.7);display:flex;flex-direction:column;align-items:center;gap:8px"><span style="width:40px;height:5px;border-radius:3px;background:rgba(23,18,16,.25)"></span><b style="font-size:17px">Nearby deals</b></div><div style="background:#fff;padding:18px 20px;display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:16px;font-weight:600">Two tacos + agua fresca</span><span style="padding:4px 10px;border-radius:10px;background:#FFF0D3;font-weight:600">$8</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="display:flex;flex-direction:column;gap:16px">
+  <h2 style="margin:0;font-size:24px;letter-spacing:-0.02em">5 · Recipe to copy</h2>
+  <pre style="margin:0;padding:24px;border-radius:24px;background:#171210;color:#f4ece4;font-size:13px;line-height:1.6;overflow:auto;font-family:ui-monospace,Menlo,monospace">{{ recipe }}</pre>
+</section>
+
+<section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px">
+  <div style="padding:22px;border-radius:24px;background:#E6F4EA;color:#1e5b34;font-size:14px;line-height:1.7"><b>Do</b><br>Float glass above content: search, filters, tab bar, pins, sheet headers.<br>Keep a lit top-left edge and a faint bottom-right edge on every pane.<br>Keep primary controls at least 48 pt tall.<br>Nest at most one glass layer inside another.</div>
+  <div style="padding:22px;border-radius:24px;background:#FDE8EB;color:#8f1a31;font-size:14px;line-height:1.7"><b>Don't</b><br>Put prices, conditions or long copy on glass.<br>Stack more than two glass layers on screen at once.<br>Use refraction on small chips (the filter distorts text).<br>Use glass fills below .40 white behind text.</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { seg: 0, sw: true, lens: true };
+  renderVals() {
+    const { seg, sw, lens } = this.state;
+    const labels = ['Deals', 'Map', 'Saved'];
+    return {
+      toggleLens: () => this.setState(s => ({ lens: !s.lens })),
+      lensTrack: lens ? '#F22E4F' : 'rgba(23,18,16,.25)',
+      lensKnob: lens ? '22px' : '2px',
+      bfClear: (lens ? 'url(#lg-lens) ' : '') + 'blur(2px) saturate(190%)',
+      bfRegular: (lens ? 'url(#lg-lens) ' : '') + 'blur(14px) saturate(190%)',
+      thumbLeft: `calc(4px + ${seg} * (100% - 8px) / 3)`,
+      segs: labels.map((label, i) => ({ label, w: i === seg ? 600 : 500, pick: () => this.setState({ seg: i }) })),
+      toggleSw: () => this.setState(s => ({ sw: !s.sw })),
+      swTrack: sw ? 'rgba(242,46,79,.85)' : 'rgba(23,18,16,.22)',
+      swKnob: sw ? '27px' : '3px',
+      layers: [
+        ['Refraction', 'SVG displacement filter bends the backdrop (url(#lg-lens)). Chromium only; other browsers fall back to blur.'],
+        ['Blur + saturation', 'blur 14 px, saturate 190%. Colors behind the pane stay vivid instead of turning grey.'],
+        ['Tint', 'White 14–42% for light glass, brand red 72% for primary, ink 72% for dark.'],
+        ['Specular rim', 'inset 1.5px 1.5px white .85 on the top-left, inset -1px -1px white .35 on the bottom-right.'],
+        ['Sheen', 'A 135° gradient from white .5 to transparent to white .28, drawn as an overlay.'],
+        ['Shadow', 'Two stacked drops: 0 10 30 at .14 and 0 2 6 at .08. Tinted panes use a colored shadow.']
+      ].map((a, i) => ({ n: i + 1, name: a[0], desc: a[1] })),
+      glassTokens: [
+        ['--glass-clear-fill', 'rgba(255,255,255,.14–.18)'],
+        ['--glass-regular-fill', 'rgba(255,255,255,.42)'],
+        ['--glass-tint-fill', 'rgba(242,46,79,.72–.82)'],
+        ['--glass-dark-fill', 'rgba(23,18,16,.72–.88)'],
+        ['--glass-blur', '14px (clear 2–6, sheet 20)'],
+        ['--glass-saturate', '190%'],
+        ['--glass-edge', '1px rgba(255,255,255,.6)'],
+        ['--glass-rim-light', 'inset 1.5px 1.5px 1px rgba(255,255,255,.9)']
+      ].map(a => ({ k: a[0], v: a[1] })),
+      otherTokens: [
+        ['--radius-pill', '999px (controls, bars)'],
+        ['--radius-panel', '32px (glass panels)'],
+        ['--radius-card', '24px (opaque cards)'],
+        ['--space', '4 · 8 · 12 · 16 · 24 · 32'],
+        ['--ease-spring', 'cubic-bezier(.3,1.4,.5,1) · 350ms'],
+        ['--font', 'Inter 400 / 500 / 600 / 700'],
+        ['--ink · --brand', '#171210 · #F22E4F'],
+        ['--canvas · --price', '#F8F4EF · #FFF0D3']
+      ].map(a => ({ k: a[0], v: a[1] })),
+      recipe: `<svg width="0" height="0" style="position:absolute"><filter id="lg-lens" x="-5%" y="-5%" width="110%" height="110%">
+  <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="7" result="n"/>
+  <feGaussianBlur in="n" stdDeviation="3" result="nb"/>
+  <feDisplacementMap in="SourceGraphic" in2="nb" scale="34" xChannelSelector="R" yChannelSelector="G"/>
+</filter></svg>
+
+.glass {
+  position: relative;
+  background: rgba(255,255,255,.42);
+  -webkit-backdrop-filter: blur(14px) saturate(190%);
+  backdrop-filter: url(#lg-lens) blur(14px) saturate(190%);
+  border: 1px solid rgba(255,255,255,.6);
+  border-radius: 32px;
+  box-shadow:
+    inset 1.5px 1.5px 1px rgba(255,255,255,.9),
+    inset -1px -1px 1px rgba(255,255,255,.4),
+    inset 0 0 22px rgba(255,255,255,.25),
+    0 10px 30px rgba(23,18,16,.14),
+    0 2px 6px rgba(23,18,16,.08);
+}
+.glass::before { /* sheen */
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,.5), rgba(255,255,255,0) 35%,
+              rgba(255,255,255,0) 65%, rgba(255,255,255,.28));
+}`
+    };
+  }
+}
+</script>
+</body>
+</html>

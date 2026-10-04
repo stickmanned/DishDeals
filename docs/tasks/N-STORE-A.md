@@ -1,0 +1,7 @@
+# N-STORE-A — bounded native storage integration hardening
+
+Northstar owns this serial coordinator integration slice in the existing workflow checkout, branch `t-00-agent-workflow`, base `740391b`. Writable source only `ios/Shared/ShareStore.swift`, `ios/App/DinedealsApp.swift`, `ios/ShareExtension/ShareViewController.swift`, `tests/native/ShareStoreChecks.swift`, plus packet/handoff/status docs. No worker writes Swift and Harry has handed off his published native contribution. Reuse his existing extension/app; no replacement or stack/signing change.
+
+Remove forced unwraps of shared-container, group, Keychain and trusted website configuration. Missing signing/capabilities must fail safely and leave the existing extension's configuration error path usable. Keep private atomic protected files. Parse/validate small inbox records, reject malformed/expired/future-dated/wrong-kind records and invalid item IDs, preserve normalized source links, select oldest valid save rather than UUID order. Receipt cleanup still follows verified server save. Do not log source links, credentials or token values. No auto-open promise, external requests, accounts/provisioning or shared-group assumptions.
+
+Run real Swift/Foundation deterministic parser checks (synthetic only), source typechecks and actual unchanged-scheme unsigned generic iOS Simulator SDK app/extension build. Runtime execution and device signing/Instagram acceptance remain pending. Scoped local commit and handoff; no cloud/remote actions.

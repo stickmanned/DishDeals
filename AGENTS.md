@@ -20,10 +20,10 @@ The effective repository is `/Users/william/Code/DishDeals` or an explicitly ass
 - Fetch published teammate branches before building a subsystem, so you extend their work instead of duplicating it.
 - Run `maestri list` (or `"$MAESTRI_CLI" list`) before addressing connected teammates or notes. Reuse Northstar, Loom, Prism, Cinder and Mica; see Gemini-first routing in docs/agent-workflow.md. Northstar coordinates and alone maintains Delivery Board/shared status. No duplicate recruits or circular blocking requests.
 - Agree branch/checkout, exact writable paths, acceptance, and checks before edits. Use `t-XX-short-name` branches. Overlapping writers require isolated checkouts or serial work. Preserve human and teammate changes.
-- Follow plan security/data rules: server-only keys, no committed `.env*`, signed-in checks on protected operations, no Instagram scraping, browser-computed current validity, America/Vancouver local times, schema-validated extraction, null-to-undefined conversion for optional Convex fields. Server secrets never go in Git or chat.
+- Follow plan security/data rules: server-only keys, no committed `.env*`, signed-in checks on protected operations, no Instagram scraping (sole exception: retrieving the Reel a user shared by link, see docs/decisions/0006-reel-link-retrieval-reauthorized.md), browser-computed current validity, America/Vancouver local times, schema-validated extraction, null-to-undefined conversion for optional Convex fields. Server secrets never go in Git or chat.
 - Inspect current official documentation for version-sensitive SDK/setup claims. Keep unavailable models, credentials, or deployment steps explicit; never invent successful backend or API evidence.
 - Run relevant checks from the plan and report exact results or blockers. No false passes for unrun commands, empty tests, mocks, phone-only behavior, or external provisioning.
-- The workflow instruction authorizes scoped task commits, branch pushes and draft PRs. Only Northstar integrates reviewed green PRs. Do not force push, deploy, submit purchases or create accounts. Cloud changes require specific authorization; old T-02 dev sync approval is scoped to T-02.
+- The current assignment authorizes scoped local commits and reviewed local integration. Remote pushes and PR publication require separate authorization. Only Northstar integrates reviewed work. Do not force push, deploy, submit purchases or create accounts. Cloud changes require specific authorization; old T-02 dev sync approval is scoped to T-02.
 - Return ticket status, branch/checkout, changed files, checks, human phone/setup steps, lessons learned, and the next proposed ticket. Stop if stuck for 30 minutes as the plan directs.
 
 ## Tests are the contract
@@ -44,13 +44,15 @@ When a human or reviewer corrects you, or you lose time to something a later age
 
 ## Gemini workers
 
+Applies when a lane runs on Gemini or Antigravity. Current model routing for each lane is in the dated notes at the top of `docs/agent-workflow.md`.
+
 - Default to small bounded Flash tasks: Prism handles reconnaissance and fixtures, Cinder validity, Mica distance and small utilities. Read your exact T-04A, T-04B or T-05R packet and confirm its worktree and paths before writing.
 - At most three Gemini requests run concurrently across the workspace; no nested agent fan-out.
 - Use short relevant context and targeted checks while iterating, then one full `npm run check` per completed PR. Return concise handoffs.
 - After two failed attempts on the same issue, escalate the smallest unresolved question to Northstar.
 - A successful current reply supersedes a stale "out of credits" label. Development-agent access to Google AI is separate from the app's Gemini API credentials. Never enable paid overages or make purchases.
 
-Current scope: T-00 Gemini-first workflow setup; no app feature dispatch implied. T-01/T-02 are committed in 356ec1b; T-02 development schema sync succeeded. Live T-01 browser/HTTPS/phone acceptance remains pending. T-03/T-04A/T-04B task packets are prepared, not automatically dispatched; T-05R is reconciliation before extraction implementation. Read docs/workflow/tasks.json for ownership. All autonomous workers use separate worktrees. Root main is human-owned. No unlimited backlog execution.
+Current coordinator assignment: finish T-03 through T-21 plus native iOS integration in successive dependency-ready bounded batches. William confirms T-01/T-02 DONE; never reopen their acceptance. Each worker receives one exact packet and stops. Harry owns polished frontend and native sharing (SwiftUI/WKWebView+UIKit extension547a74d). William explicitly transferred Pinyuan's stopped map/geocode/pin integration to agents; reuse cpy's published map and consider new branches. Native entry is Saved Reels/Posts with tap-to-map per William's later choice. Northstar alone owns status and reviewed local integration. Read docs/decisions/0002-native-ios-map-home.md and docs/workflow/coverage.md. This assignment authorizes local commits/integration only; no remote pushes/PR publication or cloud operations.
 
 <!-- convex-ai-start -->
 

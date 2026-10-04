@@ -1,0 +1,3 @@
+# Published-backend time compatibility correction
+
+Northstar workflow/t-00-agent-workflow basece80c4d. Preserved workflow expiry and search time windows nowreuse the alreadyreviewed canonical Vancouver formatter for America/Vancouver; other timezones and preMarch2026 history retain originalIntl. Current official BC announcement checked; no November2026 fallback. Table/API contracts unchanged. 27 actual targeted synthetic workflow/search tests PASS, including new cross-midnight expiry and overnight/endexclusive availability; typecheck and targeted lint PASS. Log /tmp/dishdeals-preserved-time-check.log. Next combined batch check pending; no provider/native/phone evidence. Existing workers have no write overlap.
