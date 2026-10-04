@@ -101,10 +101,11 @@ William has requested direct on-device testing on his physical iPhone (iOS 26; m
 Official Apple Documentation: [About Your Developer Account (Personal Team)](https://developer.apple.com/help/account/basics/about-your-developer-account)
 
 Official technical limits for a free Apple ID / Personal Team:
-1. **10 App IDs** per account.
-2. **3 Test Devices** per platform (iPhone, iPad, etc.).
-3. **7-Day Provisioning Profile Expiry**: Profiles expire weekly, requiring re-building/re-signing from Xcode to continue running.
-4. **App Groups & Capabilities**:
+1. **10 App IDs** per account ([Apple Developer Account Help](https://developer.apple.com/help/account/basics/about-your-developer-account)).
+2. **Up to 3 devices** registered to the account.
+3. **Up to 3 installed apps per device** concurrently signed with a Personal Team certificate.
+4. **7-Day Provisioning Profile Expiry**: All provisioning profiles expire after 7 days, requiring re-building/re-signing from Xcode to continue running.
+5. **App Groups & Capabilities**:
    - Cross-process communication between an iOS containing app and a Share Extension requires [Configuring App Groups](https://developer.apple.com/documentation/xcode/configuring-app-groups).
    - Free Personal Team support for App Groups is restricted/unverified; feasibility must be confirmed in Xcode's automatic signing before assuming shared container access.
 
