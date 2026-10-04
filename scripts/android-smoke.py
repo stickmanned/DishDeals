@@ -31,12 +31,28 @@ def tree(label):
 def visible(label, expected, timeout=40, scroll=False):
     deadline = time.monotonic() + timeout
     swipes = 0
+    launcher_recoveries = 0
     while time.monotonic() < deadline:
         try:
             root = tree(label)
         except (RuntimeError, subprocess.TimeoutExpired):
             # WebView/splash startup can briefly have no accessibility root.
             time.sleep(1)
+            continue
+        # A fresh Google APIs image can show an unrelated launcher ANR during first boot.
+        # Record it and close only Pixel Launcher using actual UI bounds. App ANRs must fail.
+        titles = [node.get("text", "") for node in root.iter("node")
+                  if node.get("resource-id") == "android:id/alertTitle"]
+        if any("DishDeals" in title and "responding" in title for title in titles):
+            raise AssertionError("DishDeals is not responding")
+        if any("Pixel Launcher" in title and "responding" in title for title in titles):
+            screenshot("launcher-anr")
+            launcher_recoveries += 1
+            if launcher_recoveries > 2:
+                raise RuntimeError("Emulator Pixel Launcher repeatedly stopped responding")
+            close = next(node for node in root.iter("node") if node.get("resource-id") == "android:id/aerr_close")
+            tap_node(close)
+            time.sleep(2)
             continue
         for node in root.iter("node"):
             bounds = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
@@ -57,12 +73,15 @@ def visible(label, expected, timeout=40, scroll=False):
     raise AssertionError(f"Missing {expected!r} in {label}")
 
 
-def tap(label, expected):
-    node = visible(label, expected)
+def tap_node(node):
     bounds = list(map(int, re.findall(r"\d+", node.get("bounds", ""))))
     assert len(bounds) == 4 and bounds[2] > bounds[0] and bounds[3] > bounds[1]
     adb("shell", "input", "tap", str((bounds[0] + bounds[2]) // 2), str((bounds[1] + bounds[3]) // 2))
     time.sleep(1)
+
+
+def tap(label, expected):
+    tap_node(visible(label, expected))
 
 
 def screenshot(name):
