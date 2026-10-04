@@ -19,6 +19,18 @@ export default defineSchema({
   }).index("by_owner_url", ["ownerId", "sourceUrl"]).index("by_owner", ["ownerId"]).index("by_expiry", ["expiresAt"]),
   reelLimits: defineTable({ ownerId: v.id("users"), windowStart: v.number(), count: v.number() }).index("by_owner", ["ownerId"]),
 
+  // Private geocoding state (T-08G-B). Both tables are read and written only by internal functions.
+  // geocodeGate: one row (key "nominatim") holding the last time a provider request was granted, so at most
+  // one request per second is allowed for the whole application.
+  geocodeGate: defineTable({ key: v.string(), lastGrantedAt: v.number() }).index("by_key", ["key"]),
+  // geocodeCache: validated candidates per SHA-256 of the core's endpoint/bbox/limit/query cache key (the raw
+  // query text is not stored). Expired rows are ignored and replaced in place.
+  geocodeCache: defineTable({
+    cacheKey: v.string(),
+    results: v.array(v.object({ lat: v.number(), lng: v.number(), label: v.string() })),
+    expiresAt: v.number(),
+  }).index("by_key", ["cacheKey"]).index("by_expiry", ["expiresAt"]),
+
   profiles: defineTable({
     userId: v.id("users"),
     displayName: v.string(), // 2 to 24 characters

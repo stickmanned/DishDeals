@@ -37,6 +37,9 @@ type Env = {
   readonly IMAGE_PROVIDER_USAGE_AUTHORIZED?: string;
   readonly GEMINI_IMAGE_MODEL?: string;
   readonly GEMINI_IMAGE_FALLBACK_MODEL?: string;
+  readonly GEOCODE_USAGE_AUTHORIZED?: string;
+  readonly GEOCODE_USER_AGENT?: string;
+  readonly GEOCODE_ENDPOINT?: string;
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
 };
