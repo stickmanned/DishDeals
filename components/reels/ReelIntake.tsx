@@ -2,49 +2,50 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ConvexReactClient, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { ConvexAuthProvider, useAuthActions, useAuthToken } from "@convex-dev/auth/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import type { Id, Doc } from "@/convex/_generated/dataModel";
-import { normalizeInstagramUrl, reelDraft, reelExtraction, type ReelDraft } from "@/lib/reels/contract";
+import { reelDraft, reelExtraction, type ReelDraft } from "@/lib/reels/contract";
+import { postNativeMessage, recoveredLink, saveReelLink } from "@/lib/nativeSession";
 
-function nativeMessage(value: object) {
-  (window as Window & { webkit?: { messageHandlers?: { dishdeals?: { postMessage: (v: object) => void } } } }).webkit?.messageHandlers?.dishdeals?.postMessage(value);
-}
+// Uses the canonical root auth session (ConvexClientProvider); it creates no
+// client or auth provider of its own. The session is sent to native by the
+// root CanonicalSessionBridge, not from here.
 export function ReelIntake(props: { itemId?: string; shared?: string }) {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
-  const client = useMemo(() => url ? new ConvexReactClient(url) : null, [url]);
-  useEffect(() => () => { void client?.close(); }, [client]);
-  return client ? <ConvexAuthProvider client={client}><Intake {...props} /></ConvexAuthProvider> :
-    <div className="narrow-page"><div className="page-heading"><h1>Save a Reel.</h1><p>Keep the offer. Find it when you need it.</p></div><div className="panel"><p>Private Reel saves need the DishDeals backend connection. Your link has not been submitted.</p><Link className="button secondary" href="/post">Use a screenshot or caption</Link></div></div>;
+  // Guard the unconfigured path before any Convex hook runs.
+  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+    return <div className="narrow-page"><div className="page-heading"><h1>Save a Reel.</h1><p>Keep the offer. Find it when you need it.</p></div><div className="panel"><p>Private Reel saves need the DishDeals backend connection. Your link has not been submitted.</p><Link className="button secondary" href="/post">Use a screenshot or caption</Link></div></div>;
+  }
+  return <Intake key={`${props.itemId ?? ""}|${props.shared ?? ""}`} {...props} />;
 }
 function Intake({ itemId, shared }: { itemId?: string; shared?: string }) {
-  const router = useRouter(), auth = useConvexAuth(), actions = useAuthActions(), token = useAuthToken();
-  const [text, setText] = useState(shared ?? ""), [days, setDays] = useState(7), [error, setError] = useState(""), [busy, setBusy] = useState(false);
+  const router = useRouter(), auth = useConvexAuth(), actions = useAuthActions();
+  const recovered = useMemo(() => recoveredLink(shared), [shared]);
+  const [text, setText] = useState(recovered ?? ""), [days, setDays] = useState(7), [error, setError] = useState(""), [busy, setBusy] = useState(false);
+  const [declined, setDeclined] = useState(false);
   const submit = useMutation(api.reels.submit);
   const items = useQuery(api.reels.list, auth.isAuthenticated ? {} : "skip");
-  const auto = useRef<string | null>(null);
-  useEffect(() => { nativeMessage({ type: "session", token: token ?? null }); }, [token]);
-  useEffect(() => {
-    if (!shared || !auth.isAuthenticated || auto.current === shared) return;
-    auto.current = shared;
-    let normalized: string;
-    try { normalized = normalizeInstagramUrl(shared); } catch { return; }
-    void submit({ text: normalized }).then(result => { nativeMessage({ type: "received", sourceUrl: normalized }); router.replace(`/reels?item=${result.itemId}`); }).catch(() => setError("Your link could not be saved. Try again below."));
-  }, [auth.isAuthenticated, shared, submit, router]);
+  const awaitingConsent = !!recovered && !declined && !itemId;
   async function save(e: FormEvent) {
     e.preventDefault(); setError(""); setBusy(true);
-    try { const result = await submit({ text: normalizeInstagramUrl(text), retentionDays: days }); setText(""); router.push(`/reels?item=${result.itemId}`); }
+    try {
+      // The receipt message is sent only after the server confirms the save.
+      const saved = await saveReelLink(text, days, args => submit(args));
+      setText(""); router.push(`/reels?item=${saved.itemId}`);
+    }
     catch (e) { setError(e instanceof Error ? e.message : "Could not save the link."); } finally { setBusy(false); }
   }
   return <div className="narrow-page reel-page"><Link className="back-link" href="/">Back to Discover</Link><div className="page-heading"><h1>{itemId ? "Your Reel save." : "Save a Reel."}</h1><p>Private to you. Ready to review when processing finishes.</p></div>
     {auth.isLoading ? <p role="status">Checking your session…</p> : !auth.isAuthenticated ? <ReelSignIn /> : <>
-      <div className="form-actions"><button className="button secondary" onClick={() => nativeMessage({ type: "enableNotifications" })}>Enable iPhone alerts</button><button className="text-button" onClick={() => { nativeMessage({ type: "session", token: null }); void actions.signOut(); }}>Sign out</button></div>
+      <div className="form-actions"><button className="button secondary" onClick={() => postNativeMessage({ type: "enableNotifications" })}>Enable iPhone alerts</button><button className="text-button" onClick={() => { void actions.signOut(); }}>Sign out</button></div>
       {itemId ? <Result key={itemId} itemId={itemId as Id<"reelItems">} /> : <form className="panel form-stack" onSubmit={save}>
+        {awaitingConsent && <div role="note" className="form-stack"><p><b>A link was saved on this iPhone and has not been sent.</b> It is not tied to any account, so we will not send it automatically. Check the link below and choose whether to save it to the account you are signed in to now.</p><button type="button" className="text-button" onClick={() => { setDeclined(true); setText(""); }}>Not now, clear this link</button></div>}
         <label className="field">Instagram Reel link<input required type="text" autoCapitalize="none" value={text} onChange={e => setText(e.target.value)} placeholder="https://www.instagram.com/reel/…" /></label>
         <label className="field">Automatically delete after<select value={days} onChange={e => setDays(Number(e.target.value))}><option value={1}>1 day</option><option value={7}>7 days</option><option value={30}>30 days</option></select></label>
         <p className="muted">We’ll retrieve the public video and analyze its caption, audio and visible text. You review the draft before using it.</p>
-        {error && <p role="alert" className="field-error">{error}</p>}<button className="button primary" disabled={busy}>{busy ? "Saving…" : "Save privately"}</button>
+        {shared && !recovered && <p role="alert" className="field-error">That shared link is not a supported Reel link, so it was not filled in.</p>}
+        {error && <p role="alert" className="field-error">{error}</p>}<button className="button primary" disabled={busy}>{busy ? "Saving…" : awaitingConsent ? "Save this link to my account" : "Save privately"}</button>
       </form>}
       <section className="panel form-stack"><h2>Your saves</h2>{!items ? <p>Loading…</p> : items.length ? items.map(item => <Link key={item._id} href={`/reels?item=${item._id}`} className="reel-history"><span>{item.sourceUrl.split("/").at(-2)}</span><span>{item.status.replaceAll("_", " ")}</span></Link>) : <p className="muted">No saved Reels yet.</p>}{itemId && <Link href="/reels">Save another Reel</Link>}</section>
     </>}<p className="muted"><Link href="/post">Share a screenshot or caption</Link></p></div>;
@@ -57,7 +58,7 @@ function ReelSignIn() {
 function Result({ itemId }: { itemId: Id<"reelItems"> }) {
   const item = useQuery(api.reels.get, { itemId }), retry = useMutation(api.reels.retry), remove = useMutation(api.reels.remove), retention = useMutation(api.reels.setRetention);
   const router = useRouter(), [error, setError] = useState(""), [busy, setBusy] = useState(false), announced = useRef(false);
-  useEffect(() => { if (item && ["ready", "no_deal", "failed"].includes(item.status) && !announced.current) { announced.current = true; nativeMessage({ type: "result", itemId, status: item.status }); } }, [item, itemId]);
+  useEffect(() => { if (item && ["ready", "no_deal", "failed"].includes(item.status) && !announced.current) { announced.current = true; postNativeMessage({ type: "result", itemId, status: item.status as "ready" | "no_deal" | "failed" }); } }, [item, itemId]);
   async function run(task: () => Promise<unknown>) { setBusy(true); setError(""); try { await task(); } catch { setError("That change could not be saved. Try again."); } finally { setBusy(false); } }
   if (!item) return <p role="status">Loading your private save…</p>;
   const labels = { queued: "Received. Your private item is saved.", retrieving: "Reading the Reel…", extracting: "Listening and reading the video…", ready: "Your draft is ready to review.", no_deal: "No clear dining offer was found.", failed: "Processing needs attention." };
