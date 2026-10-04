@@ -44,14 +44,27 @@ jobs:
       - name: Prepare emulator
         run: |
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
-          export ANDROID_AVD_HOME="$RUNNER_TEMP/dishdeals-avd"
+          export ANDROID_USER_HOME="$RUNNER_TEMP/dishdeals-android"
+          export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
           mkdir -p "$ANDROID_AVD_HOME"
           # GitHub's Android SDK runner image already has accepted SDK licenses.
           SDK_MANAGER=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | sort -V | tail -1)
           test -n "$SDK_MANAGER"
-          "$SDK_MANAGER" "emulator" "system-images;android-35;google_apis;x86_64"
+          # Reuse the runner's emulator instead of forcing an unnecessary SDK update.
+          if ! test -x "$ANDROID_HOME/emulator/emulator"; then
+            "$SDK_MANAGER" "emulator"
+          fi
+          for attempt in 1 2 3; do
+            "$SDK_MANAGER" "system-images;android-35;google_apis;x86_64" && break
+            if test "$attempt" = 3; then exit 1; fi
+            sleep 2
+          done
           echo no | "$(dirname "$SDK_MANAGER")/avdmanager" create avd --force --name dishdeals --path "$ANDROID_AVD_HOME/dishdeals.avd" --package "system-images;android-35;google_apis;x86_64" --device pixel_6
-          test -f "$ANDROID_AVD_HOME/dishdeals.ini"
+          test -f "$ANDROID_AVD_HOME/dishdeals.avd/config.ini"
+          # avdmanager and emulator versions can disagree on the default INI directory.
+          if ! test -f "$ANDROID_AVD_HOME/dishdeals.ini"; then
+            printf 'avd.ini.encoding=UTF-8\npath=%s\ntarget=android-35\n' "$ANDROID_AVD_HOME/dishdeals.avd" > "$ANDROID_AVD_HOME/dishdeals.ini"
+          fi
           sudo chmod 666 /dev/kvm
           "$ANDROID_HOME/emulator/emulator" -avd dishdeals -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > emulator.log 2>&1 &
       - name: Test installed app
