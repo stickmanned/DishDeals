@@ -3,6 +3,13 @@ import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
 import { workflowTables } from "./workflowTables";
 
+// Private native supplied-context v1 (see lib/reels/nativeContext.ts for the strict bounds the server enforces).
+// receivedAt is the device receipt clock in Unix seconds, never a publication time.
+export const nativeContextValidator = v.object({
+  version: v.literal(1), textFragments: v.array(v.string()), registeredTypes: v.array(v.string()),
+  receivedAt: v.number(), truncated: v.boolean(),
+});
+
 export default defineSchema({
   // Published teammate workflow collections (proper-marmot-82 deployed): preserved so a later sync cannot drop them.
   ...workflowTables,
@@ -18,6 +25,8 @@ export default defineSchema({
     draftRevision: v.optional(v.number()), draftEdited: v.optional(v.boolean()), // legacy rows: 0 / false
     // User-supplied recording (absent on legacy and link-only rows). mediaMime is the type sent to the provider; duration is browser-supplied.
     sourceKind: v.optional(v.literal("supplied")), mediaMime: v.optional(v.union(v.literal("video/mp4"), v.literal("video/mov"))), mediaBytes: v.optional(v.number()),
+    // Immutable first receipt from the native share extension. Private to the owner, expires with the item, never a public deal field.
+    nativeContext: v.optional(nativeContextValidator),
     error: v.optional(v.object({ code: v.string(), message: v.string() })),
   }).index("by_owner_url", ["ownerId", "sourceUrl"]).index("by_owner", ["ownerId"]).index("by_expiry", ["expiresAt"]),
   reelLimits: defineTable({ ownerId: v.id("users"), windowStart: v.number(), count: v.number() }).index("by_owner", ["ownerId"]),

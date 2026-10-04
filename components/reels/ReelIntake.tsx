@@ -6,7 +6,7 @@ import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useAuthActions, useConvexAuth as useSessionToken } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import type { Id, Doc } from "@/convex/_generated/dataModel";
-import { postNativeMessage, recoveredLink, saveReelLink } from "@/lib/nativeSession";
+import { postNativeMessage, recoveredLink, requestShareContext, saveReelLink, shareContextForSave, type ShareContextOutcome } from "@/lib/nativeSession";
 import { MAX_CAPTION_BYTES, MAX_CAPTION_CHARS, MAX_DURATION_SECONDS, MAX_MEDIA_BYTES, checkFileChoice, readVideoDuration, uploadSuppliedReel, validateCaption, type VideoProbe } from "@/lib/reels/suppliedMedia";
 import { CanonicalReelReview } from "./CanonicalReelReview";
 import { PublishGuard, createPublishHandler, createSearch, type GateInput } from "@/lib/reels/publish";
@@ -26,14 +26,27 @@ function Intake({ itemId, shared }: { itemId?: string; shared?: string }) {
   const recovered = useMemo(() => recoveredLink(shared), [shared]);
   const [text, setText] = useState(recovered ?? ""), [days, setDays] = useState(7), [error, setError] = useState(""), [busy, setBusy] = useState(false);
   const [declined, setDeclined] = useState(false);
+  // The text native received with a recovered link lives only in this component's memory until the user saves.
+  const [shareContext, setShareContext] = useState<ShareContextOutcome | { status: "pending" }>(() => recovered && !itemId ? { status: "pending" } : { status: "unavailable" });
+  useEffect(() => {
+    if (!recovered || itemId) return;
+    let live = true;
+    const request = requestShareContext(recovered);
+    void request.result.then(outcome => { if (live) setShareContext(outcome); });
+    return () => { live = false; request.cancel(); };
+  }, [recovered, itemId]);
   const submit = useMutation(api.reels.submit);
   const items = useQuery(api.reels.list, auth.isAuthenticated ? {} : "skip");
   const awaitingConsent = !!recovered && !declined && !itemId;
+  const contextPlan = declined ? { action: "none" as const } : shareContextForSave(text, recovered, shareContext);
   async function save(e: FormEvent) {
-    e.preventDefault(); setError(""); setBusy(true);
+    e.preventDefault(); setError("");
+    if (contextPlan.action === "wait") { setError("Still checking for the text shared with this link. Wait a moment, then save."); return; }
+    if (contextPlan.action === "blocked") { setError("The text shared with this link could not be read, so nothing was saved. Clear the link, or share the Reel again from Instagram."); return; }
+    setBusy(true);
     try {
-      // The receipt message is sent only after the server confirms the save.
-      const saved = await saveReelLink(text, days, args => submit(args));
+      // The context goes in the same submit; the receipt message is sent only after the server confirms the save.
+      const saved = await saveReelLink(text, days, args => submit(args), undefined, contextPlan.action === "send" ? contextPlan.context : undefined);
       setText(""); router.push(`/reels?item=${saved.itemId}`);
     }
     catch (e) { setError(e instanceof Error ? e.message : "Could not save the link."); } finally { setBusy(false); }
@@ -43,11 +56,14 @@ function Intake({ itemId, shared }: { itemId?: string; shared?: string }) {
       <div className="form-actions"><button className="button secondary" onClick={() => postNativeMessage({ type: "enableNotifications" })}>Enable iPhone alerts</button><button className="text-button" onClick={() => { void actions.signOut(); }}>Sign out</button></div>
       {itemId ? <Result key={itemId} itemId={itemId as Id<"reelItems">} /> : <form className="panel form-stack" onSubmit={save}>
         {awaitingConsent && <div role="note" className="form-stack"><p><b>A link was saved on this iPhone and has not been sent.</b> It is not tied to any account, so we will not send it automatically. Check the link below and choose whether to save it to the account you are signed in to now.</p><button type="button" className="text-button" onClick={() => { setDeclined(true); setText(""); }}>Not now, clear this link</button></div>}
+        {awaitingConsent && contextPlan.action === "wait" && <p role="status" className="muted">Checking for the text shared with this link…</p>}
+        {awaitingConsent && contextPlan.action === "send" && <p role="status" className="muted">{contextPlan.context.truncated ? "Some of the text shared with this link was cut off. What arrived will be saved privately; analysis will need your complete caption." : "The text shared with this link will be saved privately with it. It is never made public."}</p>}
+        {awaitingConsent && contextPlan.action === "blocked" && <p role="alert" className="field-error">The text shared with this link could not be read, so it will not be saved as if it were complete.</p>}
         <label className="field">Instagram Reel link<input required type="text" autoCapitalize="none" value={text} onChange={e => setText(e.target.value)} placeholder="https://www.instagram.com/reel/…" /></label>
         <label className="field">Automatically delete after<select value={days} onChange={e => setDays(Number(e.target.value))}><option value={1}>1 day</option><option value={7}>7 days</option><option value={30}>30 days</option></select></label>
         <p className="muted">Saving keeps the link private to you. Processing the video depends on the service being available and may fail or be unavailable; the link alone is never analyzed. You review any draft before using it.</p>
         {shared && !recovered && <p role="alert" className="field-error">That shared link is not a supported Reel link, so it was not filled in.</p>}
-        {error && <p role="alert" className="field-error">{error}</p>}<button className="button primary" disabled={busy}>{busy ? "Saving…" : awaitingConsent ? "Save this link to my account" : "Save privately"}</button>
+        {error && <p role="alert" className="field-error">{error}</p>}<button className="button primary" disabled={busy || (awaitingConsent && contextPlan.action !== "send" && contextPlan.action !== "none")}>{busy ? "Saving…" : awaitingConsent ? "Save this link to my account" : "Save privately"}</button>
       </form>}
       <section className="panel form-stack"><h2>Your saves</h2>{!items ? <p>Loading…</p> : items.length ? items.map(item => <Link key={item._id} href={`/reels?item=${item._id}`} className="reel-history"><span>{item.sourceUrl.split("/").at(-2)}</span><span>{item.status.replaceAll("_", " ")}</span></Link>) : <p className="muted">No saved Reels yet.</p>}{itemId && <Link href="/reels">Save another Reel</Link>}</section>
     </>}<p className="muted"><Link href="/post">Share a screenshot or caption</Link></p></div>;
@@ -64,7 +80,7 @@ function Result({ itemId }: { itemId: Id<"reelItems"> }) {
   async function run(task: () => Promise<unknown>) { setBusy(true); setError(""); try { await task(); } catch { setError("That change could not be saved. Try again."); } finally { setBusy(false); } }
   if (!item) return <p role="status">Loading your private save…</p>;
   const labels = { queued: item.sourceKind === "supplied" ? "Recording attached. Waiting to be analyzed." : "Link saved privately. It is not analyzed until you attach your own recording.", retrieving: "Reading the Reel…", extracting: "Listening and reading the video…", ready: "Your draft is ready to review.", no_deal: "No clear dining offer was found.", failed: "Processing needs attention." };
-  return <><div className="panel form-stack"><p role="status" aria-live="polite">{labels[item.status]}</p><a href={item.sourceUrl} target="_blank" rel="noreferrer">Original Reel</a>{item.error && <p role="alert">{item.error.message}</p>}{error && <p role="alert">{error}</p>}<div className="form-actions">{item.status === "failed" && <button disabled={busy || item.attempts >= 5} className="button primary" onClick={() => { announced.current = false; void run(() => retry({ itemId })); }}>Retry processing</button>}<button disabled={busy} className="button secondary" onClick={() => void run(async () => { await remove({ itemId }); router.replace("/reels"); })}>Delete save</button></div>
+  return <><div className="panel form-stack"><p role="status" aria-live="polite">{labels[item.status]}</p><a href={item.sourceUrl} target="_blank" rel="noreferrer">Original Reel</a>{item.nativeContext?.truncated && <p role="note">The text shared with this Reel was cut off. Automatic analysis needs the complete caption: paste it below when you attach your recording, or edit the draft by hand.</p>}{item.error && <p role="alert">{item.error.message}</p>}{error && <p role="alert">{error}</p>}<div className="form-actions">{item.status === "failed" && <button disabled={busy || item.attempts >= 5} className="button primary" onClick={() => { announced.current = false; void run(() => retry({ itemId })); }}>Retry processing</button>}<button disabled={busy} className="button secondary" onClick={() => void run(async () => { await remove({ itemId }); router.replace("/reels"); })}>Delete save</button></div>
     <label className="field">Reset automatic deletion<select disabled={busy} defaultValue="" onChange={e => { const days = Number(e.target.value); if (days) void run(() => retention({ itemId, days })); }}><option value="">Choose retention</option><option value="1">1 day from now</option><option value="7">7 days from now</option><option value="30">30 days from now</option></select></label><p className="muted">Deletes {new Date(item.expiresAt).toLocaleString()}. A recording you attach is kept for retries and deleted after analysis, when you delete this save, or at expiry.</p></div><AttachRecording item={item} processing={["retrieving", "extracting"].includes(item.status)} /><DraftEditor key={itemId} item={item} /></>;
 }
 function browserProbe(): VideoProbe {
