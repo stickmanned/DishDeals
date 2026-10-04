@@ -22,10 +22,12 @@ export const get = query({
     if (deal === null) return null;
 
     // Only the display name and wallet are read from the author's profile.
+    // unique() throws on duplicate rows: a corrupt ownership invariant must
+    // fail the read, never pick an arbitrary wallet/name or vote.
     const profile = await ctx.db
       .query("profiles")
       .withIndex("by_user", (q) => q.eq("userId", deal.authorId))
-      .first();
+      .unique();
 
     const imageUrl = deal.imageId ? await ctx.storage.getUrl(deal.imageId) : null;
 
@@ -37,7 +39,7 @@ export const get = query({
         : await ctx.db
             .query("votes")
             .withIndex("by_deal_user", (q) => q.eq("dealId", dealId).eq("userId", viewerId))
-            .first();
+            .unique();
 
     return {
       ...deal,

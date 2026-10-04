@@ -226,3 +226,37 @@ describe("deals.get: viewerVote", () => {
     expect((await s.alice.query(api.deals.get, { dealId: other }))!.viewerVote).toBeNull();
   });
 });
+
+describe("deals.get: corrupt duplicate ownership rows fail explicitly", () => {
+  it("rejects duplicate author profiles with different wallets, without leaking either", async () => {
+    const s = await setup();
+    await s.addProfile(s.authorId, "Chef One", "WALLET-ONE");
+    await s.addProfile(s.authorId, "Chef Two", "WALLET-TWO");
+    const before = await s.snapshot();
+    for (const caller of [s.t, s.alice]) {
+      const err = await caller.query(api.deals.get, { dealId: s.dealId }).then(
+        () => null,
+        (e: unknown) => e as Error,
+      );
+      expect(err).toBeInstanceOf(Error);
+      for (const leaked of ["WALLET-ONE", "WALLET-TWO", "Chef One", "Chef Two", "author-private@example.invalid"]) {
+        expect(String(err!.message)).not.toContain(leaked);
+      }
+    }
+    expect(await s.snapshot()).toEqual(before);
+  });
+
+  it("rejects duplicate votes by the same viewer; other viewers and signed-out reads are unaffected", async () => {
+    const s = await setup();
+    await s.t.run(async (ctx) => {
+      await ctx.db.insert("votes", { dealId: s.dealId, userId: s.aliceId, value: "still_on" });
+      await ctx.db.insert("votes", { dealId: s.dealId, userId: s.aliceId, value: "expired" });
+    });
+    const before = await s.snapshot();
+    await expect(s.alice.query(api.deals.get, { dealId: s.dealId })).rejects.toThrow();
+    // Only the ambiguous viewer is affected; others and signed-out reads are not.
+    expect((await s.bob.query(api.deals.get, { dealId: s.dealId }))!.viewerVote).toBeNull();
+    expect((await s.t.query(api.deals.get, { dealId: s.dealId }))!.viewerVote).toBeNull();
+    expect(await s.snapshot()).toEqual(before);
+  });
+});
