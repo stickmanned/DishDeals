@@ -6,7 +6,7 @@
   - **Branch:** `t-13-instagram-source-kind`
   - **Worktree:** `/Users/william/Code/DishDeals-worktrees/instagram-source-kind`
   - **Pinned Base SHA:** `dcdda819e97de9c371726dd7ba33585912afe7d5`
-  - **Head SHA:** `d1fb016b162a5d1556e0a4a32b5e3d25a2b565bc`
+  - **Head SHA:** `a4559a4e141ddc5dd73bf73696b3a437b5a166e3`
 - **Scope and Writable Paths:**
   - `lib/reels/contract.ts`
   - `ios/Shared/ShareStore.swift`
@@ -83,6 +83,12 @@
       - **ALL CONTRAST ASSERTIONS PASSED**.
   11. `npm run typecheck`: **Exit code 0**.
   12. `npm run lint`: **Exit code 0** (0 problems, 0 errors, 0 warnings).
+  13. Full Native iOS Simulator Build (`xcodebuild`):
+      - Project: `/Users/william/Code/DishDeals-worktrees/workflow/ios/Dinedeals.xcodeproj` (READONLY, root project.yml and Team edits preserved)
+      - Destination: `platform=iOS Simulator,id=22E6EF8B-CC88-4109-870C-6C924AF613D6` (iPhone 18 Pro)
+      - Parameters: `CODE_SIGNING_ALLOWED=NO -derivedDataPath /tmp/dishdeals-posts-sim-4341076 WEBSITE_URL=https://dishdeals-demo.vercel.app BACKEND_URL=https://proper-marmot-82.ca-central-1.convex.cloud build`
+      - Products generated: `Dinedeals.app` with embedded extension `PlugIns/ReelShare.appex`
+      - **Result:** `** BUILD SUCCEEDED **` (Exit code 0).
 
 - **Stop Condition:**
   - Acceptance reconciliation complete.
