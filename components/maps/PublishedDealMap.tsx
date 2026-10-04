@@ -38,6 +38,7 @@ export function PublishedDealMap(props: PublishedDealMapProps) {
   } = props;
 
   const [DealMapComponent, setDealMapComponent] = useState<ComponentType<DealMapProps> | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -47,8 +48,10 @@ export function PublishedDealMap(props: PublishedDealMapProps) {
           setDealMapComponent(() => mod.DealMap);
         }
       })
-      .catch((err) => {
-        console.error("Failed to load map module", err);
+      .catch(() => {
+        if (mounted) {
+          setLoadError("The map renderer could not load. Please reload or check your connection.");
+        }
       });
     return () => {
       mounted = false;
@@ -71,6 +74,21 @@ export function PublishedDealMap(props: PublishedDealMapProps) {
     const matched = dealLookup.get(mapDeal.id) ?? null;
     onSelectDeal?.(matched);
   };
+
+  if (loadError) {
+    return (
+      <div
+        className={`bitemap bitemap-error-container ${className ?? ""}`}
+        style={style}
+        role="region"
+        aria-label={ariaLabel}
+      >
+        <div className="bitemap-error" role="alert">
+          {loadError}
+        </div>
+      </div>
+    );
+  }
 
   if (!DealMapComponent) {
     return (

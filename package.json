@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run build:map && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -12,7 +12,7 @@
     "agents": "node scripts/agent-workflow.mjs",
     "test:workflow": "node --test scripts/agent-workflow.test.mjs",
     "build:map": "npm --prefix map-component run build",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run test:workflow && npm run build"
+    "check": "npm run build:map && npm run typecheck && npm run lint && npm run test && npm run test:workflow && npm run build"
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.96",

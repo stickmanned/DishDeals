@@ -23,14 +23,100 @@ export interface DealLocationPickerProps {
   location: DealLocationPickerLocation | null;
   search?: (query: string) => Promise<GeocodeCandidate[]>;
   onConfirm: (point: { lat: number; lng: number }) => void;
+  /**
+   * Invoked immediately whenever a new proposal is created (marker drag, map click,
+   * candidate selection, or device location hint) so the parent form can invalidate
+   * previously confirmed coordinates and prevent publishing stale locations.
+   */
+  onInvalidate?: () => void;
   className?: string;
   style?: CSSProperties;
   engine?: "auto" | "maplibre" | "raster";
 }
 
 /** Burnaby context viewport center and zoom */
-const BURNABY_CENTER: [number, number] = [-122.9805, 49.2488];
-const BURNABY_ZOOM = 12;
+export const BURNABY_CENTER: [number, number] = [-122.9805, 49.2488];
+export const BURNABY_ZOOM = 12;
+
+/**
+ * Validates geographic coordinate bounds for Web Mercator and world coordinates.
+ */
+export function isValidLocationPoint(lat: unknown, lng: unknown): boolean {
+  if (typeof lat !== "number" || typeof lng !== "number") return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (Math.abs(lat) > 85.05112878) return false;
+  if (Math.abs(lng) > 180) return false;
+  return true;
+}
+
+/**
+ * Filters candidates to ensure all have valid labels and finite coordinates.
+ */
+export function filterValidCandidates(candidates: readonly GeocodeCandidate[]): GeocodeCandidate[] {
+  if (!Array.isArray(candidates)) return [];
+  return candidates.filter(
+    (c) => c && typeof c.label === "string" && c.label.trim() && isValidLocationPoint(c.lat, c.lng)
+  );
+}
+
+/**
+ * Manages monotonic request IDs to guard against out-of-order or stale async results.
+ */
+export class LocationSearchGuard {
+  private requestId = 0;
+
+  public startSearch(): number {
+    return ++this.requestId;
+  }
+
+  public invalidate(): number {
+    return ++this.requestId;
+  }
+
+  public isCurrent(requestId: number): boolean {
+    return this.requestId === requestId;
+  }
+
+  public getRequestId(): number {
+    return this.requestId;
+  }
+}
+
+export interface ProposalResult {
+  proposedPoint: { lat: number; lng: number };
+  isConfirmed: boolean;
+}
+
+/**
+ * Applies a new unconfirmed proposal after bounds validation and notifies onInvalidate.
+ */
+export function applyNewProposal(
+  coords: { lat: number; lng: number },
+  onInvalidate?: () => void
+): ProposalResult | null {
+  if (!isValidLocationPoint(coords.lat, coords.lng)) {
+    return null;
+  }
+  onInvalidate?.();
+  return {
+    proposedPoint: { lat: coords.lat, lng: coords.lng },
+    isConfirmed: false,
+  };
+}
+
+/**
+ * Validates and executes location confirmation.
+ */
+export function confirmProposal(
+  proposedPoint: { lat: number; lng: number } | null,
+  onConfirm: (point: { lat: number; lng: number }) => void
+): boolean {
+  if (!proposedPoint || !isValidLocationPoint(proposedPoint.lat, proposedPoint.lng)) {
+    return false;
+  }
+  onConfirm({ lat: proposedPoint.lat, lng: proposedPoint.lng });
+  return true;
+}
 
 export function DealLocationPicker(props: DealLocationPickerProps) {
   const {
@@ -39,16 +125,20 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
     location,
     search,
     onConfirm,
+    onInvalidate,
     className,
     style,
     engine = "auto",
   } = props;
 
   const [DealMapComponent, setDealMapComponent] = useState<ComponentType<DealMapProps> | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Proposed point on the map (unconfirmed until explicit user confirmation)
   const [proposedPoint, setProposedPoint] = useState<{ lat: number; lng: number } | null>(
-    location ? { lat: location.lat, lng: location.lng } : null
+    location && isValidLocationPoint(location.lat, location.lng)
+      ? { lat: location.lat, lng: location.lng }
+      : null
   );
   const [isConfirmed, setIsConfirmed] = useState<boolean>(location ? location.confirmed : false);
 
@@ -61,71 +151,63 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
   const [geoMessage, setGeoMessage] = useState<string | null>(null);
 
   // Safe async request identity guard
-  const searchRequestId = useRef(0);
+  const searchGuard = useRef(new LocationSearchGuard());
   const isMounted = useRef(true);
-
-  // Track previous restaurant and address to clear stale candidates and proposals
-  const prevRestaurant = useRef(restaurant);
-  const prevAddress = useRef(address);
 
   // Client-only lazy load of DealMap
   useEffect(() => {
     isMounted.current = true;
+    const guard = searchGuard.current;
     import("@restaurant-deals/map")
       .then((mod) => {
         if (isMounted.current) {
           setDealMapComponent(() => mod.DealMap);
         }
       })
-      .catch((err) => {
-        console.error("Failed to load map module", err);
+      .catch(() => {
+        if (isMounted.current) {
+          setLoadError("The map renderer could not load. Please reload or check your connection.");
+        }
       });
     return () => {
       isMounted.current = false;
-      searchRequestId.current++;
+      guard.invalidate();
     };
   }, []);
 
-  // Update proposed point when parent location prop changes
-  useEffect(() => {
-    if (location) {
+  // Adjust state during render when location prop changes (official React pattern)
+  const [prevLocation, setPrevLocation] = useState(location);
+  if (location !== prevLocation) {
+    setPrevLocation(location);
+    if (location && isValidLocationPoint(location.lat, location.lng)) {
       setProposedPoint({ lat: location.lat, lng: location.lng });
       setIsConfirmed(location.confirmed);
-    } else {
+    } else if (!location) {
       setProposedPoint(null);
       setIsConfirmed(false);
     }
-  }, [location]);
+  }
 
-  // Restaurant or address edits clear stale candidates, messages, and in-flight searches
-  useEffect(() => {
-    const restaurantChanged = prevRestaurant.current !== restaurant;
-    const addressChanged = prevAddress.current !== address;
+  // Adjust state during render when restaurant or address changes
+  const [searchEpoch, setSearchEpoch] = useState(0);
+  const [prevFormContext, setPrevFormContext] = useState({ restaurant, address });
+  if (prevFormContext.restaurant !== restaurant || prevFormContext.address !== address) {
+    setPrevFormContext({ restaurant, address });
+    setSearchEpoch((e) => e + 1);
+    setCandidates([]);
+    setSearchMessage(null);
+    setGeoMessage(null);
+    setIsSearching(false);
+    setSearchQuery([restaurant, address].filter(Boolean).join(", "));
+    setProposedPoint(null);
+    setIsConfirmed(false);
+  }
 
-    if (restaurantChanged || addressChanged) {
-      prevRestaurant.current = restaurant;
-      prevAddress.current = address;
-
-      // Invalidate in-flight search requests
-      searchRequestId.current++;
-
-      // Clear stale candidates and status
-      setCandidates([]);
-      setSearchMessage(null);
-      setGeoMessage(null);
-      setIsSearching(false);
-
-      // Reset query to new restaurant/address
-      const newQuery = [restaurant, address].filter(Boolean).join(", ");
-      setSearchQuery(newQuery);
-
-      // If location wasn't already confirmed, clear proposed point
-      if (!location?.confirmed) {
-        setProposedPoint(null);
-        setIsConfirmed(false);
-      }
-    }
-  }, [restaurant, address, location]);
+  const handleSearchQueryChange = (val: string) => {
+    setSearchQuery(val);
+    searchGuard.current.invalidate();
+    setSearchMessage(null);
+  };
 
   const handleSearch = () => {
     if (!search) {
@@ -139,37 +221,42 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
       return;
     }
 
-    const reqId = ++searchRequestId.current;
+    const reqId = searchGuard.current.startSearch();
+    const epoch = searchEpoch;
     setIsSearching(true);
     setSearchMessage(null);
 
     search(query)
       .then((results) => {
-        if (!isMounted.current || searchRequestId.current !== reqId) return;
+        if (!isMounted.current || !searchGuard.current.isCurrent(reqId) || searchEpoch !== epoch) return;
         setIsSearching(false);
-        setCandidates(results);
-        if (results.length === 0) {
+        const valid = filterValidCandidates(results);
+        setCandidates(valid);
+        if (valid.length === 0) {
           setSearchMessage("No matching locations found. Click or drag directly on the map to set a location.");
         }
       })
-      .catch((err) => {
-        if (!isMounted.current || searchRequestId.current !== reqId) return;
+      .catch(() => {
+        if (!isMounted.current || !searchGuard.current.isCurrent(reqId) || searchEpoch !== epoch) return;
         setIsSearching(false);
         setSearchMessage("Search failed. Please try again or place pin on the map.");
-        console.error("Geocoding search failed", err);
       });
   };
 
   const handleSelectCandidate = (candidate: GeocodeCandidate) => {
-    // Propose location from candidate (unconfirmed until user confirms)
-    setProposedPoint({ lat: candidate.lat, lng: candidate.lng });
-    setIsConfirmed(false);
+    const proposal = applyNewProposal({ lat: candidate.lat, lng: candidate.lng }, onInvalidate);
+    if (proposal) {
+      setProposedPoint(proposal.proposedPoint);
+      setIsConfirmed(false);
+    }
   };
 
   const handleMapLocationChange = (coords: { latitude: number; longitude: number }) => {
-    // Propose unconfirmed location on map click or marker drag
-    setProposedPoint({ lat: coords.latitude, lng: coords.longitude });
-    setIsConfirmed(false);
+    const proposal = applyNewProposal({ lat: coords.latitude, lng: coords.longitude }, onInvalidate);
+    if (proposal) {
+      setProposedPoint(proposal.proposedPoint);
+      setIsConfirmed(false);
+    }
   };
 
   const handleBrowserLocationHint = () => {
@@ -178,16 +265,26 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
       return;
     }
 
+    const reqId = searchGuard.current.getRequestId();
+    const epoch = searchEpoch;
     setGeoMessage("Requesting device location…");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        if (!isMounted.current) return;
-        setProposedPoint({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setIsConfirmed(false); // Hint only! Never automatically confirmed.
-        setGeoMessage("Location proposed as hint. Please adjust and confirm.");
+        if (!isMounted.current || !searchGuard.current.isCurrent(reqId) || searchEpoch !== epoch) return;
+        const proposal = applyNewProposal(
+          { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          onInvalidate
+        );
+        if (proposal) {
+          setProposedPoint(proposal.proposedPoint);
+          setIsConfirmed(false); // Hint only! Never automatically confirmed.
+          setGeoMessage("Location proposed as hint. Please adjust and confirm.");
+        } else {
+          setGeoMessage("Device returned coordinates outside valid bounds.");
+        }
       },
       (err) => {
-        if (!isMounted.current) return;
+        if (!isMounted.current || !searchGuard.current.isCurrent(reqId)) return;
         setGeoMessage(err.message || "Location permission denied or unavailable.");
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -195,9 +292,10 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
   };
 
   const handleConfirm = () => {
-    if (!proposedPoint) return;
-    setIsConfirmed(true);
-    onConfirm({ lat: proposedPoint.lat, lng: proposedPoint.lng });
+    const ok = confirmProposal(proposedPoint, onConfirm);
+    if (ok) {
+      setIsConfirmed(true);
+    }
   };
 
   const draft: DraftLocation | null = proposedPoint
@@ -215,7 +313,7 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
         <input
           type="text"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => handleSearchQueryChange(e.target.value)}
           placeholder="Search restaurant or address"
           aria-label="Location search query"
           style={{ flex: "1 1 200px", padding: "8px 12px", border: "1px solid #dadce0", borderRadius: "4px" }}
@@ -279,13 +377,29 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
             ))}
           </ul>
           <div style={{ fontSize: "11px", color: "#70757a", marginTop: "6px" }}>
-            Attribution: Search results provided by search provider
+            Search data ©{" "}
+            <a
+              href="https://www.openstreetmap.org/copyright"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#1a73e8", textDecoration: "underline" }}
+            >
+              OpenStreetMap contributors
+            </a>
           </div>
         </div>
       )}
 
       <div className="picker-map-viewport" style={{ position: "relative", height: "340px", marginBottom: "12px" }}>
-        {!DealMapComponent ? (
+        {loadError ? (
+          <div
+            className="bitemap-error"
+            role="alert"
+            style={{ padding: "16px", color: "#b3261e", background: "#fce8e6", borderRadius: "8px" }}
+          >
+            {loadError}
+          </div>
+        ) : !DealMapComponent ? (
           <div
             className="bitemap bitemap-loading-container"
             style={{ width: "100%", height: "100%", display: "grid", placeItems: "center" }}
