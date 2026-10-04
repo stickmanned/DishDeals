@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { query } from "./_generated/server";
 import schema from "./schema";
 
@@ -50,5 +50,30 @@ export const get = query({
       imageUrl,
       viewerVote: vote?.value ?? null,
     };
+  },
+});
+
+// Denied-location fallback: only published canonical deals are queried here.
+// Validity and price filtering remain in the shared client selection helper.
+export const listRecent = query({
+  args: { limit: v.number() },
+  returns: v.array(schema.doc("deals").extend({
+    authorName: v.optional(v.string()),
+    imageUrl: v.union(v.string(), v.null()),
+  })),
+  handler: async (ctx, { limit }) => {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
+      throw new ConvexError("Choose a whole-number limit from 1 to 50.");
+    }
+    const deals = await ctx.db.query("deals").order("desc").take(limit);
+    return Promise.all(deals.map(async (deal) => {
+      const profile = await ctx.db.query("profiles")
+        .withIndex("by_user", (q) => q.eq("userId", deal.authorId)).unique();
+      return {
+        ...deal,
+        ...(profile ? { authorName: profile.displayName } : {}),
+        imageUrl: deal.imageId ? await ctx.storage.getUrl(deal.imageId) : null,
+      };
+    }));
   },
 });

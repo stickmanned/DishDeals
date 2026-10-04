@@ -582,6 +582,31 @@
       "implementationState": "dispatched; exact isolated checkout prepared at 1eb2e7c",
       "nativeChecks": "pending real runtime execution",
       "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-09B",
+      "owner": "Northstar",
+      "branch": "t-00-agent-workflow",
+      "worktree": "workflow",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-03"
+      ],
+      "allowedPaths": [
+        "convex/deals.ts",
+        "tests/backend/dealRecent.test.ts",
+        "docs/tasks/T-09B.md",
+        "docs/handoffs/t-09b.md",
+        "docs/workflow/"
+      ],
+      "packet": "docs/tasks/T-09B.md",
+      "pinnedBaseSha": "d846514",
+      "backendTarget": "in-memory checks only; no cloud",
+      "implementationState": "coordinator integration ready; listRecent implemented, nearby/index separate",
+      "localChecks": "npm run check PASS: 510 Vitest, 23 workflow, typecheck/lint/build",
+      "nativeChecks": "pending WKWebView integration",
+      "phoneAcceptance": "pending"
     }
   ],
   "completedDependencies": {
