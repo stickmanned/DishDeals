@@ -404,9 +404,10 @@
       "packet": "docs/tasks/N-FORM-A.md",
       "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
       "backendTarget": "local synthetic checks only; no cloud/provider",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed locally integrated at 1eb2e7c; full native/live acceptance pending",
       "nativeChecks": "native session/form integration pending",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "combined check at a3c549d: 496 Vitest, 23 workflow, typecheck/lint/build PASS; T-04R independent 83 targeted PASS"
     },
     {
       "id": "N-AUTH-A",
@@ -429,9 +430,10 @@
       "packet": "docs/tasks/N-AUTH-A.md",
       "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
       "backendTarget": "local synthetic checks only; no cloud/provider",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed locally integrated at 1eb2e7c; full native/live acceptance pending",
       "nativeChecks": "native session/form integration pending",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "combined check at a3c549d: 496 Vitest, 23 workflow, typecheck/lint/build PASS; T-04R independent 83 targeted PASS"
     },
     {
       "id": "T-04R",
@@ -449,9 +451,10 @@
       "packet": "docs/tasks/T-04R.md",
       "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
       "backendTarget": "local synthetic checks only; no cloud/provider",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed locally integrated at 1eb2e7c; full native/live acceptance pending",
       "nativeChecks": "native session/form integration pending",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "combined check at a3c549d: 496 Vitest, 23 workflow, typecheck/lint/build PASS; T-04R independent 83 targeted PASS"
     },
     {
       "id": "T-06B-ASSETS",
@@ -471,9 +474,114 @@
       "packet": "docs/tasks/T-06B-ASSETS.md",
       "pinnedBaseSha": "2011bf915bff0c25abc8d06cecebe30d0fc78a7b",
       "backendTarget": "public primary-source GET only; no cloud/provider",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed locally integrated at 1eb2e7c; full native/live acceptance pending",
       "nativeChecks": "pending integration",
-      "phoneAcceptance": "pending realuploads/photos/pins"
+      "phoneAcceptance": "pending realuploads/photos/pins",
+      "localChecks": "combined check at a3c549d: 496 Vitest, 23 workflow, typecheck/lint/build PASS; T-04R independent 83 targeted PASS"
+    },
+    {
+      "id": "N-SHARE-DRAFT",
+      "owner": "Loom",
+      "branch": "t-13-reel-draft-guards",
+      "worktree": "reel-draft-guards",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "convex/schema.ts",
+        "convex/reels.ts",
+        "components/reels/ReelIntake.tsx",
+        "convex/reels.test.ts",
+        "tests/backend/reelDraftRevisions.test.ts",
+        "lib/reels/draftRevision.ts",
+        "tests/import/draftRevision.test.ts",
+        "docs/handoffs/n-share-draft.md"
+      ],
+      "packet": "docs/tasks/N-SHARE-DRAFT.md",
+      "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
+      "backendTarget": "local checks only; no cloud/provider actions authorized",
+      "implementationState": "dispatched; exact isolated checkout prepared at 1eb2e7c",
+      "nativeChecks": "pending real runtime execution",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "N-FORM-UI",
+      "owner": "Mica",
+      "branch": "t-07-common-review-form",
+      "worktree": "common-review-form",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "components/deals/DealReviewForm.tsx",
+        "lib/dealReviewForm.ts",
+        "tests/import/dealReviewForm.test.ts",
+        "docs/handoffs/n-form-ui.md"
+      ],
+      "packet": "docs/tasks/N-FORM-UI.md",
+      "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
+      "backendTarget": "local checks only; no cloud/provider actions authorized",
+      "implementationState": "dispatched; exact isolated checkout prepared at 1eb2e7c",
+      "nativeChecks": "pending real runtime execution",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "N-MAP-A",
+      "owner": "Cinder",
+      "branch": "t-08-published-map-location",
+      "worktree": "published-map-location",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "map-component/",
+        "components/maps/DealLocationPicker.tsx",
+        "components/maps/PublishedDealMap.tsx",
+        "lib/mapAdapter.ts",
+        "tests/map/",
+        "package.json",
+        "package-lock.json",
+        "docs/integration/map-contract.md",
+        "docs/handoffs/n-map-a.md",
+        "eslint.config.mjs",
+        "tsconfig.json",
+        "vitest.config.ts"
+      ],
+      "packet": "docs/tasks/N-MAP-A.md",
+      "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
+      "backendTarget": "local checks only; no cloud/provider actions authorized",
+      "implementationState": "dispatched; exact isolated checkout prepared at 1eb2e7c",
+      "nativeChecks": "pending real runtime execution",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-08G-CORE",
+      "owner": "Prism",
+      "branch": "t-08-geocode-policy-core",
+      "worktree": "geocode-policy-core",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "lib/geocodeCore.ts",
+        "tests/geocode/",
+        "docs/integration/geocode-policy.md",
+        "docs/handoffs/t-08g-core.md"
+      ],
+      "packet": "docs/tasks/T-08G-CORE.md",
+      "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
+      "backendTarget": "local checks only; no cloud/provider actions authorized",
+      "implementationState": "dispatched; exact isolated checkout prepared at 1eb2e7c",
+      "nativeChecks": "pending real runtime execution",
+      "phoneAcceptance": "pending William iPhone"
     }
   ],
   "completedDependencies": {

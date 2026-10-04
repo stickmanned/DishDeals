@@ -27,3 +27,14 @@ Canonical `extract.extractDeal` args remain `{imageIds, caption?}`, `DealResult`
 ## Device setup (human, after Xcode installation)
 
 Apple permits direct own-device testing via Xcode Personal Team; [current account limits](https://developer.apple.com/help/account/basics/about-your-developer-account) include expiring provisioning profiles. In Xcode sign in to your Apple Account, connect/unlock/trust the phone, select the correct Team per actual target, enable [Developer Mode](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device), then run the discovered app scheme. Exact commands/entitlements stay pending Harry source; do not choose a framework to fill blanks. Native build readiness, signing readiness and actual share-to-map acceptance are distinct.
+
+
+## Current approved integration boundaries (October 3 late evening)
+
+Harry source is published and integrated: SwiftUI/WKWebView app plus UIKit share extension, URL/text only. Existing canonical root session bridge now supplies its trusted native Keychain bridge; unowned recovery links require explicit account consent. Simulator SDK build passed, runtime/Keychain/real receipt still pending. Official free-account capability table lists App Groups and Keychain Sharing; actual provisioning remains unverified. Placeholder web/backend URLs prevent a working network app.
+
+William transfers Pinyuan's unfinished implementation to agents. Cinder continues his latest published map component; Prism prepares geocoding with explicit user search, application-wide durable throttling/cache before live use. Coordinate proposal never equals confirmation. N-MAP-A and N-FORM-UI packets pin the controlled location callback. Northstar alone wires canonical create/update/remove to the geospatial index after that component's official contract is checked.
+
+Private edit revision contract: optional reelItems.draftRevision/draftEdited legacy defaults 0/false. saveDraft keeps its name/null result but requires expectedGeneration/expectedRevision. Atomic guards and incrementing revision prevent same-clock or stale-generation overwrites. Retry retains user draft and extraction provenance; finish updates extraction and only replaces unedited defaults. UI explicit conflict handling preserves local input. These are additive private intake fields, not a competing deals schema.
+
+Geocoding policy: [Nominatim public policy](https://operations.osmfoundation.org/policies/nominatim/) permits moderate user-triggered place searches, requires identifying application headers and attribution, and limits the whole application's traffic to one request per second. Autocomplete and systematic/bulk queries are excluded. The backend must enforce a durable global gate and caching, and permit server-configured provider changes before enabling the public path. No live request has run.
