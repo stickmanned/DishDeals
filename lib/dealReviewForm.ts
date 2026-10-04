@@ -16,7 +16,7 @@ import {
 
 /**
  * Human-readable explanations for omitting optional fields.
- * Clarifies all-day and every-day canonical semantics.
+ * Clarifies all-day and every-day canonical semantics without asserting duration.
  */
 export const OMISSION_SEMANTICS: Record<OmissibleFieldKey, { label: string; explanation: string }> = {
   address: {
@@ -32,8 +32,8 @@ export const OMISSION_SEMANTICS: Record<OmissibleFieldKey, { label: string; expl
     explanation: "Offer runs all day during normal open hours (00:00 – 24:00).",
   },
   expiresOn: {
-    label: "Confirm ongoing offer",
-    explanation: "No listed expiration date; ongoing until discontinued.",
+    label: "Confirm no expiry listed",
+    explanation: "No expiration date listed in source; expiry is unlisted or unknown.",
   },
   validDays: {
     label: "Confirm available every day",
@@ -47,19 +47,25 @@ export const OMISSION_SEMANTICS: Record<OmissibleFieldKey, { label: string; expl
 
 /**
  * Formats a model confidence self-assessment as a human-readable percentage.
- * Never invents probability or default 0.5.
+ * Rejects and hides values outside 0..1, NaN, or non-numbers without fabricating.
  */
 export function formatConfidence(confidence: number | undefined): string | null {
-  if (typeof confidence !== "number" || !Number.isFinite(confidence)) {
+  if (
+    typeof confidence !== "number" ||
+    !Number.isFinite(confidence) ||
+    confidence < 0 ||
+    confidence > 1
+  ) {
     return null;
   }
-  const clamped = Math.max(0, Math.min(1, confidence));
-  return `Model assessment: ${Math.round(clamped * 100)}%`;
+  return `Model assessment: ${Math.round(confidence * 100)}%`;
 }
 
 /**
- * Strict price input parser that handles partial or invalid numbers.
- * Retains user keystrokes without coercing blank or invalid strings to zero.
+ * Strict decimal price grammar parser.
+ * Disallows scientific notation (1e3), hex (0x10), incomplete decimals (1.),
+ * and negative numbers (-5).
+ * Blank input returns { valid: true, value: null }.
  */
 export function parsePriceInput(raw: string): {
   valid: boolean;
@@ -71,21 +77,80 @@ export function parsePriceInput(raw: string): {
     return { valid: true, value: null };
   }
 
-  // Reject negative signs or letters
-  if (trimmed.startsWith("-")) {
-    return { valid: false, value: null, error: "Price cannot be negative." };
+  // Reject incomplete decimal point at end (e.g. "1.")
+  if (trimmed.endsWith(".")) {
+    return {
+      valid: false,
+      value: null,
+      error: "Incomplete price (trailing decimal point).",
+    };
+  }
+
+  // Restrict to standard decimal price grammar: non-negative digits with optional decimal point and digits
+  const DECIMAL_PRICE_REGEX = /^\d+(\.\d+)?$/;
+  if (!DECIMAL_PRICE_REGEX.test(trimmed)) {
+    return {
+      valid: false,
+      value: null,
+      error: "Please enter a valid numeric price (e.g. 12.50).",
+    };
   }
 
   const num = Number(trimmed);
-  if (Number.isNaN(num) || !Number.isFinite(num)) {
-    return { valid: false, value: null, error: "Please enter a valid numeric price." };
-  }
-
-  if (num < 0) {
-    return { valid: false, value: null, error: "Price must be non-negative." };
+  if (!Number.isFinite(num) || num < 0) {
+    return {
+      valid: false,
+      value: null,
+      error: "Price must be a valid non-negative number.",
+    };
   }
 
   return { valid: true, value: num };
+}
+
+/**
+ * Computes the price display string when "Accept All Suggestions" is executed.
+ * Returns the suggested price if available, otherwise retains or reflects canonical price.
+ */
+export function getPriceDisplayOnAcceptAll(draft: DealDraft): string {
+  const priceSuggestion = draft.fields.priceCad.suggestion;
+  if (priceSuggestion !== undefined) {
+    return priceSuggestion.value !== null ? String(priceSuggestion.value) : "";
+  }
+  return draft.fields.priceCad.value !== null ? String(draft.fields.priceCad.value) : "";
+}
+
+/**
+ * Pure transition helper for weekday selection.
+ * Prevents unchecking the last weekday from silently confirming every-day.
+ * Switching to every-day requires deliberate action.
+ */
+export function transitionWeekdaySelection(
+  currentDays: Weekday[],
+  day: Weekday
+): {
+  nextDays: Weekday[];
+  blocked: boolean;
+  message?: string;
+} {
+  const isSelected = currentDays.includes(day);
+  if (isSelected) {
+    if (currentDays.length === 1) {
+      return {
+        nextDays: currentDays,
+        blocked: true,
+        message: "Cannot uncheck the last weekday. Use 'Available every day' to remove weekday restrictions.",
+      };
+    }
+    return {
+      nextDays: currentDays.filter((d) => d !== day),
+      blocked: false,
+    };
+  }
+  return {
+    nextDays: [...currentDays, day],
+    blocked: false,
+  };
 }
 
 /**
@@ -114,18 +179,50 @@ export function evaluateIssueResolution(issue: ReviewIssue): {
 
 /**
  * Evaluates whether the draft is currently ready to publish according to
- * the canonical validateForPublish function.
+ * the canonical validateForPublish function and local form input validation.
+ *
+ * Blocks publishing if local price input has parse errors, incomplete decimals,
+ * or uncommitted changes that differ from canonical draft.fields.priceCad.value.
  */
-export function getDraftPublishReadiness(draft: DealDraft): {
+export function getDraftPublishReadiness(
+  draft: DealDraft,
+  localPrice?: string
+): {
   canPublish: boolean;
   errors: string[];
 } {
+  const errors: string[] = [];
+
+  // If localPrice string is provided, validate it against local parse and canonical sync
+  if (localPrice !== undefined) {
+    const trimmed = localPrice.trim();
+    if (trimmed !== "") {
+      const parsed = parsePriceInput(trimmed);
+      if (!parsed.valid) {
+        errors.push(parsed.error ?? "Invalid price input.");
+      } else if (parsed.value !== draft.fields.priceCad.value) {
+        errors.push("Price input has uncommitted changes.");
+      }
+    } else {
+      // Local input is empty; if canonical priceCad is not null, there is a mismatch
+      if (draft.fields.priceCad.value !== null) {
+        errors.push("Price input has uncommitted changes.");
+      }
+    }
+  }
+
   const result = validateForPublish(draft);
+  if (!result.valid) {
+    errors.push(...result.errors);
+  }
+
   return {
-    canPublish: result.valid,
-    errors: result.errors,
+    canPublish: errors.length === 0,
+    errors,
   };
 }
+
+export const validateReviewFormSubmission = getDraftPublishReadiness;
 
 /**
  * Returns true if any field in the draft has an unaccepted suggestion.

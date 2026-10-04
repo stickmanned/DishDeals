@@ -18,39 +18,38 @@
        busy?: boolean;
      }
      ```
-  2. Implemented `lib/dealReviewForm.ts` supporting utilities:
-     - `OMISSION_SEMANTICS`: Accurate explanations for all 6 omissible fields (`address`, `priceCad`, `hours`, `expiresOn`, `validDays`, `conditions`).
-     - `formatConfidence`: Truthful model self-assessment display (`"Model assessment: X%"` for present values, `null` when undefined); never fabricates probability or certainty scores.
-     - `parsePriceInput`: Retains user input text without coercing empty/invalid strings to zero, rejects negatives.
-     - `evaluateIssueResolution`: Flags `FUTURE_START` as hard blocker (cannot be resolved by this adapter) and enforces non-empty resolution notes for `UNSUPPORTED_CONSTRAINT`.
-     - `getDraftPublishReadiness`: Bridges to `validateForPublish` in `lib/dealDraft.ts` returning `{ canPublish: boolean; errors: string[] }`.
-     - `hasPendingSuggestions`, `formatWeekday`, `isFieldReviewed`.
+  2. Pure supporting utilities in `lib/dealReviewForm.ts`:
+     - Strict decimal price grammar parser (`parsePriceInput`): Restricts to standard decimal price grammar (`/^\d+(\.\d+)?$/`), strictly rejecting hex (`0x10`), scientific notation (`1e3`), incomplete decimal points (`1.`), and negative numbers while retaining partial text without coercing to zero.
+     - Shared publish readiness gate (`getDraftPublishReadiness` / `validateReviewFormSubmission`): Evaluates both canonical draft rules and local price input. Blocks submission if local input has parse errors, incomplete decimals, or uncommitted changes differing from `draft.fields.priceCad.value`.
+     - Price display helper for Accept All (`getPriceDisplayOnAcceptAll`): Pure helper resolving display string when all suggestions are accepted.
+     - Model confidence formatting (`formatConfidence`): Hides and rejects any confidence value outside 0..1, NaN, or non-finite inputs without clamping into fabricated probability scores.
+     - Omission semantics (`OMISSION_SEMANTICS`): Honest explanation for all 6 omissible fields; `expiresOn` labeled as "Confirm no expiry listed" with explanation "No expiration date listed in source; expiry is unlisted or unknown", presenting unavailable expiry without asserting ongoing indefinite duration.
+     - Weekday explicit transition helper (`transitionWeekdaySelection`): Prevents unchecking the last selected weekday from silently confirming every-day availability; provides explicit reminder and requires deliberate action ("Set to available every day") to clear weekday restrictions.
+     - Review issue evaluation (`evaluateIssueResolution`): Flags `FUTURE_START` as hard blocker and `CURRENCY_UNVERIFIED` as requiring manual price entry/omission.
+     - Helpers: `hasPendingSuggestions`, `formatWeekday`, `isFieldReviewed`.
   3. Controlled review form UI in `components/deals/DealReviewForm.tsx`:
-     - Provenance display (source URL, image ID).
-     - Extraction status callouts (`pending`, `no_deal_detected`, `error`, `canceled`).
-     - Multi-offer selection support (`unselectedOffers`, `SELECT_OFFER`).
-     - Review notices list with resolution inputs and blockers (`FUTURE_START` unresolvable; `UNSUPPORTED_CONSTRAINT` requires non-empty note; `CURRENCY_UNVERIFIED` manual entry hint).
-     - Global and per-field suggestion accept/reject controls (`ACCEPT_ALL_SUGGESTIONS`, `ACCEPT_SUGGESTION`, `REJECT_SUGGESTION`).
-     - Explicit review omission buttons with canonical semantics.
-     - `renderLocation` slot or pending notice; location invalidated on restaurant/address change via reducer.
-     - Truthful publish gate with `validateForPublish` check, error listing, and rejection preservation without state loss.
-     - Clean CSS styling reusing Harry's classes (`panel`, `form-stack`, `field`, `field-row`, `button primary`, `button secondary`, `text-button`, `form-error`, `quiet-note`, `weekdays`).
-  4. Isolation: Does NOT edit or mount `components/reels/ReelIntake.tsx` (owned by Loom).
+     - Uses React `useId` for unique label and input IDs across multi-offer review instances.
+     - Synchronizes `localPrice` ONLY on explicit user actions (Accept All, Accept Price Suggestion, Omit Price, Select Offer), strictly preserving in-progress typing and error messages across background/reactive extraction updates.
+     - Individual price accept clears existing local error.
+     - Blocks `handleSubmit` directly using the shared `getDraftPublishReadiness(draft, localPrice)` helper.
+     - Reusable `SuggestionItem` reduces duplicated markup and inline styles.
+     - Reuses Harry's existing styling classes (`panel`, `form-stack`, `field`, `field-row`, `button primary`, `button secondary`, `text-button`, `form-error`, `quiet-note`, `weekdays`).
+     - Preserves Loom's ownership: does NOT touch or mount `ReelIntake.tsx`.
 - Changed files:
   - `components/deals/DealReviewForm.tsx`
   - `lib/dealReviewForm.ts`
   - `tests/import/dealReviewForm.test.ts`
   - `docs/handoffs/n-form-ui.md`
 - Checks actually run (command, exit code, evidence):
-  - `npm test -- tests/import/dealReviewForm.test.ts`: Exit 0 (20/20 tests passed covering price parsing, confidence formatting, omission semantics, review issue resolution, suggestions accept/reject, manual edit preservation, location invalidation, publish readiness, and draft preservation on rejection)
-  - `npm test`: Exit 0 (516/516 tests passed across 22 test files)
+  - `npm test -- tests/import/dealReviewForm.test.ts`: Exit 0 (35/35 tests passed covering decimal price grammar, confidence 0..1 validation, honest omission semantics, accept-all price display, weekday explicit transition, shared publish gate with prior-good-price/invalid-text, issue resolution guards, suggestion accept/reject, manual edit and reactive error resilience, location invalidation, and publish error reporting)
+  - `npm test`: Exit 0 (531/531 tests passed across 22 test files)
   - `npm run typecheck`: Exit 0 (`tsc --noEmit` passed with 0 errors)
   - `npm run lint`: Exit 0 (`eslint .` passed with 0 warnings/errors)
   - `npm run test:workflow`: Exit 0 (23/23 tests passed in `scripts/agent-workflow.test.mjs`)
   - `npm run build`: Exit 0 (Next.js 16.3.8 Turbopack production build succeeded)
   - `node /tmp/dishdeals-owner-check.mjs N-FORM-UI`: Exit 0 (approved centralized packet ownership PASS)
-- Unrun live/phone checks and why: No live phone, native UI, or live AI provider calls executed. Tests use synthetic unit test fixtures for the form component and draft state helpers. Live mounting into intake flow and browser/native testing belongs to Harry/Loom; map rendering belongs to Pinyuan.
+- Unrun live/phone checks and why: No live phone, native UI, or live AI provider calls executed. Tests use pure deterministic unit test fixtures. Mounting into intake flow and live device/share sheet testing belongs to Harry/Loom; map integration slot belongs to human team.
 - Draft PR: None created (instruction authorizes scoped local commit only; no push, PR, or cloud mutation).
-- Review findings and resolution: All N-FORM-UI requirements satisfied. Component strictly controlled via onAction; no local state overrides draft source of truth; publish validation checks validateForPublish; manual edits preserved.
-- Remaining risks / human setup: Mounting into `ReelIntake.tsx` is pending Loom's handoff. Map rendering slot `renderLocation` is pending Pinyuan's map component.
-- Stop condition met; next proposed task (not dispatched): Local scoped commit ready for Northstar review and integration. Next proposed work is Loom's wiring of `DealReviewForm` into `ReelIntake.tsx`.
+- Review findings and resolution: All Northstar corrective review feedback addressed. Prior valid draft price cannot be accidentally published with invalid local text; decimal grammar restricted; price synchronizes on explicit user actions only; instance IDs unique via useId; confidence range validated strictly; expiry duration not falsely asserted; weekday last uncheck prevented; duplicated markup reduced.
+- Remaining risks / human setup: Active task lanes are Cinder continuation on validity and Northstar coordination/integration. Mounting into `ReelIntake.tsx` is pending Loom.
+- Stop condition met; next proposed task (not dispatched): Scoped local commit ready for Northstar integration.

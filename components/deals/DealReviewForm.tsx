@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, type ReactNode, type FormEvent } from "react";
+import { useState, useId, type ReactNode, type FormEvent } from "react";
 import {
   buildPublishFields,
-  validateForPublish,
   type DealDraft,
   type DealDraftAction,
   type PublishFields,
@@ -14,9 +13,12 @@ import {
   evaluateIssueResolution,
   formatConfidence,
   formatWeekday,
+  getDraftPublishReadiness,
+  getPriceDisplayOnAcceptAll,
   hasPendingSuggestions,
   OMISSION_SEMANTICS,
   parsePriceInput,
+  transitionWeekdaySelection,
 } from "../../lib/dealReviewForm";
 
 export interface DealReviewFormProps {
@@ -31,6 +33,36 @@ export interface DealReviewFormProps {
   busy?: boolean;
 }
 
+function SuggestionItem({
+  label,
+  valueText,
+  confidence,
+  onAccept,
+  onDismiss,
+}: {
+  label?: string;
+  valueText: string | null;
+  confidence?: number;
+  onAccept: () => void;
+  onDismiss: () => void;
+}) {
+  const confText = formatConfidence(confidence);
+  const displayVal = valueText !== null ? `“${valueText}”` : "None";
+  return (
+    <div className="panel quiet-note" style={{ marginTop: "0.25rem" }}>
+      <span>{label ?? "Suggestion"}: {displayVal} </span>
+      {confText && <span>({confText}) </span>}
+      <button type="button" className="text-button" onClick={onAccept}>
+        Accept
+      </button>{" "}
+      |{" "}
+      <button type="button" className="text-button" onClick={onDismiss}>
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
 export function DealReviewForm({
   draft,
   onAction,
@@ -39,15 +71,28 @@ export function DealReviewForm({
   renderLocation,
   busy = false,
 }: DealReviewFormProps) {
+  const idPrefix = useId();
+  const restaurantId = `${idPrefix}-restaurant`;
+  const dealTextId = `${idPrefix}-dealText`;
+  const priceId = `${idPrefix}-price`;
+  const expiresOnId = `${idPrefix}-expiresOn`;
+  const addressId = `${idPrefix}-address`;
+  const validStartId = `${idPrefix}-validStart`;
+  const validEndId = `${idPrefix}-validEnd`;
+  const conditionsId = `${idPrefix}-conditions`;
+
   const [publishErrors, setPublishErrors] = useState<string[]>([]);
   const [publishRejection, setPublishRejection] = useState<string>("");
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
 
-  // Local state for price input to retain invalid/partial text
+  // Local state for price input to retain invalid/partial text without overwriting canonical amount prematurely
   const [localPrice, setLocalPrice] = useState<string>(
     draft.fields.priceCad.value !== null ? draft.fields.priceCad.value.toString() : ""
   );
   const [priceInputError, setPriceInputError] = useState<string>("");
+
+  // Weekday selection notice (e.g. reminder when trying to uncheck last weekday)
+  const [weekdayNotice, setWeekdayNotice] = useState<string>("");
 
   // Local state for resolution notes keyed by issue id
   const [resolutionNotes, setResolutionNotes] = useState<Record<string, string>>({});
@@ -70,6 +115,67 @@ export function DealReviewForm({
     }
   }
 
+  function handleAcceptPriceSuggestion() {
+    onAction({ type: "ACCEPT_SUGGESTION", field: "priceCad" });
+    const sug = draft.fields.priceCad.suggestion;
+    if (sug !== undefined && sug.value !== null) {
+      setLocalPrice(String(sug.value));
+    } else {
+      setLocalPrice("");
+    }
+    setPriceInputError("");
+  }
+
+  function handleOmitPrice() {
+    onAction({ type: "REVIEW_OMISSION", field: "priceCad" });
+    setLocalPrice("");
+    setPriceInputError("");
+  }
+
+  function handleAcceptAll() {
+    onAction({ type: "ACCEPT_ALL_SUGGESTIONS" });
+    if (draft.fields.priceCad.suggestion !== undefined) {
+      setLocalPrice(getPriceDisplayOnAcceptAll(draft));
+      setPriceInputError("");
+    }
+  }
+
+  function handleSelectOffer(offerIndex: number) {
+    onAction({ type: "SELECT_OFFER", offerIndex });
+    const selected = draft.extraction.unselectedOffers?.[offerIndex];
+    if (selected) {
+      setLocalPrice(
+        selected.priceCad !== null && selected.priceCad !== undefined
+          ? String(selected.priceCad)
+          : ""
+      );
+      setPriceInputError("");
+    }
+  }
+
+  function handleDayToggle(day: Weekday) {
+    setWeekdayNotice("");
+    const transition = transitionWeekdaySelection(f.validDays.value, day);
+    if (transition.blocked) {
+      setWeekdayNotice(transition.message ?? "Cannot uncheck the last weekday.");
+      return;
+    }
+    onAction({
+      type: "SET_FIELD",
+      field: "validDays",
+      value: transition.nextDays,
+    });
+  }
+
+  function handleSetEveryDay() {
+    setWeekdayNotice("");
+    onAction({
+      type: "SET_FIELD",
+      field: "validDays",
+      value: [],
+    });
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setPublishErrors([]);
@@ -79,9 +185,10 @@ export function DealReviewForm({
       return;
     }
 
-    const { valid, errors } = validateForPublish(draft);
-    if (!valid) {
-      setPublishErrors(errors);
+    // Shared publish readiness gate: validates both canonical draft and local uncommitted price input
+    const readiness = getDraftPublishReadiness(draft, localPrice);
+    if (!readiness.canPublish) {
+      setPublishErrors(readiness.errors);
       return;
     }
 
@@ -110,7 +217,7 @@ export function DealReviewForm({
 
       {/* Provenance */}
       {(draft.sourceUrl || draft.imageId) && (
-        <div className="quiet-note" style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+        <div className="quiet-note">
           {draft.sourceUrl && (
             <span>
               Source:{" "}
@@ -119,6 +226,7 @@ export function DealReviewForm({
               </a>
             </span>
           )}
+          {draft.sourceUrl && draft.imageId && <span> &bull; </span>}
           {draft.imageId && <span>Image ID: {draft.imageId}</span>}
         </div>
       )}
@@ -150,13 +258,13 @@ export function DealReviewForm({
         <div className="panel form-stack">
           <h3>Multiple Offers Detected</h3>
           <p className="quiet-note">Select which offer to review for this deal:</p>
-          <div className="form-actions" style={{ flexWrap: "wrap" }}>
+          <div className="form-actions">
             {draft.extraction.unselectedOffers.map((offer, idx) => (
               <button
                 key={idx}
                 type="button"
                 className={`button ${draft.extraction.selectedOfferIndex === idx ? "primary" : "secondary"}`}
-                onClick={() => onAction({ type: "SELECT_OFFER", offerIndex: idx })}
+                onClick={() => handleSelectOffer(idx)}
               >
                 Offer {idx + 1}: {offer.dealText || offer.restaurant || "Untitled"}
               </button>
@@ -249,7 +357,7 @@ export function DealReviewForm({
           <button
             type="button"
             className="button primary"
-            onClick={() => onAction({ type: "ACCEPT_ALL_SUGGESTIONS" })}
+            onClick={handleAcceptAll}
           >
             Accept All Suggestions
           </button>
@@ -259,13 +367,13 @@ export function DealReviewForm({
       {/* Restaurant Field */}
       <div className="field">
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <label htmlFor="restaurant-input">Restaurant Name *</label>
+          <label htmlFor={restaurantId}>Restaurant Name *</label>
           <span className="quiet-note">
             {f.restaurant.isReviewed ? "Reviewed ✓" : "Needs review"}
           </span>
         </div>
         <input
-          id="restaurant-input"
+          id={restaurantId}
           required
           maxLength={200}
           value={f.restaurant.value ?? ""}
@@ -279,40 +387,25 @@ export function DealReviewForm({
           placeholder="The restaurant offering the deal"
         />
         {f.restaurant.suggestion !== undefined && (
-          <div className="panel quiet-note" style={{ marginTop: "0.25rem" }}>
-            <span>Suggestion: &ldquo;{f.restaurant.suggestion.value}&rdquo; </span>
-            {formatConfidence(f.restaurant.suggestion.confidence) && (
-              <span>({formatConfidence(f.restaurant.suggestion.confidence)}) </span>
-            )}
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => onAction({ type: "ACCEPT_SUGGESTION", field: "restaurant" })}
-            >
-              Accept
-            </button>{" "}
-            |{" "}
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => onAction({ type: "REJECT_SUGGESTION", field: "restaurant" })}
-            >
-              Dismiss
-            </button>
-          </div>
+          <SuggestionItem
+            valueText={f.restaurant.suggestion.value}
+            confidence={f.restaurant.suggestion.confidence}
+            onAccept={() => onAction({ type: "ACCEPT_SUGGESTION", field: "restaurant" })}
+            onDismiss={() => onAction({ type: "REJECT_SUGGESTION", field: "restaurant" })}
+          />
         )}
       </div>
 
       {/* Deal Text Field */}
       <div className="field">
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <label htmlFor="dealText-input">Offer Description *</label>
+          <label htmlFor={dealTextId}>Offer Description *</label>
           <span className="quiet-note">
             {f.dealText.isReviewed ? "Reviewed ✓" : "Needs review"}
           </span>
         </div>
         <textarea
-          id="dealText-input"
+          id={dealTextId}
           required
           maxLength={2000}
           value={f.dealText.value ?? ""}
@@ -326,24 +419,12 @@ export function DealReviewForm({
           placeholder="What is the special or promotion?"
         />
         {f.dealText.suggestion !== undefined && (
-          <div className="panel quiet-note" style={{ marginTop: "0.25rem" }}>
-            <span>Suggestion: &ldquo;{f.dealText.suggestion.value}&rdquo; </span>
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => onAction({ type: "ACCEPT_SUGGESTION", field: "dealText" })}
-            >
-              Accept
-            </button>{" "}
-            |{" "}
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => onAction({ type: "REJECT_SUGGESTION", field: "dealText" })}
-            >
-              Dismiss
-            </button>
-          </div>
+          <SuggestionItem
+            valueText={f.dealText.suggestion.value}
+            confidence={f.dealText.suggestion.confidence}
+            onAccept={() => onAction({ type: "ACCEPT_SUGGESTION", field: "dealText" })}
+            onDismiss={() => onAction({ type: "REJECT_SUGGESTION", field: "dealText" })}
+          />
         )}
       </div>
 
@@ -351,13 +432,17 @@ export function DealReviewForm({
       <div className="field-row">
         <div className="field">
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <label htmlFor="price-input">Price (CAD)</label>
+            <label htmlFor={priceId}>Price (CAD)</label>
             <span className="quiet-note">
-              {f.priceCad.isReviewed ? "Reviewed ✓" : "Needs review"}
+              {f.priceCad.isReviewed
+                ? f.priceCad.value === null
+                  ? "Price varies / unknown (reviewed ✓)"
+                  : "Reviewed ✓"
+                : "Needs review"}
             </span>
           </div>
           <input
-            id="price-input"
+            id={priceId}
             inputMode="decimal"
             value={localPrice}
             onChange={(e) => handlePriceChange(e.target.value)}
@@ -365,38 +450,23 @@ export function DealReviewForm({
           />
           {priceInputError && <p className="form-error" role="alert">{priceInputError}</p>}
           {f.priceCad.suggestion !== undefined && (
-            <div className="panel quiet-note" style={{ marginTop: "0.25rem" }}>
-              <span>Suggested: ${f.priceCad.suggestion.value} </span>
-              {formatConfidence(f.priceCad.suggestion.confidence) && (
-                <span>({formatConfidence(f.priceCad.suggestion.confidence)}) </span>
-              )}
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => {
-                  onAction({ type: "ACCEPT_SUGGESTION", field: "priceCad" });
-                  if (f.priceCad.suggestion?.value !== undefined && f.priceCad.suggestion.value !== null) {
-                    setLocalPrice(f.priceCad.suggestion.value.toString());
-                  }
-                }}
-              >
-                Accept
-              </button>{" "}
-              |{" "}
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => onAction({ type: "REJECT_SUGGESTION", field: "priceCad" })}
-              >
-                Dismiss
-              </button>
-            </div>
+            <SuggestionItem
+              label="Suggested price"
+              valueText={
+                f.priceCad.suggestion.value !== null
+                  ? `$${f.priceCad.suggestion.value}`
+                  : "Price varies"
+              }
+              confidence={f.priceCad.suggestion.confidence}
+              onAccept={handleAcceptPriceSuggestion}
+              onDismiss={() => onAction({ type: "REJECT_SUGGESTION", field: "priceCad" })}
+            />
           )}
           {f.priceCad.value === null && !f.priceCad.isReviewed && (
             <button
               type="button"
               className="text-button"
-              onClick={() => onAction({ type: "REVIEW_OMISSION", field: "priceCad" })}
+              onClick={handleOmitPrice}
             >
               {OMISSION_SEMANTICS.priceCad.label}
             </button>
@@ -405,13 +475,17 @@ export function DealReviewForm({
 
         <div className="field">
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <label htmlFor="expiresOn-input">Expiry Date</label>
+            <label htmlFor={expiresOnId}>Expiry Date</label>
             <span className="quiet-note">
-              {f.expiresOn.isReviewed ? "Reviewed ✓" : "Needs review"}
+              {f.expiresOn.isReviewed
+                ? f.expiresOn.value === null
+                  ? "No expiry listed (reviewed ✓)"
+                  : "Reviewed ✓"
+                : "Needs review"}
             </span>
           </div>
           <input
-            id="expiresOn-input"
+            id={expiresOnId}
             type="date"
             value={f.expiresOn.value ?? ""}
             onChange={(e) =>
@@ -423,27 +497,17 @@ export function DealReviewForm({
             }
           />
           {f.expiresOn.suggestion !== undefined && (
-            <div className="panel quiet-note" style={{ marginTop: "0.25rem" }}>
-              <span>Suggested: {f.expiresOn.suggestion.value} </span>
-              {formatConfidence(f.expiresOn.suggestion.confidence) && (
-                <span>({formatConfidence(f.expiresOn.suggestion.confidence)}) </span>
-              )}
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => onAction({ type: "ACCEPT_SUGGESTION", field: "expiresOn" })}
-              >
-                Accept
-              </button>{" "}
-              |{" "}
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => onAction({ type: "REJECT_SUGGESTION", field: "expiresOn" })}
-              >
-                Dismiss
-              </button>
-            </div>
+            <SuggestionItem
+              label="Suggested expiry"
+              valueText={
+                f.expiresOn.suggestion.value !== null
+                  ? f.expiresOn.suggestion.value
+                  : "No expiry listed"
+              }
+              confidence={f.expiresOn.suggestion.confidence}
+              onAccept={() => onAction({ type: "ACCEPT_SUGGESTION", field: "expiresOn" })}
+              onDismiss={() => onAction({ type: "REJECT_SUGGESTION", field: "expiresOn" })}
+            />
           )}
           {f.expiresOn.value === null && !f.expiresOn.isReviewed && (
             <button
@@ -460,13 +524,17 @@ export function DealReviewForm({
       {/* Address */}
       <div className="field">
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <label htmlFor="address-input">Address</label>
+          <label htmlFor={addressId}>Address</label>
           <span className="quiet-note">
-            {f.address.isReviewed ? "Reviewed ✓" : "Needs review"}
+            {f.address.isReviewed
+              ? f.address.value === null
+                ? "No specific address (reviewed ✓)"
+                : "Reviewed ✓"
+              : "Needs review"}
           </span>
         </div>
         <input
-          id="address-input"
+          id={addressId}
           maxLength={500}
           value={f.address.value ?? ""}
           onChange={(e) =>
@@ -479,24 +547,16 @@ export function DealReviewForm({
           placeholder="Location address if known"
         />
         {f.address.suggestion !== undefined && (
-          <div className="panel quiet-note" style={{ marginTop: "0.25rem" }}>
-            <span>Suggestion: &ldquo;{f.address.suggestion.value}&rdquo; </span>
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => onAction({ type: "ACCEPT_SUGGESTION", field: "address" })}
-            >
-              Accept
-            </button>{" "}
-            |{" "}
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => onAction({ type: "REJECT_SUGGESTION", field: "address" })}
-            >
-              Dismiss
-            </button>
-          </div>
+          <SuggestionItem
+            valueText={
+              f.address.suggestion.value !== null
+                ? f.address.suggestion.value
+                : "No specific address"
+            }
+            confidence={f.address.suggestion.confidence}
+            onAccept={() => onAction({ type: "ACCEPT_SUGGESTION", field: "address" })}
+            onDismiss={() => onAction({ type: "REJECT_SUGGESTION", field: "address" })}
+          />
         )}
         {f.address.value === null && !f.address.isReviewed && (
           <button
@@ -514,10 +574,14 @@ export function DealReviewForm({
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <label>Available Days</label>
           <span className="quiet-note">
-            {f.validDays.isReviewed ? "Reviewed ✓" : "Needs review"}
+            {f.validDays.isReviewed
+              ? f.validDays.value.length === 0
+                ? "Every day (reviewed ✓)"
+                : "Reviewed ✓"
+              : "Needs review"}
           </span>
         </div>
-        <div className="weekdays" style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap" }}>
+        <div className="weekdays">
           {CANONICAL_WEEKDAYS.map((day: Weekday) => {
             const active = f.validDays.value.includes(day);
             return (
@@ -526,46 +590,41 @@ export function DealReviewForm({
                 type="button"
                 className={`button ${active ? "primary" : "secondary"}`}
                 aria-pressed={active}
-                onClick={() => {
-                  const updated = active
-                    ? f.validDays.value.filter((d) => d !== day)
-                    : [...f.validDays.value, day];
-                  onAction({
-                    type: "SET_FIELD",
-                    field: "validDays",
-                    value: updated,
-                  });
-                }}
+                onClick={() => handleDayToggle(day)}
               >
                 {day.toUpperCase()}
               </button>
             );
           })}
         </div>
-        {f.validDays.suggestion !== undefined && (
-          <div className="panel quiet-note" style={{ marginTop: "0.25rem" }}>
-            <span>
-              Suggested days:{" "}
-              {f.validDays.suggestion.value.length === 0
-                ? "Every day"
-                : f.validDays.suggestion.value.map(formatWeekday).join(", ")}
-            </span>{" "}
+        {weekdayNotice && (
+          <p className="quiet-note" role="status" style={{ color: "#dd6b20", marginTop: "0.25rem" }}>
+            {weekdayNotice}
+          </p>
+        )}
+        {f.validDays.value.length > 0 && (
+          <div style={{ marginTop: "0.25rem" }}>
             <button
               type="button"
               className="text-button"
-              onClick={() => onAction({ type: "ACCEPT_SUGGESTION", field: "validDays" })}
+              onClick={handleSetEveryDay}
             >
-              Accept
-            </button>{" "}
-            |{" "}
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => onAction({ type: "REJECT_SUGGESTION", field: "validDays" })}
-            >
-              Dismiss
+              Set to available every day
             </button>
           </div>
+        )}
+        {f.validDays.suggestion !== undefined && (
+          <SuggestionItem
+            label="Suggested days"
+            valueText={
+              f.validDays.suggestion.value.length === 0
+                ? "Every day"
+                : f.validDays.suggestion.value.map(formatWeekday).join(", ")
+            }
+            confidence={f.validDays.suggestion.confidence}
+            onAccept={() => onAction({ type: "ACCEPT_SUGGESTION", field: "validDays" })}
+            onDismiss={() => onAction({ type: "REJECT_SUGGESTION", field: "validDays" })}
+          />
         )}
         {f.validDays.value.length === 0 && !f.validDays.isReviewed && (
           <button
@@ -582,13 +641,13 @@ export function DealReviewForm({
       <div className="field-row">
         <div className="field">
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <label htmlFor="validStart-input">Valid From (HH:MM)</label>
+            <label htmlFor={validStartId}>Valid From (HH:MM)</label>
             <span className="quiet-note">
               {f.validStart.isReviewed ? "Reviewed ✓" : "Needs review"}
             </span>
           </div>
           <input
-            id="validStart-input"
+            id={validStartId}
             type="time"
             value={f.validStart.value ?? ""}
             onChange={(e) =>
@@ -600,39 +659,29 @@ export function DealReviewForm({
             }
           />
           {f.validStart.suggestion !== undefined && (
-            <div className="panel quiet-note" style={{ marginTop: "0.25rem" }}>
-              <span>Suggested start: {f.validStart.suggestion.value} </span>
-              {formatConfidence(f.validStart.suggestion.confidence) && (
-                <span>({formatConfidence(f.validStart.suggestion.confidence)}) </span>
-              )}
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => onAction({ type: "ACCEPT_SUGGESTION", field: "validStart" })}
-              >
-                Accept
-              </button>{" "}
-              |{" "}
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => onAction({ type: "REJECT_SUGGESTION", field: "validStart" })}
-              >
-                Dismiss
-              </button>
-            </div>
+            <SuggestionItem
+              label="Suggested start"
+              valueText={
+                f.validStart.suggestion.value !== null
+                  ? f.validStart.suggestion.value
+                  : "None"
+              }
+              confidence={f.validStart.suggestion.confidence}
+              onAccept={() => onAction({ type: "ACCEPT_SUGGESTION", field: "validStart" })}
+              onDismiss={() => onAction({ type: "REJECT_SUGGESTION", field: "validStart" })}
+            />
           )}
         </div>
 
         <div className="field">
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <label htmlFor="validEnd-input">Valid Until (HH:MM)</label>
+            <label htmlFor={validEndId}>Valid Until (HH:MM)</label>
             <span className="quiet-note">
               {f.validEnd.isReviewed ? "Reviewed ✓" : "Needs review"}
             </span>
           </div>
           <input
-            id="validEnd-input"
+            id={validEndId}
             type="time"
             value={f.validEnd.value ?? ""}
             onChange={(e) =>
@@ -644,50 +693,46 @@ export function DealReviewForm({
             }
           />
           {f.validEnd.suggestion !== undefined && (
-            <div className="panel quiet-note" style={{ marginTop: "0.25rem" }}>
-              <span>Suggested end: {f.validEnd.suggestion.value} </span>
-              {formatConfidence(f.validEnd.suggestion.confidence) && (
-                <span>({formatConfidence(f.validEnd.suggestion.confidence)}) </span>
-              )}
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => onAction({ type: "ACCEPT_SUGGESTION", field: "validEnd" })}
-              >
-                Accept
-              </button>{" "}
-              |{" "}
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => onAction({ type: "REJECT_SUGGESTION", field: "validEnd" })}
-              >
-                Dismiss
-              </button>
-            </div>
+            <SuggestionItem
+              label="Suggested end"
+              valueText={
+                f.validEnd.suggestion.value !== null
+                  ? f.validEnd.suggestion.value
+                  : "None"
+              }
+              confidence={f.validEnd.suggestion.confidence}
+              onAccept={() => onAction({ type: "ACCEPT_SUGGESTION", field: "validEnd" })}
+              onDismiss={() => onAction({ type: "REJECT_SUGGESTION", field: "validEnd" })}
+            />
           )}
         </div>
       </div>
-      {f.validStart.value === null && f.validEnd.value === null && (!f.validStart.isReviewed || !f.validEnd.isReviewed) && (
-        <button
-          type="button"
-          className="text-button"
-          onClick={() => onAction({ type: "REVIEW_OMISSION", field: "hours" })}
-        >
-          {OMISSION_SEMANTICS.hours.label}
-        </button>
-      )}
+      {f.validStart.value === null &&
+        f.validEnd.value === null &&
+        (!f.validStart.isReviewed || !f.validEnd.isReviewed) && (
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => onAction({ type: "REVIEW_OMISSION", field: "hours" })}
+          >
+            {OMISSION_SEMANTICS.hours.label}
+          </button>
+        )}
 
       {/* Conditions */}
       <div className="field">
         <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <label htmlFor="conditions-input">Conditions & Restrictions</label>
+          <label htmlFor={conditionsId}>Conditions & Restrictions</label>
           <span className="quiet-note">
-            {f.conditions.isReviewed ? "Reviewed ✓" : "Needs review"}
+            {f.conditions.isReviewed
+              ? f.conditions.value.length === 0
+                ? "No special conditions (reviewed ✓)"
+                : "Reviewed ✓"
+              : "Needs review"}
           </span>
         </div>
         <textarea
-          id="conditions-input"
+          id={conditionsId}
           value={f.conditions.value.join("\n")}
           onChange={(e) =>
             onAction({
@@ -702,29 +747,17 @@ export function DealReviewForm({
           placeholder="One condition per line"
         />
         {f.conditions.suggestion !== undefined && (
-          <div className="panel quiet-note" style={{ marginTop: "0.25rem" }}>
-            <span>
-              Suggested conditions:{" "}
-              {f.conditions.suggestion.value.length === 0
+          <SuggestionItem
+            label="Suggested conditions"
+            valueText={
+              f.conditions.suggestion.value.length === 0
                 ? "No special conditions"
-                : f.conditions.suggestion.value.join("; ")}
-            </span>{" "}
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => onAction({ type: "ACCEPT_SUGGESTION", field: "conditions" })}
-            >
-              Accept
-            </button>{" "}
-            |{" "}
-            <button
-              type="button"
-              className="text-button"
-              onClick={() => onAction({ type: "REJECT_SUGGESTION", field: "conditions" })}
-            >
-              Dismiss
-            </button>
-          </div>
+                : f.conditions.suggestion.value.join("; ")
+            }
+            confidence={f.conditions.suggestion.confidence}
+            onAccept={() => onAction({ type: "ACCEPT_SUGGESTION", field: "conditions" })}
+            onDismiss={() => onAction({ type: "REJECT_SUGGESTION", field: "conditions" })}
+          />
         )}
         {f.conditions.value.length === 0 && !f.conditions.isReviewed && (
           <button
@@ -754,7 +787,10 @@ export function DealReviewForm({
           <div className="panel quiet-note">
             <p>Location integration pending map component.</p>
             {draft.location?.confirmed ? (
-              <p>Confirmed coordinates: {draft.location.lat.toFixed(4)}, {draft.location.lng.toFixed(4)}</p>
+              <p>
+                Confirmed coordinates: {draft.location.lat.toFixed(4)},{" "}
+                {draft.location.lng.toFixed(4)}
+              </p>
             ) : (
               <p>Coordinates are currently unconfirmed.</p>
             )}
