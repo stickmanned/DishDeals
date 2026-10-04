@@ -13,6 +13,7 @@ import { validNow } from "@/lib/validNow";
 import { useClock } from "@/components/frontend/useClock";
 import { Icon } from "@/components/frontend/Icon";
 import { Dialog } from "@/components/frontend/Dialog";
+import { canEditDeal, submitDealDelete } from "@/lib/dealEdit";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -106,10 +107,13 @@ function CanonicalDealDetailsContent({ dealId }: { dealId: Id<"deals"> }) {
   const deal = useQuery(api.deals.get, { dealId });
   const me = useQuery(api.users.me, isAuthenticated ? {} : "skip");
   const castVote = useMutation(api.votes.cast);
+  const removeDeal = useMutation(api.deals.remove);
 
   const [votingBusy, setVotingBusy] = useState(false);
   const [voteError, setVoteError] = useState<string | null>(null);
-  const [authorNotice, setAuthorNotice] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [imageOpen, setImageOpen] = useState(false);
 
   // Loading state
@@ -138,7 +142,8 @@ function CanonicalDealDetailsContent({ dealId }: { dealId: Id<"deals"> }) {
     );
   }
 
-  const isAuthor = Boolean(me && me.userId && deal.authorId && me.userId === deal.authorId);
+  // Real signed-in userId vs canonical authorId only; the backend authorizes again on every write.
+  const isAuthor = canEditDeal(me, deal);
   const source = safeSourceUrl(deal.sourceUrl);
   const val = validNow(deal, now);
   const valDisplay = clockReady ? formatValidityLabel(val) : { label: "Checking hours…", isValid: false };
@@ -163,6 +168,20 @@ function CanonicalDealDetailsContent({ dealId }: { dealId: Id<"deals"> }) {
     }
   };
 
+  const handleDelete = async () => {
+    if (deleteBusy) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    const outcome = await submitDealDelete(removeDeal, dealId);
+    if (outcome.ok) {
+      // Navigate only after the server confirmed the removal.
+      router.push("/map");
+      return;
+    }
+    setDeleteError(outcome.message);
+    setDeleteBusy(false);
+  };
+
   return (
     <div className="medium-page">
       {/* Top back navigation and author controls */}
@@ -172,56 +191,28 @@ function CanonicalDealDetailsContent({ dealId }: { dealId: Id<"deals"> }) {
         </Link>
         {isAuthor && (
           <div className="inline-actions">
-            <button
-              type="button"
+            <Link
+              href={`/deal/${dealId}/edit`}
               className="icon-button"
               aria-label="Edit deal"
-              onClick={() =>
-                setAuthorNotice("Deal editing will be available in an upcoming release.")
-              }
             >
               <Icon name="edit" size={20} />
-            </button>
+            </Link>
             <button
               type="button"
               className="icon-button"
               aria-label="Delete deal"
-              onClick={() =>
-                setAuthorNotice("Deal deletion will be available in an upcoming release.")
-              }
+              disabled={deleteBusy}
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteOpen(true);
+              }}
             >
               <Icon name="trash" size={20} />
             </button>
           </div>
         )}
       </div>
-
-      {authorNotice && (
-        <div
-          role="status"
-          style={{
-            padding: "10px 16px",
-            marginBottom: 16,
-            borderRadius: 8,
-            background: "#fff8e1",
-            color: "#8d6e63",
-            border: "1px solid #ffe082",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span>{authorNotice}</span>
-          <button
-            type="button"
-            onClick={() => setAuthorNotice(null)}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}
-            aria-label="Dismiss notice"
-          >
-            <Icon name="close" size={16} />
-          </button>
-        </div>
-      )}
 
       {/* Main details grid */}
       <div className="detail-grid">
@@ -396,6 +387,47 @@ function CanonicalDealDetailsContent({ dealId }: { dealId: Id<"deals"> }) {
             Location confirmed by community contributor. Map data © OpenStreetMap contributors.
           </p>
         </section>
+      )}
+
+      {/* Explicit destructive confirmation (author only) */}
+      {isAuthor && (
+        <Dialog
+          title="Delete this deal?"
+          open={deleteOpen}
+          onClose={() => {
+            if (!deleteBusy) setDeleteOpen(false);
+          }}
+        >
+          <div className="form-stack">
+            <p>
+              This permanently removes “{deal.restaurant}” and its votes and photo from DishDeals.
+              This cannot be undone.
+            </p>
+            {deleteError && (
+              <p role="alert" className="field-error">
+                {deleteError}
+              </p>
+            )}
+            <div className="form-actions">
+              <button
+                type="button"
+                className="button secondary"
+                disabled={deleteBusy}
+                onClick={() => setDeleteOpen(false)}
+              >
+                Keep deal
+              </button>
+              <button
+                type="button"
+                className="button primary"
+                disabled={deleteBusy}
+                onClick={() => void handleDelete()}
+              >
+                {deleteBusy ? "Deleting…" : "Delete deal"}
+              </button>
+            </div>
+          </div>
+        </Dialog>
       )}
 
       {/* Image Modal Dialog */}
