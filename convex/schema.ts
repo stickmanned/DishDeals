@@ -42,7 +42,16 @@ export default defineSchema({
     sourceUrl: v.optional(v.string()),
     stillOnCount: v.number(),
     expiredCount: v.number(),
-  }).index("by_author", ["authorId"]),
+  }).index("by_author", ["authorId"]).index("by_image", ["imageId"]),
+
+  // Private registry of uploads the server accepted for a user. Created only by the authenticated upload path
+  // (a later slice), never by a public mutation. A deal may reference an image only if the caller owns its row here.
+  dealUploads: defineTable({
+    ownerId: v.id("users"),
+    storageId: v.id("_storage"),
+    expiresAt: v.number(),
+    published: v.boolean(),
+  }).index("by_storage", ["storageId"]).index("by_expiry", ["expiresAt"]),
 
   votes: defineTable({
     dealId: v.id("deals"),
