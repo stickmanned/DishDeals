@@ -89,6 +89,13 @@ export function JobPanel({
                   "Try a clearer screenshot or the restaurant’s offer text.")}
         </p>
       </div>
+      <details className="help-details">
+        <summary>Processing diagnostics</summary>
+        <p>Backend job: {job.jobId}</p>
+        <p>Status: {job.status}. Last update: {new Date(job.updatedAt).toLocaleString("en-CA", { timeZone: "America/Vancouver" })} (Vancouver).</p>
+        {!!job.error && typeof job.error === "object" && "code" in job.error && typeof job.error.code === "string" && <p>Error code: {job.error.code}</p>}
+        <p>Offers: {job.deals.length}; published: {job.deals.filter(offer => offer.status === "published").length}; awaiting review: {job.deals.filter(offer => offer.status === "needs_review").length}.</p>
+      </details>
       {job.result?.source?.publishedAt && (
         <p className="quiet-note">
           Original post: {job.result.source.publishedAt}

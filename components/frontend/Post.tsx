@@ -14,6 +14,8 @@ import { Icon } from "./Icon";
 import { DraftForm } from "./DraftForm";
 import { JobPanel } from "./JobPanel";
 import { Dialog } from "./Dialog";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 export function Post({ editId, jobId }: { editId?: string; jobId?: string }) {
   const app = useFrontend();
   return <PostView key={`${app.mode}:${editId ?? "new"}`} editId={editId} jobId={jobId} />;
@@ -23,6 +25,8 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const [intake, setIntake] = useState("No image selected");
+  const [imageRendered, setImageRendered] = useState("");
   const currentJobId = app.mode === "live" ? (jobId ?? app.activeJobId) : null;
   const ownDeal =
     app.mode === "preview"
@@ -89,18 +93,23 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
     setSourceUrl("");
     setPublishedAt("");
     setError("");
+    setIntake("No image selected");
+    setImageRendered("");
   };
   async function choose(file?: File) {
-    if (!file) return;
+    if (!file) { setIntake("The picker returned no file"); return; }
     setBusy(true);
     setError("");
+    setImageRendered("");
+    setIntake(`Picker received ${file.name}; ${file.type || "MIME type absent"}; ${file.size} bytes`);
     try {
-      app.setSourceImage(await prepareWorkflowImage(file));
+      app.setSourceImage(await prepareWorkflowImage(file, stage => setIntake(`${file.name}; ${file.type || "MIME type absent"}; ${file.size} bytes · ${stage}`)));
       setFilename(file.name);
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "We couldn’t prepare this image.",
       );
+      setIntake(`Preparation failed for ${file.name}; ${file.type || "MIME type absent"}; ${file.size} bytes`);
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -125,16 +134,19 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
     }
     if (!app.live) { setError("Sharing is temporarily unavailable. Please try again."); return; }
     setBusy(true);
+    setIntake("Starting authenticated submission");
     try {
       if (!app.authenticated) {
         if (!app.auth?.signInGuest) throw new Error("A guest session could not be started.");
         await app.auth.signInGuest();
       }
       const result = await app.live.submit(source);
+      setIntake(`Backend accepted job ${result.jobId}${result.duplicate ? " (existing submission)" : ""}`);
       app.setActiveJobId(result.jobId);
       router.replace(`/post?job=${encodeURIComponent(result.jobId)}`);
       setDuplicate(result.duplicate);
     } catch {
+      setIntake("Submission failed before a backend job receipt was returned");
       setError(
         "We couldn’t submit this source. Check your connection, session, and the submission limit before trying again.",
       );
@@ -232,7 +244,9 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
             </label>
             {app.sourceImage && <>
               <div className="attachment-preview">
-                <Image src={app.sourceImage} unoptimized alt="Optional source image" fill sizes="600px" />
+                <Image key={app.sourceImage} src={app.sourceImage} unoptimized alt="Optional source image" fill sizes="600px"
+                  onLoad={() => setImageRendered("Image preview rendered")}
+                  onError={() => { setImageRendered("Image preview failed to render"); setError("The prepared image could not be displayed. Choose it again before submitting."); }} />
               </div>
               <div className="attachment-tools"><span>{filename || "Selected image"}</span>
                 <button type="button" className="text-link" onClick={() => { app.setSourceImage(""); setFilename(""); }}>Remove image</button>
@@ -246,7 +260,7 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
                 <Icon name="camera" size={16} /> Take a photo
               </button>
             </div>
-            <input hidden ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => void choose(e.target.files?.[0])} />
+            <input hidden ref={fileRef} type="file" accept="image/*" onChange={(e) => void choose(e.target.files?.[0])} />
             <input hidden ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={(e) => void choose(e.target.files?.[0])} />
             <details className="help-details">
               <summary>
@@ -324,6 +338,13 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
           ? "Your draft stays in this tab as you browse."
           : "Instagram posts that require login may need their caption or an optional image."}
       </p>
+      <details className="help-details">
+        <summary>Source intake diagnostics</summary>
+        <p role="status">{intake}{imageRendered ? ` · ${imageRendered}` : ""}</p>
+        <p>Mode: {app.mode}. {app.mode === "preview" ? "No backend submission or extraction runs in preview." : `Session: ${app.live?.authLoading ? "checking" : app.authenticated ? "authenticated" : "guest sign-in needed"}. Connection: ${app.live?.connection ?? "connected"}.`}</p>
+        {app.mode === "live" && <BackendReadiness />}
+        <p>Images are prepared locally, then sent with the processing request. Live feed photos are not currently connected to this source image.</p>
+      </details>
       {dirty && (
         <button
           className="text-link"
@@ -364,4 +385,9 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
       </Dialog>
     </div>
   );
+}
+
+function BackendReadiness() {
+  const readiness = useQuery(api.trial.status);
+  return <p>Backend configuration: {readiness ? `Gemini ${readiness.geminiConfigured ? "configured" : "missing"}; restaurant provider ${readiness.geoapifyConfigured ? "configured" : "missing"}.` : "checking…"} Configuration flags do not prove a successful provider call.</p>;
 }

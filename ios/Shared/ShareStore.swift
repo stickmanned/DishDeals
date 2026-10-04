@@ -2,11 +2,10 @@ import Foundation
 import Security
 
 enum ShareStore {
-    static var group: String { Bundle.main.object(forInfoDictionaryKey: "AppGroup") as! String }
-    static var defaults: UserDefaults { UserDefaults(suiteName: group)! }
+    static var group: String { Bundle.main.object(forInfoDictionaryKey: "AppGroup") as? String ?? "" }
     private static var keyQuery: [String: Any] { [kSecClass as String: kSecClassGenericPassword,
         kSecAttrService as String: "DinedealsReelSession", kSecAttrAccount as String: "accessToken",
-        kSecAttrAccessGroup as String: Bundle.main.object(forInfoDictionaryKey: "KeychainGroup") as! String] }
+        kSecAttrAccessGroup as String: Bundle.main.object(forInfoDictionaryKey: "KeychainGroup") as? String ?? ""] }
     static func saveToken(_ token: String?) -> Bool {
         let query = keyQuery
         if token == nil { let status = SecItemDelete(query as CFDictionary); return status == errSecSuccess || status == errSecItemNotFound }
@@ -26,8 +25,9 @@ enum ShareStore {
         return String(data: data, encoding: .utf8)
     }
     // Individual atomic files avoid lost updates between concurrently running app/extension processes.
-    static var inbox: URL { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)!.appendingPathComponent("ReelInbox", isDirectory: true) }
+    static var inbox: URL? { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)?.appendingPathComponent("ReelInbox", isDirectory: true) }
     @discardableResult static func enqueue(_ value: String, kind: String) throws -> URL {
+        guard let inbox = inbox else { throw ShareFailure.configuration }
         try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
         let bytes = try JSONSerialization.data(withJSONObject: ["kind": kind, "value": value, "savedAt": Date().timeIntervalSince1970])
         let file = inbox.appendingPathComponent(UUID().uuidString + ".json")
@@ -35,14 +35,17 @@ enum ShareStore {
         return file
     }
     static func first() -> (URL, String, String)? {
+        guard let inbox = inbox else { return nil }
         guard let files = try? FileManager.default.contentsOfDirectory(at: inbox, includingPropertiesForKeys: nil) else { return nil }
-        for file in files.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+        var latest: (URL, String, String, Double)?
+        for file in files {
             guard let data = try? Data(contentsOf: file), let record = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
                   let saved = record["savedAt"] as? Double, Date().timeIntervalSince1970 - saved < 86400,
                   let kind = record["kind"] as? String, let value = record["value"] as? String else { try? FileManager.default.removeItem(at: file); continue }
-            return (file, kind, value)
+            if latest == nil || saved > latest!.3 { latest = (file, kind, value, saved) }
         }
-        return nil
+        // An old unsupported share must not hide a newer successful receipt.
+        return latest.map { ($0.0, $0.1, $0.2) }
     }
     static func normalize(_ text: String) throws -> String {
         let detector = try NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
@@ -67,9 +70,12 @@ enum ShareStore {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw ShareFailure.network }
         if http.statusCode == 401 { throw ShareFailure.signIn }
-        guard http.statusCode == 200, let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              json["status"] as? String == "success", let value = json["value"] as? [String: Any], let id = value["itemId"] as? String else { throw ShareFailure.network }
+        guard http.statusCode == 200 else { throw ShareFailure.backend("HTTP \(http.statusCode)") }
+        guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { throw ShareFailure.backend("Invalid JSON response") }
+        guard json["status"] as? String == "success" else { throw ShareFailure.backend("Mutation rejected (check session and Reel configuration)") }
+        guard let value = json["value"] as? [String: Any], let id = value["itemId"] as? String,
+              id.range(of: "^[A-Za-z0-9]{1,128}$", options: .regularExpression) != nil else { throw ShareFailure.backend("Missing valid item receipt") }
         return id
     }
 }
-enum ShareFailure: Error { case invalid, signIn, network, configuration }
+enum ShareFailure: Error { case invalid, signIn, network, configuration, backend(String) }

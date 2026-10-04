@@ -26,6 +26,10 @@ import UserNotifications
                 var c = URLComponents(); c.path = "/reels"; c.queryItems = [URLQueryItem(name: "shared", value: normalized)]
                 route = c.string ?? "/reels"
                 // Link is removed only after the authenticated web view confirms server receipt.
+            } else if kind == "sharedText" {
+                var c = URLComponents(); c.path = "/reels"; c.queryItems = [URLQueryItem(name: "shared", value: value), URLQueryItem(name: "unsupported", value: "1")]
+                route = c.string ?? "/reels"
+                // Unsupported text remains local until its 24-hour retention expires.
             }
         }
     }
@@ -42,7 +46,7 @@ struct WebShell: UIViewRepresentable {
     func updateUIView(_ view: WKWebView, context: Context) {
         guard route != context.coordinator.lastRoute else { return }
         context.coordinator.lastRoute = route
-        guard let base = Bundle.main.object(forInfoDictionaryKey: "WebsiteURL") as? String, let url = URL(string: base + route), url.scheme == "https" else { return }
+        guard let base = Bundle.main.object(forInfoDictionaryKey: "WebsiteURL") as? String, let url = URL(string: base.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + route), url.scheme == "https" else { return }
         view.load(URLRequest(url: url))
     }
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
@@ -61,7 +65,7 @@ struct WebShell: UIViewRepresentable {
             case "session": _ = ShareStore.saveToken(body["token"] as? String)
             case "received":
                 // Remove matching local recovery copies only after the backend's deduplicated receipt.
-                if let link = body["sourceUrl"] as? String, let files = try? FileManager.default.contentsOfDirectory(at: ShareStore.inbox, includingPropertiesForKeys: nil) {
+                if let link = body["sourceUrl"] as? String, let inbox = ShareStore.inbox, let files = try? FileManager.default.contentsOfDirectory(at: inbox, includingPropertiesForKeys: nil) {
                     for file in files { if let data = try? Data(contentsOf: file), let record = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], record["kind"] as? String == "link", record["value"] as? String == link { try? FileManager.default.removeItem(at: file) } }
                 }
             case "enableNotifications": UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }

@@ -11,31 +11,38 @@ import { normalizeInstagramUrl, reelDraft, reelExtraction, type ReelDraft } from
 function nativeMessage(value: object) {
   (window as Window & { webkit?: { messageHandlers?: { dishdeals?: { postMessage: (v: object) => void } } } }).webkit?.messageHandlers?.dishdeals?.postMessage(value);
 }
-export function ReelIntake(props: { itemId?: string; shared?: string }) {
-  return <Intake {...props} />;
+export function ReelIntake(props: { itemId?: string; shared?: string; unsupported?: boolean }) {
+  if (!process.env.NEXT_PUBLIC_CONVEX_URL) return <div className="narrow-page panel"><h1>Reel intake is not configured.</h1><p>This website was built without a Convex backend URL. Nothing has been submitted.</p>{props.shared !== undefined && <><h2>Received share</h2><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{props.shared || "Empty payload"}</pre></>}<Link href="/post">Use the local source preview</Link></div>;
+  return <Intake key={`${props.itemId ?? ""}:${props.shared ?? ""}`} {...props} />;
 }
 
-function Intake({ itemId, shared }: { itemId?: string; shared?: string }) {
+function Intake({ itemId, shared, unsupported }: { itemId?: string; shared?: string; unsupported?: boolean }) {
   const router = useRouter(), auth = useConvexAuth(), actions = useAuthActions(), token = useAuthToken();
   const [text, setText] = useState(shared ?? ""), [days, setDays] = useState(7), [error, setError] = useState(""), [busy, setBusy] = useState(false);
   const configuration = useQuery(api.trial.status);
   const submit = useMutation(api.reels.submit);
   const items = useQuery(api.reels.list, auth.isAuthenticated ? {} : "skip");
   const auto = useRef<string | null>(null);
+  const normalizedShare = useMemo(() => {
+    if (!shared) return null;
+    try { return normalizeInstagramUrl(shared); } catch { return null; }
+  }, [shared]);
+  const [receipt, setReceipt] = useState("No backend receipt yet");
   useEffect(() => { nativeMessage({ type: "session", token: token ?? null }); }, [token]);
   useEffect(() => {
-    if (!shared || !auth.isAuthenticated || !configuration?.reelsConfigured || auto.current === shared) return;
+    if (!shared || unsupported || !auth.isAuthenticated || !configuration?.reelsConfigured || auto.current === shared) return;
     auto.current = shared;
     let normalized: string;
     try { normalized = normalizeInstagramUrl(shared); } catch { return; }
-    void submit({ text: normalized }).then(result => { nativeMessage({ type: "received", sourceUrl: normalized }); router.replace(`/reels?item=${result.itemId}`); }).catch(() => setError("Your link could not be saved. Try again below."));
-  }, [auth.isAuthenticated, configuration?.reelsConfigured, shared, submit, router]);
+    void submit({ text: normalized }).then(result => { setReceipt(`Backend accepted item ${result.itemId}`); nativeMessage({ type: "received", sourceUrl: normalized }); router.replace(`/reels?item=${result.itemId}`); }).catch(() => { setReceipt("Submission failed; received link remains on this page"); setError("Your link could not be saved. Try again below."); });
+  }, [auth.isAuthenticated, configuration?.reelsConfigured, shared, unsupported, submit, router]);
   async function save(e: FormEvent) {
     e.preventDefault(); setError(""); if (!configuration?.reelsConfigured) { setError("Reel processing is not configured. Use a screenshot or caption instead."); return; } setBusy(true);
     try { const result = await submit({ text: normalizeInstagramUrl(text), retentionDays: days }); setText(""); router.push(`/reels?item=${result.itemId}`); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not save the link."); } finally { setBusy(false); }
   }
   return <div className="narrow-page reel-page"><Link className="back-link" href="/">Back to Discover</Link><div className="page-heading"><h1>{itemId ? "Your Reel save." : "Save a Reel."}</h1><p>Private to you. Ready to review when processing finishes.</p></div>
+    {shared !== undefined && <div className="panel form-stack"><h2>Received from share</h2><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", userSelect: "text" }}>{shared || "Empty payload"}</pre><p>{unsupported ? "The native extension could not recognize this payload. This preview may be truncated; it will not submit automatically. Copy a direct Reel link or use a screenshot/caption." : normalizedShare ? `Recognized Reel link: ${normalizedShare}` : "This payload is not a supported direct Instagram Reel/post link. Copy a direct link or use a screenshot/caption."}</p><p role="status">{receipt}. Session: {auth.isLoading ? "checking" : auth.isAuthenticated ? "authenticated" : "sign-in required"}. Reel provider: {configuration ? configuration.reelsConfigured ? "configured" : "not configured" : "checking"}.</p>{error && <p role="alert">{error}</p>}</div>}
     {configuration && !configuration.reelsConfigured && <div className="panel"><p>Reel processing is not configured yet. You can extract an offer from your own screenshot or pasted caption.</p><Link href="/post" className="button secondary">Share a screenshot or caption</Link></div>}
     {auth.isLoading ? <p role="status">Checking your session…</p> : !auth.isAuthenticated ? <ReelSignIn /> : <>
       <div className="form-actions"><button className="button secondary" onClick={() => nativeMessage({ type: "enableNotifications" })}>Enable iPhone alerts</button><button className="text-button" onClick={() => { nativeMessage({ type: "session", token: null }); void actions.signOut(); }}>Sign out</button></div>
