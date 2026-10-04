@@ -14,14 +14,18 @@
 
 ## Summary of Changes
 
-1. **"Your published deals" Read-Only Section (`components/deals/MyPublishedDeals.tsx`):**
+1. **"Your published deals" Read-Only Section & Error Boundary (`components/deals/MyPublishedDeals.tsx`):**
    - Added read-only `MyPublishedDeals` client component displaying the signed-in user's published deals.
+   - **Unconfigured backend guard:** Checked `!process.env.NEXT_PUBLIC_CONVEX_URL` before invoking any Convex hooks, rendering an honest unconfigured notice when disconnected.
+   - **Nested React Error Boundary (`PublishedDealsErrorBoundary`):** Wraps strictly around the live authored list (`LivePublishedDealsList`), displaying a generic error message ("Couldn’t load your published deals. Please check your connection and try again.") and a "Retry" button.
+   - **Sibling isolation:** Because the error boundary is isolated around the live list, a `useQuery` throw or connection failure NEVER crashes the `/post` page and NEVER resets the sibling `<CanonicalPost />` or loses the user's creation form draft.
+   - **Remounting retry:** Clicking "Retry" resets boundary state and increments the key on `PublishedDealsErrorBoundary`, freshly remounting the query.
    - Consumes Loom's pending backend contract `deals.listMine({ limit: 50 }) => Doc<"deals">[] & { imageUrl: string | null }` via typed `makeFunctionReference<"query">("deals:listMine")`.
    - **Signed-in gate:** When user is signed out (`!isAuthenticated`), the query is skipped with `"skip"`, and a clear signin prompt is rendered (`/signin?next=/post`). Loading states are displayed with `role="status"`.
    - **Clear private vs public separation:** Displays a prominent callout with a link to `/reels` ("Saved Instagram posts/Reels"), explaining that private Reel saves are stored privately in your account and are separate from public deals until published.
    - **Published deal cards:** Displays each deal with:
      - Restaurant name (`deal.restaurant`).
-     - "Public deal" badge indicating it is public on the community map/feed.
+     - "Public deal" badge indicating it is public on the community map and detail page.
      - Deal text (`deal.dealText`).
      - Price in CAD (`deal.priceCad` formatted as `$X.XX CAD`, or "Price varies").
      - Photo thumbnail if `deal.imageUrl` is provided, with safe alt text.
@@ -30,14 +34,14 @@
        - Edit view: `/deal/${deal._id}/edit` ("Edit deal"), handed off to the existing author editor.
      - **No delete mutation or duplicated editor:** Deletion is owned solely by the existing canonical detail page (`/deal/[id]`); this component does not add a delete mutation UI.
 
-2. **Strict URL Source Classification (Posts vs Reels):**
+2. **Strict Anchored URL Source Classification (Posts vs Reels):**
    - Implemented `classifyDealSource(sourceUrl)` in `components/deals/MyPublishedDeals.tsx`:
      - Strictly requires credential-free HTTPS (rejects credentials, ports, non-HTTPS schemes like `http:`, `javascript:`, `data:` so invalid URLs never become clickable hrefs).
      - Exact host matching: `instagram.com`, `www.instagram.com`, and `m.instagram.com`.
-     - Anchored pathname matching for shortcode (`/reel/`, `/reels/`, and `/p/`):
-       - Instagram Reels labeled as `"Instagram Reel"`.
-       - Instagram Posts labeled as `"Instagram Post"`.
-     - Labels generic or unclassifiable Instagram links on exact hosts as `"Instagram source"` without guessing original forms for rewritten links.
+     - Exact anchored pathname matching with no path suffix:
+       - Reels: `^\/(?:reel|reels)\/([A-Za-z0-9_-]{5,64})\/?$` labeled as `"Instagram Reel"`.
+       - Posts: `^\/p\/([A-Za-z0-9_-]{5,64})\/?$` labeled as `"Instagram Post"`.
+     - URLs with extra path suffixes (e.g. `/comments`), out-of-bound shortcodes, or generic Instagram paths fall back safely to `"Instagram source"`.
      - Optional safe external HTTPS links labeled as `"External link"`.
      - Missing, null, or empty source URLs labeled as `"Direct post"`.
      - Safe external linking: `target="_blank"`, `rel="noreferrer noopener"`, `referrerPolicy="no-referrer"`, no injected HTML.
@@ -48,6 +52,7 @@
      - Displays simple confirmed 7-day-after-expiry policy copy: `"Expires on {expiresOn} (auto-deleted 7 calendar days after expiry in America/Vancouver)"`.
      - Missing or empty expiry: displays `"No expiration date (retained indefinitely)"`.
      - Zero duplicated date arithmetic in UI: authoritative date/retention logic is owned by Loom in `lib/dealRetention.ts`.
+     - Copy explicitly references the community map and detail page, not live feed (known broken).
 
 4. **Post Page Integration & Jump Link Navigation (`app/post/page.tsx`):**
    - Added a visible "Your posts" jump link (`<a href="#your-posts" className="button secondary">Your posts</a>`) near the top of the canonical `/post` page.
@@ -56,23 +61,26 @@
    - Loading or error states in "Your published deals" never clear or block the creation form.
 
 5. **Comprehensive Synthetic Regression Tests (`tests/import/myPublishedDeals.test.tsx`):**
-   - 12/12 tests verifying:
-     - Reel URLs (`/reel/`, `/reels/`, `m.instagram.com/reel/`) -> `"Instagram Reel"`.
-     - Post URLs (`/p/`, `m.instagram.com/p/`) -> `"Instagram Post"`.
-     - Generic Instagram URLs (`/explore/...`, `/someuser`) -> `"Instagram source"`.
-     - Rejecting credentials, ports, non-HTTPS, `javascript:`, `data:` URLs without clickable hrefs.
+   - 16/16 tests verifying:
+     - Exact anchored regex for Reels (`/reel/`, `/reels/`, `m.instagram.com/reel/`) with 5-64 char shortcode.
+     - Exact anchored regex for Posts (`/p/`, `m.instagram.com/p/`) with 5-64 char shortcode.
+     - Path suffix rejection (e.g. `/reel/C9_deal123/comments` -> falls back to `"Instagram source"`).
+     - Out-of-bound shortcodes (< 5 chars -> `"Instagram source"`).
+     - Safe rejection of credentials, ports, non-HTTPS, `javascript:`, `data:` URLs without clickable hrefs.
      - External HTTPS URLs -> `"External link"`.
      - Missing source -> `"Direct post"`.
      - Verbatim `expiresOn` display and confirmed 7-day policy copy.
      - Missing expiry -> retained indefinitely copy.
+     - Unconfigured backend guard before any Convex hook.
+     - Error boundary state transition, generic error alert, Retry button triggering `onRetry` callback.
      - Signed-out state: query skipped with `"skip"`, sign-in prompt rendered, link to `/reels` rendered.
-     - Loading state and empty state rendering.
-     - Populated deals list with all badges, links (`/deal/[id]`, `/deal/[id]/edit`), and asserting NO delete mutation UI exists.
+     - Loading state and empty state rendering with community map/detail copy.
+     - Populated deals list with badges, links (`/deal/[id]`, `/deal/[id]/edit`), and asserting NO delete mutation UI exists.
 
 ## Checks Actually Run
 
-- `npx vitest run tests/import/myPublishedDeals.test.tsx`: 12/12 passed in 14ms.
-- `npx vitest run tests/import/`: 23 test files / 820 tests passed in 1.14s.
+- `npx vitest run tests/import/myPublishedDeals.test.tsx`: 16/16 passed in 12ms.
+- `npx vitest run tests/import/`: 23 test files / 824 tests passed in 1.14s.
 - `npm run typecheck` (`tsc --noEmit`): clean (exit code 0).
 - `npm run lint` (`eslint .`): clean (exit code 0).
 - `npm run test:workflow` (`node --test scripts/agent-workflow.test.mjs`): 23/23 tests passed in 12.8s.

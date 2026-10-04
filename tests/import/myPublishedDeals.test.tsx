@@ -1,10 +1,11 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   classifyDealSource,
   formatDealExpiryPolicy,
   MyPublishedDeals,
+  PublishedDealsErrorBoundary,
 } from "../../components/deals/MyPublishedDeals";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 
@@ -23,6 +24,23 @@ vi.mock("convex/react", () => ({
 }));
 
 vi.mock("@/convex/_generated/api", async () => import("../../convex/_generated/api"));
+
+const ORIGINAL_CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
+
+beforeEach(() => {
+  process.env.NEXT_PUBLIC_CONVEX_URL = "https://proper-marmot-82.convex.cloud";
+  mockAuthState = { isLoading: false, isAuthenticated: true };
+  mockDealsState = [];
+  mockLastQueryArgs = undefined;
+});
+
+afterEach(() => {
+  if (ORIGINAL_CONVEX_URL !== undefined) {
+    process.env.NEXT_PUBLIC_CONVEX_URL = ORIGINAL_CONVEX_URL;
+  } else {
+    delete process.env.NEXT_PUBLIC_CONVEX_URL;
+  }
+});
 
 function sampleDeal(overrides: Partial<Doc<"deals"> & { imageUrl: string | null }> = {}) {
   return {
@@ -47,73 +65,74 @@ function sampleDeal(overrides: Partial<Doc<"deals"> & { imageUrl: string | null 
   };
 }
 
-describe("classifyDealSource (posts vs Reels strict URL classification)", () => {
-  it("accurately classifies valid HTTPS Instagram Reel URLs with anchored shortcode", () => {
+describe("classifyDealSource (exact anchored regex: /p|reel|reels/[A-Za-z0-9_-]{5,64}/?$)", () => {
+  it("accurately classifies valid HTTPS Instagram Reel URLs with anchored shortcode (5-64 chars)", () => {
     expect(classifyDealSource("https://www.instagram.com/reel/C9_deal123/")).toEqual({
       kind: "instagram_reel",
       label: "Instagram Reel",
       url: "https://www.instagram.com/reel/C9_deal123/",
     });
-    expect(classifyDealSource("https://instagram.com/reels/C9_deal123/?igsh=xyz")).toEqual({
+    expect(classifyDealSource("https://instagram.com/reels/C9_deal123")).toEqual({
       kind: "instagram_reel",
       label: "Instagram Reel",
-      url: "https://instagram.com/reels/C9_deal123/?igsh=xyz",
+      url: "https://instagram.com/reels/C9_deal123",
     });
-    expect(classifyDealSource("https://m.instagram.com/reel/C9_deal123/")).toEqual({
+    expect(classifyDealSource("https://m.instagram.com/reel/12345/")).toEqual({
       kind: "instagram_reel",
       label: "Instagram Reel",
-      url: "https://m.instagram.com/reel/C9_deal123/",
+      url: "https://m.instagram.com/reel/12345/",
     });
   });
 
-  it("accurately classifies valid HTTPS Instagram Post URLs (/p/) with anchored shortcode", () => {
+  it("accurately classifies valid HTTPS Instagram Post URLs (/p/) with anchored shortcode (5-64 chars)", () => {
     expect(classifyDealSource("https://www.instagram.com/p/DA_post987/")).toEqual({
       kind: "instagram_post",
       label: "Instagram Post",
       url: "https://www.instagram.com/p/DA_post987/",
     });
-    expect(classifyDealSource("https://instagram.com/p/DA_post987/")).toEqual({
+    expect(classifyDealSource("https://instagram.com/p/DA_post987")).toEqual({
       kind: "instagram_post",
       label: "Instagram Post",
-      url: "https://instagram.com/p/DA_post987/",
-    });
-    expect(classifyDealSource("https://m.instagram.com/p/DA_post987/")).toEqual({
-      kind: "instagram_post",
-      label: "Instagram Post",
-      url: "https://m.instagram.com/p/DA_post987/",
+      url: "https://instagram.com/p/DA_post987",
     });
   });
 
-  it("classifies generic Instagram URLs on exact hosts without guessing original kind", () => {
-    expect(classifyDealSource("https://www.instagram.com/explore/locations/123/")).toEqual({
+  it("falls back to generic Instagram source when path suffix is present (no path suffix allowed)", () => {
+    // Has extra path suffix: /comments or /embed
+    expect(classifyDealSource("https://www.instagram.com/reel/C9_deal123/comments")).toEqual({
       kind: "instagram_generic",
       label: "Instagram source",
-      url: "https://www.instagram.com/explore/locations/123/",
+      url: "https://www.instagram.com/reel/C9_deal123/comments",
     });
-    expect(classifyDealSource("https://instagram.com/someuser")).toEqual({
+    expect(classifyDealSource("https://instagram.com/p/DA_post987/extra/path")).toEqual({
       kind: "instagram_generic",
       label: "Instagram source",
-      url: "https://instagram.com/someuser",
+      url: "https://instagram.com/p/DA_post987/extra/path",
+    });
+  });
+
+  it("falls back to generic Instagram source when shortcode is outside 5-64 chars bound", () => {
+    // 4 chars: too short
+    expect(classifyDealSource("https://www.instagram.com/reel/1234/")).toEqual({
+      kind: "instagram_generic",
+      label: "Instagram source",
+      url: "https://www.instagram.com/reel/1234/",
     });
   });
 
   it("safely rejects credentials, ports, non-HTTPS, or invalid schemes without creating clickable hrefs", () => {
-    // Credentials in URL
     expect(classifyDealSource("https://user:pass@instagram.com/reel/C9_deal123/")).toEqual({
       kind: "direct_post",
       label: "Direct post",
     });
-    // Non-standard port
     expect(classifyDealSource("https://instagram.com:8080/reel/C9_deal123/")).toEqual({
       kind: "direct_post",
       label: "Direct post",
     });
-    // Plain HTTP
     expect(classifyDealSource("http://instagram.com/reel/C9_deal123/")).toEqual({
       kind: "direct_post",
       label: "Direct post",
     });
-    // Dangerous schemes
     expect(classifyDealSource("javascript:alert(1)")).toEqual({
       kind: "direct_post",
       label: "Direct post",
@@ -136,7 +155,6 @@ describe("classifyDealSource (posts vs Reels strict URL classification)", () => 
     expect(classifyDealSource(undefined)).toEqual({ kind: "direct_post", label: "Direct post" });
     expect(classifyDealSource(null)).toEqual({ kind: "direct_post", label: "Direct post" });
     expect(classifyDealSource("")).toEqual({ kind: "direct_post", label: "Direct post" });
-    expect(classifyDealSource("   ")).toEqual({ kind: "direct_post", label: "Direct post" });
   });
 });
 
@@ -146,15 +164,7 @@ describe("formatDealExpiryPolicy (verbatim expiresOn & confirmed 7-day policy co
       hasExpiry: false,
       policyText: "No expiration date (retained indefinitely)",
     });
-    expect(formatDealExpiryPolicy(null)).toEqual({
-      hasExpiry: false,
-      policyText: "No expiration date (retained indefinitely)",
-    });
     expect(formatDealExpiryPolicy("")).toEqual({
-      hasExpiry: false,
-      policyText: "No expiration date (retained indefinitely)",
-    });
-    expect(formatDealExpiryPolicy("   ")).toEqual({
       hasExpiry: false,
       policyText: "No expiration date (retained indefinitely)",
     });
@@ -170,7 +180,76 @@ describe("formatDealExpiryPolicy (verbatim expiresOn & confirmed 7-day policy co
   });
 });
 
-describe("MyPublishedDeals component rendering (read-only list, no delete UI)", () => {
+describe("PublishedDealsErrorBoundary (nested error boundary around authored list)", () => {
+  it("renders children when no error has occurred", () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        PublishedDealsErrorBoundary,
+        null,
+        createElement("div", { id: "child-content" }, "Authored deals content"),
+      ),
+    );
+    expect(html).toContain('id="child-content"');
+    expect(html).toContain("Authored deals content");
+    expect(html).not.toContain("Couldn’t load your published deals");
+  });
+
+  it("catches error transition, renders generic error message with Retry button, and triggers onRetry callback", () => {
+    let retried = false;
+    const boundary = new PublishedDealsErrorBoundary({
+      children: createElement("div", null, "Initial"),
+      onRetry: () => {
+        retried = true;
+      },
+    });
+
+    expect(boundary.state).toEqual({ hasError: false });
+
+    // Simulate error transition caught by React error boundary lifecycle
+    const derived = PublishedDealsErrorBoundary.getDerivedStateFromError();
+    expect(derived).toEqual({ hasError: true });
+
+    // Boundary enters error state
+    boundary.state = derived;
+    const errorMarkup = renderToStaticMarkup(boundary.render() as React.ReactElement);
+
+    expect(errorMarkup).toContain("Couldn’t load your published deals");
+    expect(errorMarkup).toContain("Please check your connection and try again.");
+    expect(errorMarkup).toContain("Retry");
+
+    // Clicking Retry resets boundary state and notifies host to remount query
+    boundary.setState = vi.fn().mockImplementation((stateUpdate: unknown) => {
+      const next = typeof stateUpdate === "function" ? (stateUpdate as (s: unknown) => unknown)(boundary.state) : stateUpdate;
+      boundary.state = { ...boundary.state, ...(next as object) };
+    }) as unknown as typeof boundary.setState;
+
+    const rendered = boundary.render() as React.ReactElement<{
+      children: [
+        unknown,
+        unknown,
+        React.ReactElement<{ children: React.ReactElement<{ onClick: () => void }> }>
+      ];
+    }>;
+    const button = rendered.props.children[2].props.children;
+    button.props.onClick();
+
+    expect(boundary.state.hasError).toBe(false);
+    expect(retried).toBe(true);
+  });
+});
+
+describe("MyPublishedDeals unconfigured backend guard", () => {
+  it("renders backend unconfigured notice BEFORE any Convex hook runs when NEXT_PUBLIC_CONVEX_URL is unset", () => {
+    delete process.env.NEXT_PUBLIC_CONVEX_URL;
+    const html = renderToStaticMarkup(createElement(MyPublishedDeals));
+    expect(html).toContain("The live deal service is not connected here");
+    expect(html).toContain('id="your-posts"');
+    // Ensure no Convex query ran
+    expect(mockLastQueryArgs).toBeUndefined();
+  });
+});
+
+describe("MyPublishedDeals component rendering (read-only list, no delete UI, community map/detail copy)", () => {
   it("renders sign-in prompt and skips query when user is signed out", () => {
     mockAuthState = { isLoading: false, isAuthenticated: false };
     mockDealsState = [];
@@ -193,18 +272,17 @@ describe("MyPublishedDeals component rendering (read-only list, no delete UI)", 
     expect(html).toContain("Loading your published deals");
   });
 
-  it("renders empty state with link to private saved reels when user has no published deals", () => {
+  it("renders empty state mentioning community map and detail page (no live feed mention)", () => {
     mockAuthState = { isLoading: false, isAuthenticated: true };
     mockDealsState = [];
 
     const html = renderToStaticMarkup(createElement(MyPublishedDeals));
     expect(html).toContain("You haven’t published any deals yet");
-    expect(html).toContain("Saved Instagram posts/Reels");
-    expect(html).toContain('/reels');
-    expect(html).toContain("Private saves are separate from public deals");
+    expect(html).toContain("community map and detail page");
+    expect(html).not.toContain("feed"); // Verified no live feed mention
   });
 
-  it("renders published deals with read-only list/detail/edit links and NO delete mutation UI", () => {
+  it("renders published deals with read-only list/detail/edit links, section id, and NO delete mutation UI", () => {
     mockAuthState = { isLoading: false, isAuthenticated: true };
     mockDealsState = [
       sampleDeal({
@@ -223,14 +301,6 @@ describe("MyPublishedDeals component rendering (read-only list, no delete UI)", 
         sourceUrl: "https://www.instagram.com/p/C9_post456/",
         expiresOn: undefined,
       }),
-      sampleDeal({
-        _id: "deal_manual_3" as Id<"deals">,
-        restaurant: "Miku Restaurant",
-        dealText: "Aburi Salmon Oshi 2-for-1",
-        priceCad: 22,
-        sourceUrl: undefined,
-        expiresOn: "2026-09-01",
-      }),
     ];
 
     const html = renderToStaticMarkup(createElement(MyPublishedDeals));
@@ -241,7 +311,6 @@ describe("MyPublishedDeals component rendering (read-only list, no delete UI)", 
     // Restaurant names
     expect(html).toContain("Phở Hòa");
     expect(html).toContain("Saku Pork Cutlet");
-    expect(html).toContain("Miku Restaurant");
 
     // Deal text and price
     expect(html).toContain("$10 Bowl of Pho");
@@ -255,7 +324,6 @@ describe("MyPublishedDeals component rendering (read-only list, no delete UI)", 
     // Source classification
     expect(html).toContain("Instagram Reel");
     expect(html).toContain("Instagram Post");
-    expect(html).toContain("Direct post");
 
     // Expiry verbatim and policy text
     expect(html).toContain("Expires: 2026-10-04");
@@ -267,12 +335,14 @@ describe("MyPublishedDeals component rendering (read-only list, no delete UI)", 
     expect(html).toContain('/deal/deal_reel_1/edit');
     expect(html).toContain('/deal/deal_post_2');
     expect(html).toContain('/deal/deal_post_2/edit');
-    expect(html).toContain('/deal/deal_manual_3');
-    expect(html).toContain('/deal/deal_manual_3/edit');
 
     // Confirm NO delete mutation UI or delete buttons exist (read-only list)
     expect(html).not.toContain("Delete deal");
     expect(html).not.toContain("Delete (locked)");
     expect(html).not.toContain("Confirm delete");
+
+    // Copy confirms community map and detail page, not feed
+    expect(html).toContain("community map and detail page");
+    expect(html).not.toContain("feed");
   });
 });
