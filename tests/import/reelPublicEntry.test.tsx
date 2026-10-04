@@ -299,9 +299,10 @@ describe("ReelIntake public entry from owned Reel result (SSR markup; not a phon
     // 3. Link to /post?source=<encoded sourceUrl>
     expect(html).toContain(`/post?source=${ENCODED_SOURCE}`);
 
-    // 4. Recording is described as optional with accurate copy (link alone supplies no facts)
+    // 4. Recording is described as optional with accurate copy (the link is read automatically; a recording is the fallback)
     expect(html).toMatch(/attach.*recording.*\(optional\)/i);
-    expect(html).toMatch(/link alone supplies no facts|link alone is never analyzed|link alone cannot be analyzed/i);
+    expect(html).toMatch(/reads the shared Reel automatically|tries to read this/i);
+    expect(html).not.toMatch(/link alone supplies no facts|automatic retrieval is blocked|cannot be automatically analyzed/i);
   });
 
   it("renders distinct copy and links for Instagram Post vs Reel vs unknown sources", async () => {

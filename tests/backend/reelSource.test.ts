@@ -306,6 +306,9 @@ describe("successful attachment", () => {
     const net = vi.spyOn(globalThis, "fetch");
     const logs = (["log", "error", "warn"] as const).map(m => vi.spyOn(console, m).mockImplementation(() => {}));
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    // The shared link's own background run (retrieval is gated off here, so it fails closed) finishes before the
+    // recording is attached, as it does in real use.
+    await s.settle();
     await s.post(s.alice as never, mp4());
     await s.settle();
     expect(net).not.toHaveBeenCalled();
@@ -377,13 +380,14 @@ describe("race, rate-limit and orphan handling", () => {
 });
 
 describe("workflow source selection and retention", () => {
-  it("link-only never starts a workflow or a resolver", async () => {
+  it("a shared link starts retrieval, which fails closed with no network call while the provider gate is off", async () => {
     const s = await setup();
     const net = vi.spyOn(globalThis, "fetch");
     await s.settle();
-    expect(await s.item()).toMatchObject({ status: "queued" });
-    expect((await s.item())!.workflowId).toBeUndefined();
+    expect(await s.item()).toMatchObject({ status: "failed", error: { code: "CONFIGURATION" } });
+    expect((await s.item())!.workflowId).toBeDefined();
     expect(net).not.toHaveBeenCalled();
+    expect(sdk.generateContent).not.toHaveBeenCalled();
   });
   it("with the media gate off it fails closed, calls no resolver or model, and keeps the recording for retries", async () => {
     const s = await setup();

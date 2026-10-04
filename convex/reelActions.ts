@@ -3,8 +3,8 @@ import { GoogleGenAI } from "@google/genai";
 import { v } from "convex/values";
 import { internalAction, env } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { Doc } from "./_generated/dataModel";
-import { RetrievalError } from "../lib/reels/provider";
+import type { Doc, Id } from "./_generated/dataModel";
+import { retrieveReel, RetrievalError } from "../lib/reels/provider";
 import { runReelExtraction } from "../lib/reels/contract";
 import { extractionBlock } from "../lib/reels/nativeContext";
 const args = { itemId: v.id("reelItems"), generation: v.number() };
@@ -13,20 +13,34 @@ function configuredForSupplied() {
   if (env.REEL_MEDIA_USAGE_AUTHORIZED !== "true") throw new RetrievalError("CONFIGURATION", "Video analysis is disabled until model usage is authorized. You can still edit by hand.");
   if (!env.GEMINI_API_KEY || !env.GEMINI_REEL_MODEL) throw new RetrievalError("CONFIGURATION", "Video analysis credentials or model are not configured.");
 }
-// Legacy resolver gate, still read only by the extractor for a pre-existing non-supplied row (none can be created now).
+// Link retrieval gate: the provider key and usage flag are server-side only. Both must be set before any request is made.
 function configured() {
-  if (env.REEL_PROVIDER_USAGE_AUTHORIZED !== "true") throw new RetrievalError("CONFIGURATION", "Reel processing is disabled until provider usage is authorized.");
+  if (env.REEL_PROVIDER_USAGE_AUTHORIZED !== "true") throw new RetrievalError("CONFIGURATION", "Reel retrieval is not enabled on this server. Attach your own recording of this Reel, or edit the draft by hand.");
   if (!env.SCRAPECREATORS_API_KEY || !env.GEMINI_API_KEY || !env.GEMINI_REEL_MODEL)
-    throw new RetrievalError("CONFIGURATION", "Reel retrieval or extraction credentials are missing.");
+    throw new RetrievalError("CONFIGURATION", "Reel retrieval is not configured on this server. Attach your own recording of this Reel, or edit the draft by hand.");
 }
-// The link resolver is permanently retired: no network, no key and no environment flag can bring it back. A link
-// alone is never fetched; the user attaches their own recording or edits by hand.
+// Retrieves the Reel a user shared by link (William authorized this: a link is the only way to read a Reel's contents).
+// A missing gate or key fails closed before any network call. The provider client allow-lists the video host, caps size
+// and duration, and checks the shortcode matches the shared link. A user-attached recording is the fallback for a
+// private or removed Reel. The downloaded media is deleted once a draft exists (reels.finish).
 export const retrieve = internalAction({ args, returns: v.boolean(), handler: async (ctx, args): Promise<boolean> => {
   const item: Doc<"reelItems"> | null = await ctx.runQuery(internal.reels.workItem, args);
   if (!item) return false;
-  await ctx.runMutation(internal.reels.fail, { ...args, code: "UNAVAILABLE",
-    message: "Reels are not fetched from links. Attach your own recording of this Reel, or edit the draft by hand." });
-  return false;
+  let videoId: Id<"_storage"> | undefined;
+  try {
+    configured();
+    await ctx.runMutation(internal.reels.markRetrieving, args);
+    const media = await retrieveReel(item.sourceUrl, env.SCRAPECREATORS_API_KEY!);
+    videoId = await ctx.storage.store(media.blob);
+    return await ctx.runMutation(internal.reels.attachMedia, { ...args, videoId, caption: media.caption, duration: media.duration, publishedAt: media.publishedAt });
+  } catch (error) {
+    if (videoId) await ctx.storage.delete(videoId);
+    const known = error instanceof RetrievalError;
+    await ctx.runMutation(internal.reels.fail, { ...args,
+      code: known ? error.code : "RETRIEVAL_FAILED",
+      message: known ? error.message : "The retrieval service could not download this Reel. Retry later, attach your own recording, or edit by hand." });
+    return false;
+  }
 } });
 export const extract = internalAction({ args, returns: v.null(), handler: async (ctx, args): Promise<null> => {
   const item: Doc<"reelItems"> | null = await ctx.runQuery(internal.reels.workSource, args);

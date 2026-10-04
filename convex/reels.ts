@@ -64,14 +64,23 @@ export const submit = mutation({ args: { text: v.string(), retentionDays: v.opti
     if (parsed && !parsed.ok) throw new ConvexError(NATIVE_CONTEXT_REJECTED);
     // A duplicate returns the existing item untouched: its first context and manual state are immutable.
     const existing = await ctx.db.query("reelItems").withIndex("by_owner_url", q => q.eq("ownerId", ownerId).eq("sourceUrl", sourceUrl)).unique();
-    if (existing && existing.expiresAt > Date.now()) return { itemId: existing._id, duplicate: true };
+    if (existing && existing.expiresAt > Date.now()) {
+      // A link saved while retrieval was off is stranded at "queued" with no workflow. Sharing it again starts it
+      // (counted against the hourly limit); anything already running, finished or user-supplied is left untouched.
+      if (existing.status === "queued" && existing.workflowId === undefined && existing.sourceKind !== "supplied") {
+        await rateLimit(ctx, ownerId);
+        await enqueue(ctx, existing._id, existing.generation);
+      }
+      return { itemId: existing._id, duplicate: true };
+    }
     if (existing) await erase(ctx, existing);
     await rateLimit(ctx, ownerId);
     const now = Date.now(), expiresAt = now + retentionDays * day;
     // The context is saved in the same insert as the item, so a receipt can only follow a stored context.
     const itemId = await ctx.db.insert("reelItems", { ownerId, sourceUrl, status: "queued", generation: 1, attempts: 1, updatedAt: now, expiresAt, ...(parsed?.ok ? { nativeContext: parsed.value } : {}) });
-    // Link-only: nothing is enqueued. The user attaches their own recording (POST /reel-source); the legacy resolver is never started here.
     await ctx.scheduler.runAt(expiresAt, internal.reels.expire, { itemId, expiresAt });
+    // The shared link is retrieved and analyzed in the background; the result is a private draft for review, never a published deal.
+    await enqueue(ctx, itemId, 1);
     return { itemId, duplicate: false };
   } });
 export const get = query({ args: { itemId: v.id("reelItems") }, returns: schema.doc("reelItems"), handler: (ctx, args) => owned(ctx, args.itemId) });
