@@ -142,9 +142,9 @@ export const workSource = internalQuery({ args: jobArgs, returns: v.union(schema
 export const markRetrieving = internalMutation({ args: jobArgs, returns: v.null(), handler: async (ctx, args) => {
   const item = await ctx.db.get(args.itemId); if (item?.generation === args.generation && item.expiresAt > Date.now()) await ctx.db.patch(item._id, { status: "retrieving", updatedAt: Date.now() }); return null;
 } });
-export const attachMedia = internalMutation({ args: { ...jobArgs, videoId: v.id("_storage"), caption: v.string(), duration: v.number(), publishedAt: v.union(v.string(), v.null()) }, returns: v.boolean(), handler: async (ctx, args) => {
+export const attachMedia = internalMutation({ args: { ...jobArgs, videoId: v.id("_storage"), caption: v.string(), duration: v.number(), publishedAt: v.union(v.string(), v.null()), mediaMime: v.optional(v.union(v.literal("video/mp4"), v.literal("image/jpeg"), v.literal("image/png"), v.literal("image/webp"))) }, returns: v.boolean(), handler: async (ctx, args) => {
   const item = await ctx.db.get(args.itemId); if (!item || item.generation !== args.generation || item.expiresAt <= Date.now()) { await ctx.storage.delete(args.videoId); return false; }
-  await ctx.db.patch(item._id, { videoId: args.videoId, caption: args.caption, duration: args.duration, publishedAt: args.publishedAt ?? undefined, status: "extracting", updatedAt: Date.now() }); return true;
+  await ctx.db.patch(item._id, { videoId: args.videoId, mediaMime: args.mediaMime, caption: args.caption, duration: args.duration, publishedAt: args.publishedAt ?? undefined, status: "extracting", updatedAt: Date.now() }); return true;
 } });
 export const finish = internalMutation({ args: { ...jobArgs, extractionJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
   const item = await ctx.db.get(args.itemId); if (!item || item.generation !== args.generation || item.expiresAt <= Date.now()) return null;

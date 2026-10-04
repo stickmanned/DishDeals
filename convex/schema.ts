@@ -23,8 +23,8 @@ export default defineSchema({
     caption: v.optional(v.string()), duration: v.optional(v.number()), publishedAt: v.optional(v.string()),
     extractionJson: v.optional(v.string()), draftJson: v.optional(v.string()),
     draftRevision: v.optional(v.number()), draftEdited: v.optional(v.boolean()), // legacy rows: 0 / false
-    // User-supplied recording (absent on legacy and link-only rows). mediaMime is the type sent to the provider; duration is browser-supplied.
-    sourceKind: v.optional(v.literal("supplied")), mediaMime: v.optional(v.union(v.literal("video/mp4"), v.literal("video/mov"))), mediaBytes: v.optional(v.number()),
+    // sourceKind marks user-supplied recordings. mediaMime also records retrieved photos/videos; a still photo has duration 0.
+    sourceKind: v.optional(v.literal("supplied")), mediaMime: v.optional(v.union(v.literal("video/mp4"), v.literal("video/mov"), v.literal("image/jpeg"), v.literal("image/png"), v.literal("image/webp"))), mediaBytes: v.optional(v.number()),
     // Immutable first receipt from the native share extension. Private to the owner, expires with the item, never a public deal field.
     nativeContext: v.optional(nativeContextValidator),
     error: v.optional(v.object({ code: v.string(), message: v.string() })),

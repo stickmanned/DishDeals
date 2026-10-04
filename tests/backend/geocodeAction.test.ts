@@ -324,3 +324,11 @@ describe("helpers are private and validate their input", () => {
     await expect(s.t.mutation(internal.geocodeState.reserveSlot, {})).rejects.toThrow();
   });
 });
+
+it("searches the street address from an older combined name/address query and reuses its address cache", async () => {
+  const s = await setup(); enable(); const net = network([answer([hit("6516 Kingsway, Burnaby, BC", 49.2205, -122.9687)])]);
+  const first = await find(s, "Phở Hòa + jázen tea, 6516 Kingsway, Burnaby, BC");
+  expect(new URL(net.calls[0].url).searchParams.get("q")).toBe("6516 Kingsway, Burnaby, BC");
+  expect(await find(s, "6516 Kingsway, Burnaby, BC")).toEqual(first);
+  expect(net.calls).toHaveLength(1);
+});

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { classifyUploadImage, MAX_IMAGE_BYTES } from "../dealImageUpload";
 import { normalizeInstagramUrl } from "./contract";
 export class RetrievalError extends Error {
   /** `detail` is for server logs only (field paths, never provider values) and is never shown to users. */
@@ -7,6 +8,7 @@ export class RetrievalError extends Error {
 // The provider documents these fields as nullable (photo posts, removed media, no caption), so null
 // means "absent" rather than "malformed". Anything else off-contract is still rejected.
 const response = z.object({ success: z.boolean(), data: z.object({ xdt_shortcode_media: z.object({
+  __typename: z.string().optional(), is_video: z.boolean().optional(), display_url: z.string().nullish(),
   shortcode: z.string(), video_url: z.string().nullish(), video_duration: z.number().finite().nullish(),
   taken_at_timestamp: z.number().nullish(),
   edge_media_to_caption: z.object({ edges: z.array(z.object({ node: z.object({ text: z.string().nullish() }) })) }).nullish(),
@@ -15,7 +17,7 @@ export function safeMediaUrl(value: string) {
   const u = new URL(value);
   if (u.protocol !== "https:" || u.username || u.password || u.port ||
     !["cdninstagram.com", "fbcdn.net"].some(host => u.hostname.endsWith(`.${host}`)))
-    throw new RetrievalError("MEDIA_UNSUPPORTED", "The provider returned an unsupported video host.");
+    throw new RetrievalError("MEDIA_UNSUPPORTED", "The provider returned an unsupported media host.");
   return u.href;
 }
 export async function retrieveReel(url: string, apiKey: string, fetcher: typeof fetch = fetch) {
@@ -31,26 +33,31 @@ export async function retrieveReel(url: string, apiKey: string, fetcher: typeof 
   if (!parsed.success) throw new RetrievalError("RETRIEVAL_FAILED", "The retrieval provider returned unexpected data.",
     parsed.error.issues.map(i => `${i.path.join(".") || "(root)"}: ${i.code}`).join("; "));
   const media = parsed.data.data?.xdt_shortcode_media;
-  if (!parsed.data.success || !media?.video_url) throw new RetrievalError("UNAVAILABLE", "No accessible video was found. Use a public Reel or upload your own source.");
-  if (!sourceUrl.includes(`/${media.shortcode}/`)) throw new RetrievalError("RETRIEVAL_FAILED", "The retrieved video does not match the shared link.");
-  if (!media.video_duration || media.video_duration <= 0 || media.video_duration > 180) throw new RetrievalError("MEDIA_UNSUPPORTED", "Use a Reel up to three minutes long.");
-  const video = await fetcher(safeMediaUrl(media.video_url), { signal: AbortSignal.timeout(45000), redirect: "error" });
-  if (!video.ok) throw new RetrievalError("UNAVAILABLE", "The video download is unavailable. Retry to retrieve a fresh link.");
-  if (video.headers.get("content-type")?.split(";")[0] !== "video/mp4") throw new RetrievalError("MEDIA_UNSUPPORTED", "The video content type is unsupported.");
+  if (!parsed.data.success || !media) throw new RetrievalError("UNAVAILABLE", "No accessible video was found. Use a public Reel or upload your own source.");
+  if (!sourceUrl.includes(`/${media.shortcode}/`)) throw new RetrievalError("RETRIEVAL_FAILED", "The retrieved media does not match the shared link.");
+  const image = media.__typename === "XDTGraphImage" && media.is_video === false && !media.video_url;
+  if (!media.video_url && !(image && media.display_url)) throw new RetrievalError("UNAVAILABLE", "No accessible video or single photo was found. Upload the source images or recording instead.");
+  if (!image && (!media.video_duration || media.video_duration <= 0 || media.video_duration > 180)) throw new RetrievalError("MEDIA_UNSUPPORTED", "Use a Reel up to three minutes long.");
+  const download = await fetcher(safeMediaUrl(image ? media.display_url! : media.video_url!), { signal: AbortSignal.timeout(45000), redirect: "error" });
+  if (!download.ok) throw new RetrievalError("UNAVAILABLE", "The media download is unavailable. Retry to retrieve a fresh link.");
+  const contentType = download.headers.get("content-type")?.split(";")[0];
+  if (image ? !["image/jpeg", "image/png", "image/webp"].includes(contentType ?? "") : contentType !== "video/mp4") throw new RetrievalError("MEDIA_UNSUPPORTED", "The media content type is unsupported.");
   // Base64 expansion plus the prompt must stay under Gemini's inline request limit.
-  const maxBytes = 12 * 1024 * 1024;
-  if (Number(video.headers.get("content-length")) > maxBytes) throw new RetrievalError("MEDIA_UNSUPPORTED", "The Reel is larger than 12 MB.");
-  const reader = video.body?.getReader();
-  if (!reader) throw new RetrievalError("RETRIEVAL_FAILED", "The video download was empty.");
+  const maxBytes = image ? MAX_IMAGE_BYTES : 12 * 1024 * 1024;
+  const sizeError = image ? "The photo is larger than 5 MB." : "The Reel is larger than 12 MB.";
+  if (Number(download.headers.get("content-length")) > maxBytes) throw new RetrievalError("MEDIA_UNSUPPORTED", sizeError);
+  const reader = download.body?.getReader();
+  if (!reader) throw new RetrievalError("RETRIEVAL_FAILED", "The media download was empty.");
   const chunks: Uint8Array<ArrayBuffer>[] = []; let size = 0;
   while (true) { const { done, value } = await reader.read(); if (done) break; size += value.byteLength;
-    if (size > maxBytes) { await reader.cancel(); throw new RetrievalError("MEDIA_UNSUPPORTED", "The Reel is larger than 12 MB."); }
+    if (size > maxBytes) { await reader.cancel(); throw new RetrievalError("MEDIA_UNSUPPORTED", sizeError); }
     chunks.push(new Uint8Array(value));
   }
-  const blob = new Blob(chunks, { type: "video/mp4" });
-  if (!size) throw new RetrievalError("RETRIEVAL_FAILED", "The video download was empty.");
+  const blob = new Blob(chunks, { type: contentType });
+  if (!size) throw new RetrievalError("RETRIEVAL_FAILED", "The media download was empty.");
   const header = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
-  if (header.length < 12 || String.fromCharCode(...header.slice(4, 8)) !== "ftyp") throw new RetrievalError("MEDIA_UNSUPPORTED", "The downloaded file is not an MP4 video.");
+  if (image && classifyUploadImage(header) !== contentType) throw new RetrievalError("MEDIA_UNSUPPORTED", "The downloaded file is not a supported photo.");
+  if (!image && (header.length < 12 || String.fromCharCode(...header.slice(4, 8)) !== "ftyp")) throw new RetrievalError("MEDIA_UNSUPPORTED", "The downloaded file is not an MP4 video.");
   return { blob, caption: (media.edge_media_to_caption?.edges.flatMap(e => e.node.text ?? []).join("\n") ?? "").slice(0, 30000),
-    duration: media.video_duration, publishedAt: media.taken_at_timestamp ? new Date(media.taken_at_timestamp * 1000).toISOString() : null };
+    duration: image ? 0 : media.video_duration!, publishedAt: media.taken_at_timestamp ? new Date(media.taken_at_timestamp * 1000).toISOString() : null };
 }

@@ -189,6 +189,7 @@ function withoutMaxItems(schema: unknown): unknown {
   return schema;
 }
 export function buildReelExtractionRequest(input: ReelExtractionInput) {
+  const image = input.mimeType.startsWith("image/");
   const context = {
     caption: input.caption, publishedAt: input.publishedAt, timezone: "America/Vancouver",
     ...(input.supplied ? { sourceUrl: input.supplied.sourceUrl, sourceUrlNote: "Provenance only; never fetch or open it.", durationSecondsBrowserSupplied: input.duration } : {}),
@@ -201,7 +202,7 @@ export function buildReelExtractionRequest(input: ReelExtractionInput) {
       ...(source ? [{ text: JSON.stringify(source) }] : []),
     ] }],
     config: { temperature: 0, maxOutputTokens: 14000, responseMimeType: "application/json",
-      responseJsonSchema: withoutMaxItems(z.toJSONSchema(reelExtractionResponse)), systemInstruction: REEL_SYSTEM_INSTRUCTION } };
+      responseJsonSchema: withoutMaxItems(z.toJSONSchema(reelExtractionResponse)), systemInstruction: image ? REEL_SYSTEM_INSTRUCTION.replace("Extract dining offers from the supplied video AND caption. Listen to audio including speech; inspect visible signs, menu text, overlays and scene changes.", "Extract dining offers from the supplied still photo AND caption. Inspect visible signs, menu text and overlays.") + "\nThis source is one still photo and its caption, not a video. Inspect the photo for visible offer text. Return an empty transcript and no audio evidence. Use timestampSeconds 0 for every visual evidence and visual constraint; caption timestamps stay null. Never claim video or audio was examined." : REEL_SYSTEM_INSTRUCTION } };
 }
 export type ReelExtractionRequest = ReturnType<typeof buildReelExtractionRequest>;
 
@@ -234,7 +235,9 @@ export async function runReelExtraction(transport: ReelModelTransport, input: Re
   let parsed: unknown;
   try { parsed = JSON.parse(response.text); } catch (error) { throw new ReelExtractionError("bad_json", "The model answer was not valid JSON", undefined, { cause: error }); }
   try {
-    return validateExtraction(parsed, input.caption, duration, suppliedFragments(input.nativeContext));
+    const result = validateExtraction(parsed, input.caption, duration, suppliedFragments(input.nativeContext));
+    if (input.mimeType.startsWith("image/") && (result.transcript !== "" || [...result.evidence, ...(result.constraints ?? [])].some(e => e.channel === "audio"))) throw new Error("A still photo cannot provide audio evidence");
+    return result;
   } catch (error) {
     throw new ReelExtractionError("validation", error instanceof Error ? error.message : "The model answer failed validation", undefined, { cause: error });
   }

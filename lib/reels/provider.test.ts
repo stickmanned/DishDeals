@@ -57,3 +57,33 @@ test("a genuinely malformed response is still rejected, and reports only field p
   expect(error.detail).toContain("data.xdt_shortcode_media.shortcode");
   expect(JSON.stringify(error)).not.toContain("42");
 });
+
+test("retrieves a shared single-photo post using its full image instead of requiring video", async () => {
+  const photo = { ...media, __typename: "XDTGraphImage", is_video: false, video_url: null, video_duration: null, display_url: "https://scontent.cdninstagram.com/post.jpg" };
+  const f = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ success: true, data: { xdt_shortcode_media: photo } }))
+    .mockResolvedValueOnce(new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), { headers: { "content-type": "image/jpeg" } }));
+  const result = await retrieveReel(url.replace("/reel/", "/p/"), "key", f);
+  expect(result.blob.type).toBe("image/jpeg");
+  expect(result.duration).toBe(0);
+  expect(result.caption).toBe("Offer caption");
+  expect(f.mock.calls[1][0]).toBe(photo.display_url);
+  expect(f.mock.calls[1][1]).not.toHaveProperty("headers");
+});
+
+test.each([
+  ["bad signature", new Uint8Array([1, 2, 3]), {}],
+  ["over limit", new Uint8Array([0xff, 0xd8, 0xff]), { "content-length": "5242881" }],
+])("rejects a photo with %s before extraction", async (_name, bytes, extraHeaders) => {
+  const photo = { ...media, __typename: "XDTGraphImage", is_video: false, video_url: null, display_url: "https://scontent.cdninstagram.com/photo.jpg" };
+  const f = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ success: true, data: { xdt_shortcode_media: photo } }))
+    .mockResolvedValueOnce(new Response(bytes, { headers: { "content-type": "image/jpeg", ...extraHeaders } }));
+  await expect(retrieveReel(url, "key", f)).rejects.toMatchObject({ code: "MEDIA_UNSUPPORTED" });
+});
+test("never treats a carousel cover or unavailable video thumbnail as the full source", async () => {
+  for (const kind of ["XDTGraphSidecar", "XDTGraphVideo"]) {
+    const photo = { ...media, __typename: kind, is_video: false, video_url: null, display_url: "https://scontent.cdninstagram.com/cover.jpg" };
+    const f = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, data: { xdt_shortcode_media: photo } }));
+    await expect(retrieveReel(url, "key", f)).rejects.toMatchObject({ code: "UNAVAILABLE" });
+    expect(f).toHaveBeenCalledTimes(1);
+  }
+});

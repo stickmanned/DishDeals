@@ -1,5 +1,8 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import {
+  DealLocationPicker,
   isValidLocationPoint,
   filterValidCandidates,
   LocationSearchGuard,
@@ -89,7 +92,7 @@ describe("DealLocationPicker production state transitions (helpers used by compo
     expect(reset.isConfirmed).toBe(false);
     expect(reset.candidates).toEqual([]);
     expect(reset.isSearching).toBe(false);
-    expect(reset.searchQuery).toBe("New Ramen, 123 Main St");
+    expect(reset.searchQuery).toBe("123 Main St");
   });
 
   it("invokes onInvalidate immediately when an unconfirmed proposal is applied", () => {
@@ -234,4 +237,27 @@ describe("DealLocationPicker contract & default configuration", () => {
     expect(props.restaurant).toBe("Burnaby Noodle House");
     expect(typeof props.onInvalidate).toBe("function");
   });
+});
+
+describe("address-first location search", () => {
+  it("uses the street address without the restaurant branding", () => {
+    expect(resetFormContextState("Phở Hòa + jázen tea", "6516 Kingsway, Burnaby, BC").searchQuery)
+      .toBe("6516 Kingsway, Burnaby, BC");
+  });
+  it("cleans a saved address that already includes restaurant branding", () => {
+    expect(resetFormContextState("Phở Hòa + jázen tea", "Phở Hòa + jázen tea, 6516 Kingsway, Burnaby, BC").searchQuery)
+      .toBe("6516 Kingsway, Burnaby, BC");
+  });
+});
+
+
+it("renders the user's street address in the actual location search input", () => {
+  const html = renderToStaticMarkup(createElement(DealLocationPicker, {
+    restaurant: "Phở Hòa + jázen tea",
+    address: "Phở Hòa + jázen tea, 6516 Kingsway, Burnaby, BC",
+    location: null, onConfirm: vi.fn(), onInvalidate: vi.fn(),
+  }));
+  const input = html.match(/<input[^>]*aria-label="Location search query"[^>]*>/)?.[0];
+  expect(input).toContain('value="6516 Kingsway, Burnaby, BC"');
+  expect(input).not.toContain("Phở Hòa");
 });
