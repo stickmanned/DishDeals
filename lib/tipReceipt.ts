@@ -13,7 +13,7 @@
  *  4. the signature has not been accepted for an earlier tip request.
  * `findReference` alone is never a receipt. Timeout is reported as "unknown", never as a failed payment.
  */
-import { encodeBase58, validateSolAmount, validateSolanaAddress } from "./tipRequest";
+import { createTipRequest, encodeBase58, validateSolAmount, validateSolanaAddress } from "./tipRequest";
 
 /** Official Devnet public RPC (https://solana.com/docs/references/clusters). Rate limited; no paid RPC. */
 export const DEVNET_RPC_URL = "https://api.devnet.solana.com";
@@ -63,7 +63,8 @@ export type TipFailureReason =
   | "wrong_reference"
   | "transaction_failed"
   | "reused_signature"
-  | "invalid_transaction";
+  | "invalid_transaction"
+  | "setup_failed";
 
 export type TipState =
   | { status: "idle" }
@@ -82,6 +83,7 @@ export const TIP_MESSAGES: Record<TipFailureReason, string> = {
   transaction_failed: "A transaction was found but it did not succeed.",
   reused_signature: "That transaction was already used for another tip.",
   invalid_transaction: "A transaction was found but it is not a valid tip transfer.",
+  setup_failed: "Could not prepare the tip request. Nothing was sent.",
 };
 
 export const TIP_UNKNOWN_MESSAGE =
@@ -155,14 +157,20 @@ export function reasonFromSdkError(error: unknown): TipFailureReason {
 }
 
 export interface TipDeps {
-  getGenesisHash(): Promise<string>;
+  /** Every call receives the controller's abort signal; implementations must stop work when it fires. */
+  getGenesisHash(signal: AbortSignal): Promise<string>;
   /** Resolves the signature of the oldest transaction that includes the reference, or null if none yet. */
-  findReference(reference: string): Promise<{ signature: string } | null>;
+  findReference(reference: string, signal: AbortSignal): Promise<{ signature: string } | null>;
   /** SDK `validateTransfer`; rejects when the confirmed transaction does not match. */
-  validateTransfer(signature: string, fields: { recipient: string; amount: number; reference: string }): Promise<unknown>;
+  validateTransfer(
+    signature: string,
+    fields: { recipient: string; amount: number; reference: string },
+    signal: AbortSignal,
+  ): Promise<unknown>;
   /** Confirmed `jsonParsed` transaction, or null when unavailable. */
-  getParsedTransaction(signature: string): Promise<ParsedTipTransaction | null>;
+  getParsedTransaction(signature: string, signal: AbortSignal): Promise<ParsedTipTransaction | null>;
   now(): number;
+  /** Resolves after `ms`, or rejects when `signal` aborts. */
   sleep(ms: number, signal: AbortSignal): Promise<void>;
 }
 
@@ -171,10 +179,15 @@ export interface TipController {
   cancel(): void;
 }
 
+const TERMINAL = new Set<TipState["status"]>(["received", "unknown", "failed", "cancelled"]);
+export const isTerminalTipState = (state: TipState): boolean => TERMINAL.has(state.status);
+
 /**
- * Creates a controller for ONE tip request. `start` polls only because the caller explicitly started it;
- * it does one Devnet identity check, then polls every 2 s for at most 2 minutes, stops on cancel, and ends in
- * exactly one terminal state. `usedSignatures` is shared across requests to reject a reused transaction.
+ * Creates a controller for ONE tip request. `start` runs only because the caller explicitly started it.
+ * The total budget (POLL_MAX_MS) is a hard deadline that also covers pending RPC promises: when it fires, or on
+ * cancel, the abort signal is raised for every in-flight call, `start` settles at once, and the single terminal
+ * state is "unknown" (deadline) or "cancelled". Nothing that settles later can emit a state or consume a signature.
+ * `usedSignatures` is shared across requests to reject a reused transaction.
  */
 export function createTipController(
   deps: TipDeps,
@@ -183,71 +196,92 @@ export function createTipController(
   usedSignatures: Set<string> = new Set(),
 ): TipController {
   const abort = new AbortController();
+  const deadlineAbort = new AbortController();
   let started = false;
-  let finished = false;
+  let terminal: TipState | null = null;
+  let wake!: () => void;
+  const stopped = new Promise<void>((resolve) => (wake = resolve));
+  const STOP = Symbol("stop");
 
-  const emit = (state: TipState): TipState => {
-    // Stale output: nothing after cancel or after the terminal state.
-    if (!finished && !(abort.signal.aborted && state.status !== "cancelled")) onState(state);
-    if (state.status !== "polling") finished = true;
+  /** First terminal state wins; later calls return it unchanged and emit nothing. */
+  const finish = (state: TipState): TipState => {
+    if (terminal) return terminal;
+    terminal = state;
+    deadlineAbort.abort();
+    abort.abort();
+    wake();
+    onState(state);
     return state;
   };
-  const fail = (reason: TipFailureReason) => emit({ status: "failed", reason, message: TIP_MESSAGES[reason] });
+  const fail = (reason: TipFailureReason) => finish({ status: "failed", reason, message: TIP_MESSAGES[reason] });
+
+  /** Races a dependency call against stop. Late rejections of the abandoned call are swallowed. */
+  async function call<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T | typeof STOP> {
+    if (terminal) return STOP;
+    const pending = fn(abort.signal);
+    pending.catch(() => undefined);
+    return Promise.race([pending, stopped.then(() => STOP)]) as Promise<T | typeof STOP>;
+  }
 
   async function run(): Promise<TipState> {
     validateSolanaAddress(expected.recipient, "recipient");
     validateSolanaAddress(expected.reference, "reference");
     solToLamports(expected.amount);
     const startedAt = deps.now();
-    emit({ status: "polling", startedAt });
+    // Hard deadline: its timer is owned by deps.sleep and cleared through deadlineAbort when we finish.
+    deps.sleep(POLL_MAX_MS, deadlineAbort.signal).then(
+      () => void finish({ status: "unknown", message: TIP_UNKNOWN_MESSAGE }),
+      () => undefined,
+    );
+    onState({ status: "polling", startedAt });
+
+    let genesis: string | typeof STOP;
     try {
-      if ((await deps.getGenesisHash()) !== DEVNET_GENESIS_HASH) return fail("wrong_network");
+      genesis = await call((signal) => deps.getGenesisHash(signal));
     } catch {
-      return abort.signal.aborted ? emit({ status: "cancelled" }) : fail("rpc_unavailable");
+      return fail("rpc_unavailable");
     }
-    while (!abort.signal.aborted) {
-      if (deps.now() - startedAt >= POLL_MAX_MS) return emit({ status: "unknown", message: TIP_UNKNOWN_MESSAGE });
-      let found: { signature: string } | null;
+    if (genesis === STOP) return terminal as unknown as TipState;
+    if (genesis !== DEVNET_GENESIS_HASH) return fail("wrong_network");
+
+    while (!terminal) {
+      let found: { signature: string } | null | typeof STOP;
       try {
-        found = await deps.findReference(expected.reference);
+        found = await call((signal) => deps.findReference(expected.reference, signal));
       } catch {
-        return abort.signal.aborted ? emit({ status: "cancelled" }) : fail("rpc_unavailable");
+        return fail("rpc_unavailable");
       }
-      if (abort.signal.aborted) break;
+      if (found === STOP || terminal) break;
       if (found) return await validate(found.signature);
-      try {
-        await deps.sleep(POLL_INTERVAL_MS, abort.signal);
-      } catch {
-        break;
-      }
+      const slept = await call((signal) => deps.sleep(POLL_INTERVAL_MS, signal)).catch(() => STOP);
+      if (slept === STOP) break;
     }
-    return emit({ status: "cancelled" });
+    return terminal ?? finish({ status: "cancelled" });
   }
 
   async function validate(signature: string): Promise<TipState> {
     if (usedSignatures.has(signature)) return fail("reused_signature");
+    const fields = { recipient: expected.recipient, amount: Number(expected.amount), reference: expected.reference };
     try {
-      await deps.validateTransfer(signature, {
-        recipient: expected.recipient,
-        amount: Number(expected.amount),
-        reference: expected.reference,
-      });
+      const sdk = await call((signal) => deps.validateTransfer(signature, fields, signal));
+      if (sdk === STOP) return terminal as unknown as TipState;
     } catch (error) {
-      if (abort.signal.aborted) return emit({ status: "cancelled" });
       // An RPC outage during validation is not evidence about the payment.
-      return fail(error instanceof Error && /fetch|network|rpc|timeout/i.test(error.name + error.message) && !/invalid|amount|reference/i.test(error.message)
-        ? "rpc_unavailable"
-        : reasonFromSdkError(error));
+      const outage =
+        error instanceof Error && /fetch|network|rpc|timeout/i.test(error.name + error.message) && !/invalid|amount|reference/i.test(error.message);
+      return fail(outage ? "rpc_unavailable" : reasonFromSdkError(error));
     }
     try {
-      assertExactTipTransfer(await deps.getParsedTransaction(signature), expected);
+      const parsed = await call((signal) => deps.getParsedTransaction(signature, signal));
+      if (parsed === STOP) return terminal as unknown as TipState;
+      assertExactTipTransfer(parsed, expected);
     } catch (error) {
-      if (abort.signal.aborted) return emit({ status: "cancelled" });
       return fail(error instanceof TipValidationError ? error.reason : "rpc_unavailable");
     }
-    if (abort.signal.aborted) return emit({ status: "cancelled" });
+    // Synchronous from here: a stop that happened during the awaits above has already set `terminal`.
+    if (terminal) return terminal;
     usedSignatures.add(signature);
-    return emit({ status: "received", signature, explorerUrl: devnetExplorerUrl(signature) });
+    return finish({ status: "received", signature, explorerUrl: devnetExplorerUrl(signature) });
   }
 
   return {
@@ -257,20 +291,121 @@ export function createTipController(
       return run();
     },
     cancel() {
-      if (finished || abort.signal.aborted) return;
-      abort.abort();
-      onState({ status: "cancelled" });
-      finished = true;
+      finish({ status: "cancelled" });
+    },
+  };
+}
+
+export interface TipView {
+  status: "idle" | "preparing" | "active";
+  /** The wallet link and QR source. Non-null only while a request is being tracked. */
+  uri: string | null;
+  state: TipState;
+}
+
+export interface TipSession {
+  /** Returns false when a request is already preparing or active (single flight). */
+  begin(): boolean;
+  /** User cancel of the current request: stops tracking and clears the URI. No-op when idle. */
+  cancel(): void;
+  /** Silently invalidates everything (acknowledgement removed, recipient changed). */
+  reset(): void;
+  /** reset(), and no further callbacks ever. */
+  dispose(): void;
+}
+
+/**
+ * Owns single flight and generations around the controller. `begin` claims the slot synchronously, so a double
+ * activation cannot start two requests, and an SDK import that finishes after cancel/reset/dispose is dropped.
+ * The URI is exposed only while its request is tracked and is cleared at start, cancel, reset, setup failure and
+ * every terminal state, so the UI can never invite payment to an untracked request.
+ */
+export function createTipSession(options: {
+  recipient: string;
+  amount?: string;
+  loadDeps: () => Promise<TipDeps>;
+  newReference?: () => string;
+  usedSignatures?: Set<string>;
+  onChange: (view: TipView) => void;
+}): TipSession {
+  const amount = options.amount ?? TIP_AMOUNT_SOL;
+  const usedSignatures = options.usedSignatures ?? new Set<string>();
+  let generation = 0;
+  let busy = false;
+  let disposed = false;
+  let controller: TipController | null = null;
+
+  const emit = (view: TipView) => {
+    if (!disposed) options.onChange(view);
+  };
+  const idle = (state: TipState): TipView => ({ status: "idle", uri: null, state });
+  const invalidate = () => {
+    generation++;
+    busy = false;
+    const current = controller;
+    controller = null;
+    current?.cancel();
+  };
+
+  return {
+    begin() {
+      if (busy || disposed) return false;
+      busy = true;
+      const mine = ++generation;
+      const live = () => mine === generation && !disposed;
+      emit({ status: "preparing", uri: null, state: { status: "idle" } });
+      void (async () => {
+        try {
+          const request = createTipRequest({ recipient: options.recipient, reference: (options.newReference ?? createFreshReference)(), amount });
+          const deps = await options.loadDeps();
+          if (!live()) return;
+          const next = createTipController(
+            deps,
+            { recipient: request.recipient, reference: request.reference, amount: request.amount },
+            (state) => {
+              if (!live() || controller !== next) return;
+              if (isTerminalTipState(state)) {
+                busy = false;
+                controller = null;
+                emit(idle(state));
+              } else {
+                emit({ status: "active", uri: request.uri, state });
+              }
+            },
+            usedSignatures,
+          );
+          controller = next;
+          emit({ status: "active", uri: request.uri, state: { status: "idle" } });
+          await next.start();
+        } catch {
+          if (!live()) return;
+          busy = false;
+          controller = null;
+          emit(idle({ status: "failed", reason: "setup_failed", message: TIP_MESSAGES.setup_failed }));
+        }
+      })();
+      return true;
+    },
+    cancel() {
+      if (!busy) return;
+      invalidate();
+      emit(idle({ status: "cancelled" }));
+    },
+    reset() {
+      const wasBusy = busy;
+      invalidate();
+      if (wasBusy) emit(idle({ status: "idle" }));
+    },
+    dispose() {
+      invalidate();
+      disposed = true;
     },
   };
 }
 
 /** Structural view of the pieces of `@solana/kit` RPC and `@solana/pay` that the Devnet wiring uses. */
 export interface DevnetSdk {
-  rpc: {
-    getGenesisHash(): { send(): Promise<string> };
-    getTransaction(signature: never, config: never): { send(): Promise<unknown> };
-  };
+  rpc: object;
   pay: {
     findReference(rpc: never, reference: never, options?: never): Promise<{ signature: string }>;
     validateTransfer(rpc: never, signature: never, fields: never, options?: never): Promise<unknown>;
@@ -280,29 +415,48 @@ export interface DevnetSdk {
   toAddress(value: string): unknown;
 }
 
-/** Runtime deps backed by the maintained SDK. Only call with a Devnet RPC; the genesis check enforces it. */
+/**
+ * Returns an RPC view whose every request `send()` carries `abortSignal`. Installed `@solana/rpc-spec` supports
+ * `send({ abortSignal })` and passes it to the transport as `signal`; `@solana/pay`'s `findReference` and
+ * `validateTransfer` accept no signal themselves, so the signal is injected at the RPC layer.
+ */
+export function withAbortSignal<T extends object>(rpc: T, signal: AbortSignal): T {
+  return new Proxy({} as T, {
+    get: (_target, method) => (...args: unknown[]) => {
+      const request = (rpc as Record<string | symbol, (...a: unknown[]) => { send(options?: object): Promise<unknown> }>)[method](...args);
+      return { send: (options?: object) => request.send({ ...options, abortSignal: signal }) };
+    },
+  });
+}
+
+type SignalledRpc = {
+  getGenesisHash(): { send(): Promise<string> };
+  getTransaction(signature: never, config: never): { send(): Promise<unknown> };
+};
+
+/** Runtime deps backed by the maintained SDK. Only use with a Devnet RPC; the genesis check enforces it. */
 export function createDevnetDeps(sdk: DevnetSdk): TipDeps {
-  const rpc = sdk.rpc as never;
+  const scoped = (signal: AbortSignal) => withAbortSignal(sdk.rpc, signal) as unknown as SignalledRpc;
   return {
-    getGenesisHash: () => sdk.rpc.getGenesisHash().send(),
-    async findReference(reference) {
+    getGenesisHash: (signal) => scoped(signal).getGenesisHash().send(),
+    async findReference(reference, signal) {
       try {
-        const found = await sdk.pay.findReference(rpc, sdk.toAddress(reference) as never, { commitment: "confirmed" } as never);
+        const found = await sdk.pay.findReference(scoped(signal) as never, sdk.toAddress(reference) as never, { commitment: "confirmed" } as never);
         return { signature: found.signature };
       } catch (error) {
         if (error instanceof sdk.pay.FindReferenceError) return null;
         throw error;
       }
     },
-    validateTransfer: (signature, fields) =>
+    validateTransfer: (signature, fields, signal) =>
       sdk.pay.validateTransfer(
-        rpc,
+        scoped(signal) as never,
         signature as never,
         { recipient: sdk.toAddress(fields.recipient), amount: fields.amount, reference: sdk.toAddress(fields.reference) } as never,
         { commitment: "confirmed" } as never,
       ),
-    async getParsedTransaction(signature) {
-      const tx = await sdk.rpc
+    async getParsedTransaction(signature, signal) {
+      const tx = await scoped(signal)
         .getTransaction(signature as never, { encoding: "jsonParsed", commitment: "confirmed", maxSupportedTransactionVersion: 0 } as never)
         .send();
       return (tx ?? null) as ParsedTipTransaction | null;

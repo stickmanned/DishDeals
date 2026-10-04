@@ -3,6 +3,7 @@ import * as pay from "@solana/pay";
 import {
   AccountRole,
   address,
+  createSolanaRpcFromTransport,
   appendTransactionMessageInstruction,
   compileTransaction,
   createNoopSigner,
@@ -22,6 +23,10 @@ import {
   TIP_AMOUNT_SOL,
   assertExactTipTransfer,
   createDevnetDeps,
+  createTipSession,
+  isTerminalTipState,
+  withAbortSignal,
+  type TipView,
   createFreshReference,
   createTipController,
   devnetExplorerUrl,
@@ -51,31 +56,73 @@ function parsedTx(over: { err?: unknown; to?: string; lamports?: number | string
   };
 }
 
-/** Fake clock + deps; sleep advances the clock instead of waiting. */
+/** Deps with a fake clock: sleep registers a timer, `advance` fires due timers in order and flushes microtasks. */
 function harness(over: Partial<TipDeps> = {}) {
   let clock = 0;
+  const timers: { at: number; fire: () => void }[] = [];
   const calls = { find: 0, validate: 0, sleep: 0 };
+  const signals: AbortSignal[] = [];
+  const flush = async () => {
+    for (let i = 0; i < 25; i++) await Promise.resolve();
+  };
   const deps: TipDeps = {
-    getGenesisHash: async () => DEVNET_GENESIS_HASH,
-    findReference: async () => {
+    getGenesisHash: async (signal) => (signals.push(signal), DEVNET_GENESIS_HASH),
+    findReference: async (_r, signal) => {
       calls.find++;
+      signals.push(signal);
       return null;
     },
-    validateTransfer: async () => {
+    validateTransfer: async (_s, _f, signal) => {
       calls.validate++;
+      signals.push(signal);
       return {};
     },
     getParsedTransaction: async () => parsedTx(),
     now: () => clock,
-    sleep: async (ms) => {
-      calls.sleep++;
-      clock += ms;
-    },
+    sleep: (ms, signal) =>
+      new Promise<void>((resolve, reject) => {
+        calls.sleep++;
+        if (signal.aborted) return reject(new Error("aborted"));
+        const timer = { at: clock + ms, fire: resolve };
+        timers.push(timer);
+        signal.addEventListener(
+          "abort",
+          () => {
+            timers.splice(timers.indexOf(timer), 1);
+            reject(new Error("aborted"));
+          },
+          { once: true },
+        );
+      }),
     ...over,
   };
   const states: TipState[] = [];
-  return { deps, calls, states, onState: (s: TipState) => states.push(s), advance: (ms: number) => (clock += ms) };
+  return {
+    deps,
+    calls,
+    states,
+    signals,
+    timers,
+    flush,
+    onState: (s: TipState) => states.push(s),
+    async advance(ms: number) {
+      const target = clock + ms;
+      await flush();
+      for (;;) {
+        const due = timers.filter((t) => t.at <= target).sort((a, b) => a.at - b.at)[0];
+        if (!due) break;
+        timers.splice(timers.indexOf(due), 1);
+        clock = due.at;
+        due.fire();
+        await flush();
+      }
+      clock = target;
+      await flush();
+    },
+  };
 }
+
+const hang = <T,>() => new Promise<T>(() => undefined);
 
 describe("lamport precision and URI inputs", () => {
   it("converts exact decimals without floats", () => {
@@ -119,28 +166,23 @@ describe("exact transaction check", () => {
 });
 
 describe("controller", () => {
+  const found = { findReference: async () => ({ signature: "SIG1" }) };
+
   it("received only after find + SDK + exact check, with a genuine explorer link", async () => {
-    const h = harness({ findReference: async () => ({ signature: "SIG1" }) });
+    const h = harness(found);
     const result = await createTipController(h.deps, expected, h.onState).start();
     expect(result).toEqual({ status: "received", signature: "SIG1", explorerUrl: devnetExplorerUrl("SIG1") });
     expect(h.calls.validate).toBe(1);
+    expect(h.timers).toHaveLength(0); // deadline timer cleared
   });
 
   it("findReference alone is not a receipt: SDK rejection fails closed", async () => {
-    const h = harness({
-      findReference: async () => ({ signature: "SIG1" }),
-      validateTransfer: async () => {
-        throw new Error("amount not transferred");
-      },
-    });
+    const h = harness({ ...found, validateTransfer: async () => Promise.reject(new Error("amount not transferred")) });
     expect(await createTipController(h.deps, expected, h.onState).start()).toMatchObject({ status: "failed", reason: "wrong_amount" });
   });
 
   it("our exact check rejects an overpayment the SDK would accept", async () => {
-    const h = harness({
-      findReference: async () => ({ signature: "SIG1" }),
-      getParsedTransaction: async () => parsedTx({ lamports: 20_000_000 }),
-    });
+    const h = harness({ ...found, getParsedTransaction: async () => parsedTx({ lamports: 20_000_000 }) });
     expect(await createTipController(h.deps, expected, h.onState).start()).toMatchObject({ status: "failed", reason: "wrong_amount" });
   });
 
@@ -157,67 +199,109 @@ describe("controller", () => {
     expect(await createTipController(b.deps, expected, b.onState).start()).toMatchObject({ reason: "rpc_unavailable" });
   });
 
-  it("rejects a reused signature", async () => {
-    const used = new Set(["SIG1"]);
-    const h = harness({ findReference: async () => ({ signature: "SIG1" }) });
-    expect(await createTipController(h.deps, expected, h.onState, used).start()).toMatchObject({ reason: "reused_signature" });
+  it("rejects a reused signature, and marks a signature used after a receipt", async () => {
+    const h = harness(found);
+    expect(await createTipController(h.deps, expected, h.onState, new Set(["SIG1"])).start()).toMatchObject({ reason: "reused_signature" });
     expect(h.calls.validate).toBe(0);
-  });
-
-  it("marks a signature used after a receipt so a second request cannot reuse it", async () => {
     const used = new Set<string>();
-    const h = harness({ findReference: async () => ({ signature: "SIG1" }) });
     await createTipController(h.deps, expected, h.onState, used).start();
     expect(await createTipController(h.deps, expected, h.onState, used).start()).toMatchObject({ reason: "reused_signature" });
   });
 
-  it("polls every 2s and times out as unknown after 2 minutes, never failed", async () => {
+  it("polls every 2s and ends as unknown at the 2 minute deadline, never failed", async () => {
     const h = harness();
-    const result = await createTipController(h.deps, expected, h.onState).start();
-    expect(result.status).toBe("unknown");
+    const done = createTipController(h.deps, expected, h.onState).start();
+    await h.advance(POLL_MAX_MS);
+    expect(await done).toMatchObject({ status: "unknown" });
     expect(h.calls.find).toBe(POLL_MAX_MS / POLL_INTERVAL_MS);
     expect(h.states.some((s) => s.status === "failed")).toBe(false);
+    expect(h.states.filter(isTerminalTipState)).toHaveLength(1);
+    expect(h.timers).toHaveLength(0);
   });
 
   it("finds a payment that arrives on a later poll", async () => {
     let n = 0;
     const h = harness({ findReference: async () => (++n === 3 ? { signature: "LATE" } : null) });
-    expect(await createTipController(h.deps, expected, h.onState).start()).toMatchObject({ status: "received", signature: "LATE" });
-    expect(h.calls.sleep).toBe(2);
+    const done = createTipController(h.deps, expected, h.onState).start();
+    await h.advance(POLL_INTERVAL_MS * 2);
+    expect(await done).toMatchObject({ status: "received", signature: "LATE" });
   });
 
-  it("cancel stops polling and emits no stale result", async () => {
-    let release!: () => void;
-    const gate = new Promise<void>((r) => (release = r));
-    const h = harness({
-      findReference: async () => {
-        await gate;
-        return { signature: "STALE" };
-      },
+  describe.each([
+    ["genesis check", { getGenesisHash: () => hang<string>() }],
+    ["findReference", { findReference: () => hang<null>() }],
+    ["SDK validateTransfer", { findReference: async () => ({ signature: "SIG1" }), validateTransfer: () => hang<unknown>() }],
+    ["parsed getTransaction", { findReference: async () => ({ signature: "SIG1" }), getParsedTransaction: () => hang<null>() }],
+  ] as const)("a hanging %s", (_name, over) => {
+    it("ends as unknown at the deadline, aborts the in-flight call, and consumes no signature", async () => {
+      const h = harness(over as Partial<TipDeps>);
+      const used = new Set<string>();
+      const done = createTipController(h.deps, expected, h.onState, used).start();
+      await h.advance(POLL_MAX_MS - 1);
+      expect(h.states.filter(isTerminalTipState)).toHaveLength(0);
+      await h.advance(1);
+      expect(await done).toMatchObject({ status: "unknown" });
+      expect(h.states.at(-1)).toMatchObject({ status: "unknown" });
+      expect(used.size).toBe(0);
     });
+
+    it("cancel settles start promptly without advancing time", async () => {
+      const h = harness(over as Partial<TipDeps>);
+      const controller = createTipController(h.deps, expected, h.onState);
+      const done = controller.start();
+      await h.flush();
+      controller.cancel();
+      expect(await done).toEqual({ status: "cancelled" });
+      expect(h.timers).toHaveLength(0);
+    });
+  });
+
+  it("passes an abort signal to every call and aborts it on cancel and on deadline", async () => {
+    const h = harness({ findReference: async (_r, signal) => (h.signals.push(signal), hang<null>()) });
     const controller = createTipController(h.deps, expected, h.onState);
     const done = controller.start();
-    await Promise.resolve();
+    await h.flush();
+    expect(h.signals.length).toBeGreaterThan(0);
+    expect(h.signals.every((s) => !s.aborted)).toBe(true);
     controller.cancel();
-    release();
-    expect(await done).toEqual({ status: "cancelled" });
-    expect(h.states.at(-1)).toEqual({ status: "cancelled" });
-    expect(h.states.some((s) => s.status === "received")).toBe(false);
-    expect(h.calls.validate).toBe(0);
+    await done;
+    expect(h.signals.every((s) => s.aborted)).toBe(true);
   });
 
-  it("cancel during sleep ends the loop", async () => {
-    const ref: { controller?: ReturnType<typeof createTipController> } = {};
-    const h = harness({
-      sleep: async (_ms, signal) =>
-        new Promise<void>((_resolve, reject) => {
-          signal.addEventListener("abort", () => reject(new Error("aborted")));
-          queueMicrotask(() => ref.controller?.cancel());
-        }),
-    });
-    ref.controller = createTipController(h.deps, expected, h.onState);
-    expect(await ref.controller.start()).toEqual({ status: "cancelled" });
-    expect(h.calls.find).toBe(1);
+  it("a validation that completes after cancel or deadline cannot emit received or consume the signature", async () => {
+    for (const how of ["cancel", "deadline"] as const) {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      const h = harness({
+        findReference: async () => ({ signature: "SIG1" }),
+        validateTransfer: async () => {
+          await gate;
+          return {};
+        },
+      });
+      const used = new Set<string>();
+      const controller = createTipController(h.deps, expected, h.onState, used);
+      const done = controller.start();
+      await h.flush();
+      if (how === "cancel") controller.cancel();
+      else await h.advance(POLL_MAX_MS);
+      release();
+      await h.flush();
+      expect(await done).toMatchObject({ status: how === "cancel" ? "cancelled" : "unknown" });
+      expect(h.states.some((s) => s.status === "received")).toBe(false);
+      expect(used.size).toBe(0);
+    }
+  });
+
+  it("cancel during the poll sleep ends the loop and clears the timers", async () => {
+    const h = harness();
+    const controller = createTipController(h.deps, expected, h.onState);
+    const done = controller.start();
+    await h.advance(POLL_INTERVAL_MS);
+    controller.cancel();
+    expect(await done).toEqual({ status: "cancelled" });
+    expect(h.timers).toHaveLength(0);
+    expect(h.states.filter(isTerminalTipState)).toHaveLength(1);
   });
 
   it("starts at most once and rejects invalid inputs before any RPC", async () => {
@@ -232,58 +316,242 @@ describe("controller", () => {
   });
 });
 
-describe("real @solana/pay validateTransfer on a synthetic transaction (no RPC)", () => {
-  async function wireTx(amount: bigint, destination = RECIPIENT, reference = REFERENCE) {
-    const ix = getTransferSolInstruction({
-      source: createNoopSigner(address(PAYER)),
-      destination: address(destination),
-      amount: lamports(amount),
+describe("session: single flight, generations, QR/URI lifetime", () => {
+  function sessionHarness(recipient = RECIPIENT) {
+    const loads: { resolve: (d: TipDeps) => void; reject: (e: Error) => void }[] = [];
+    const views: TipView[] = [];
+    let refs = 0;
+    const h = harness({ findReference: async () => null });
+    const session = createTipSession({
+      recipient,
+      loadDeps: () => new Promise<TipDeps>((resolve, reject) => loads.push({ resolve, reject })),
+      newReference: () => key(20 + refs++),
+      onChange: (v) => views.push(v),
     });
+    return { session, loads, views, h, last: () => views.at(-1) as TipView, flush: h.flush };
+  }
+
+  it("claims the slot synchronously: a double activation loads and starts once", async () => {
+    const s = sessionHarness();
+    expect(s.session.begin()).toBe(true);
+    expect(s.session.begin()).toBe(false);
+    expect(s.loads).toHaveLength(1);
+    expect(s.last()).toMatchObject({ status: "preparing", uri: null });
+  });
+
+  it("exposes the URI only while the request is tracked and clears it on every terminal state", async () => {
+    const s = sessionHarness();
+    s.session.begin();
+    s.loads[0].resolve(s.h.deps);
+    await s.flush();
+    expect(s.last().status).toBe("active");
+    expect(s.last().uri).toMatch(/^solana:/);
+    await s.h.advance(POLL_MAX_MS);
+    expect(s.last()).toMatchObject({ status: "idle", uri: null, state: { status: "unknown" } });
+    expect(s.session.begin()).toBe(true); // slot released after the terminal state
+  });
+
+  it("an SDK import that finishes after cancel is dropped: no controller, no QR", async () => {
+    const s = sessionHarness();
+    s.session.begin();
+    s.session.cancel();
+    expect(s.last()).toMatchObject({ status: "idle", uri: null, state: { status: "cancelled" } });
+    s.loads[0].resolve(s.h.deps);
+    await s.flush();
+    expect(s.views.some((v) => v.status === "active")).toBe(false);
+    expect(s.h.calls.find).toBe(0);
+  });
+
+  it("a stale import cannot take over after cancel + a new begin; only the new request is tracked", async () => {
+    const s = sessionHarness();
+    s.session.begin();
+    s.session.cancel();
+    expect(s.session.begin()).toBe(true);
+    s.loads[0].resolve(s.h.deps); // stale
+    await s.flush();
+    expect(s.views.some((v) => v.status === "active")).toBe(false);
+    s.loads[1].resolve(s.h.deps);
+    await s.flush();
+    const active = s.views.filter((v) => v.status === "active");
+    expect(new Set(active.map((v) => v.uri)).size).toBe(1);
+    expect(active[0].uri).toContain(key(21)); // second fresh reference, not the cancelled first
+  });
+
+  it("reset (recipient change / acknowledgement removed) clears the URI and aborts the active request", async () => {
+    const s = sessionHarness();
+    s.session.begin();
+    s.loads[0].resolve(s.h.deps);
+    await s.flush();
+    expect(s.last().uri).not.toBeNull();
+    s.session.reset();
+    expect(s.last()).toMatchObject({ status: "idle", uri: null });
+    expect(s.h.signals.every((sig) => sig.aborted)).toBe(true);
+    await s.h.advance(POLL_MAX_MS);
+    expect(s.last().uri).toBeNull();
+  });
+
+  it("dispose (unmount) during preparing or active emits nothing afterwards", async () => {
+    const s = sessionHarness();
+    s.session.begin();
+    s.session.dispose();
+    const before = s.views.length;
+    s.loads[0].resolve(s.h.deps);
+    await s.flush();
+    expect(s.views.length).toBe(before);
+    expect(s.session.begin()).toBe(false);
+    const t = sessionHarness();
+    t.session.begin();
+    t.loads[0].resolve(t.h.deps);
+    await t.flush();
+    t.session.dispose();
+    const count = t.views.length;
+    await t.h.advance(POLL_MAX_MS);
+    expect(t.views.length).toBe(count);
+    expect(t.h.signals.every((sig) => sig.aborted)).toBe(true);
+  });
+
+  it("setup failure clears the URI, reports setup_failed, and allows a retry", async () => {
+    const s = sessionHarness();
+    s.session.begin();
+    s.loads[0].reject(new Error("chunk failed"));
+    await s.flush();
+    expect(s.last()).toMatchObject({ status: "idle", uri: null, state: { status: "failed", reason: "setup_failed" } });
+    expect(s.session.begin()).toBe(true);
+  });
+});
+
+describe("production createDevnetDeps over real @solana/kit RPC transport shapes (no network)", () => {
+  type Seen = { method: string; signal?: AbortSignal; params: unknown[] };
+  const sig64 = encodeBase58(new Uint8Array(64).fill(3));
+
+  async function wire(amount: bigint, destination = RECIPIENT) {
+    const ix = getTransferSolInstruction({ source: createNoopSigner(address(PAYER)), destination: address(destination), amount: lamports(amount) });
     const message = pipe(
       createTransactionMessage({ version: 0 }),
       (m) => setTransactionMessageFeePayer(address(PAYER), m),
       (m) => setTransactionMessageLifetimeUsingBlockhash({ blockhash: key(5) as never, lastValidBlockHeight: BigInt(1) }, m),
-      (m) =>
-        appendTransactionMessageInstruction(
-          { ...ix, accounts: [...ix.accounts, { address: address(reference), role: AccountRole.READONLY }] },
-          m,
-        ),
+      (m) => appendTransactionMessageInstruction({ ...ix, accounts: [...ix.accounts, { address: address(REFERENCE), role: AccountRole.READONLY }] }, m),
     );
     return getBase64EncodedWireTransaction(compileTransaction(message));
   }
 
-  function sdkFor(base64: string, balances: { pre: bigint; post: bigint }) {
-    const rpc = {
-      getGenesisHash: () => ({ send: async () => DEVNET_GENESIS_HASH }),
-      getSignaturesForAddress: () => ({ send: async () => [{ signature: "SIG1" }] }),
-      getTransaction: (_sig: unknown, config: { encoding: string }) => ({
-        send: async () =>
-          config.encoding === "base64"
-            ? {
-                slot: BigInt(1),
-                blockTime: null,
-                transaction: [base64, "base64"],
-                // account order: payer(0, writable signer), recipient(1), system program, reference
-                meta: { err: null, fee: BigInt(5000), preBalances: [BigInt(1e9), balances.pre, BigInt(1), BigInt(0)], postBalances: [BigInt(1e9), balances.post, BigInt(1), BigInt(0)], logMessages: [], rewards: [], status: { Ok: null } },
-              }
-            : null,
-      }),
-    };
-    return { rpc, pay, toAddress: address } as unknown as Parameters<typeof createDevnetDeps>[0];
+  /** Transport that records each request and answers per method; "hang" answers never, but honours `signal`. */
+  function transportFor(answers: Record<string, unknown | "hang">, seen: Seen[] = []) {
+    const transport = (async ({ payload, signal }: { payload: unknown; signal?: AbortSignal }) => {
+      const { method, params, id } = payload as { method: string; params: unknown[]; id: string };
+      seen.push({ method, signal, params });
+      const answer = answers[method];
+      if (answer === "hang") {
+        return new Promise((_resolve, reject) => {
+          if (signal?.aborted) return reject(new Error("aborted"));
+          signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+        });
+      }
+      return { jsonrpc: "2.0", id, result: answer };
+    }) as never;
+    return { transport, seen };
   }
 
-  it("accepts a real System transfer of exactly 0.01 SOL with the reference", async () => {
-    const deps = createDevnetDeps(sdkFor(await wireTx(BigInt(10_000_000)), { pre: BigInt(0), post: BigInt(10_000_000) }));
-    await expect(deps.validateTransfer("SIG1", { recipient: RECIPIENT, amount: 0.01, reference: REFERENCE })).resolves.toBeTruthy();
-    expect(await deps.findReference(REFERENCE)).toEqual({ signature: "SIG1" });
+  /** getTransaction answers by requested encoding, as the real RPC does. */
+  function answerFn(b64: string, pre: number, post: number, parsed: ParsedTipTransaction | null, base: Record<string, unknown> = {}) {
+    const seen: Seen[] = [];
+    const transport = (async ({ payload, signal }: { payload: unknown; signal?: AbortSignal }) => {
+      const { method, params, id } = payload as { method: string; params: [string, { encoding: string }]; id: string };
+      seen.push({ method, signal, params });
+      if (method in base) {
+        if (base[method] === "hang") {
+          return new Promise((_r, reject) => {
+            if (signal?.aborted) return reject(new Error("aborted"));
+            signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+          });
+        }
+        return { jsonrpc: "2.0", id, result: base[method] };
+      }
+      if (method === "getGenesisHash") return { jsonrpc: "2.0", id, result: DEVNET_GENESIS_HASH };
+      if (method === "getSignaturesForAddress") {
+        return { jsonrpc: "2.0", id, result: [{ signature: sig64, slot: 1, err: null, memo: null, blockTime: null, confirmationStatus: "confirmed" }] };
+      }
+      if (method === "getTransaction") {
+        const result =
+          params[1].encoding === "base64"
+            ? { slot: 1, blockTime: null, transaction: [b64, "base64"], meta: { err: null, fee: 5000, preBalances: [1e9, pre, 1, 0], postBalances: [1e9, post, 1, 0], logMessages: [], rewards: [], status: { Ok: null } } }
+            : parsed;
+        return { jsonrpc: "2.0", id, result };
+      }
+      throw new Error(`unexpected method ${method}`);
+    }) as never;
+    return { rpc: createSolanaRpcFromTransport(transport), seen };
+  }
+
+  const okParsed = parsedTx();
+
+  it("sends the abort signal to the Kit transport for every method, through pay's own helpers", async () => {
+    const b64 = await wire(BigInt(10_000_000));
+    const { rpc, seen } = answerFn(b64, 0, 10_000_000, okParsed);
+    const deps = createDevnetDeps({ rpc, pay, toAddress: address });
+    const ac = new AbortController();
+    expect(await deps.getGenesisHash(ac.signal)).toBe(DEVNET_GENESIS_HASH);
+    expect(await deps.findReference(REFERENCE, ac.signal)).toEqual({ signature: sig64 });
+    await expect(deps.validateTransfer(sig64, { recipient: RECIPIENT, amount: 0.01, reference: REFERENCE }, ac.signal)).resolves.toBeTruthy();
+    expect(await deps.getParsedTransaction(sig64, ac.signal)).toMatchObject({ meta: { err: null } });
+    expect(seen.map((r) => r.method)).toEqual(["getGenesisHash", "getSignaturesForAddress", "getTransaction", "getTransaction"]);
+    expect(seen.every((r) => r.signal === ac.signal)).toBe(true);
   });
 
-  it("rejects a different recipient, a different reference, and an underpayment", async () => {
-    const good = sdkFor(await wireTx(BigInt(10_000_000)), { pre: BigInt(0), post: BigInt(10_000_000) });
-    const deps = createDevnetDeps(good);
-    await expect(deps.validateTransfer("SIG1", { recipient: key(8), amount: 0.01, reference: REFERENCE })).rejects.toThrow();
-    await expect(deps.validateTransfer("SIG1", { recipient: RECIPIENT, amount: 0.01, reference: key(12) })).rejects.toThrow();
-    const under = createDevnetDeps(sdkFor(await wireTx(BigInt(5_000_000)), { pre: BigInt(0), post: BigInt(5_000_000) }));
-    await expect(under.validateTransfer("SIG1", { recipient: RECIPIENT, amount: 0.01, reference: REFERENCE })).rejects.toThrow(/amount/);
+  it("aborting the signal rejects a hanging real Kit request", async () => {
+    const seen: Seen[] = [];
+    const { transport } = transportFor({ getGenesisHash: "hang" }, seen);
+    const deps = createDevnetDeps({ rpc: createSolanaRpcFromTransport(transport), pay, toAddress: address });
+    const ac = new AbortController();
+    const pending = deps.getGenesisHash(ac.signal);
+    ac.abort();
+    await expect(pending).rejects.toThrow();
+    expect(seen[0].signal?.aborted).toBe(true);
+  });
+
+  it("findReference with no signatures resolves null (not an error)", async () => {
+    const { rpc } = answerFn("", 0, 0, null, { getSignaturesForAddress: [] });
+    const deps = createDevnetDeps({ rpc, pay, toAddress: address });
+    expect(await deps.findReference(REFERENCE, new AbortController().signal)).toBeNull();
+  });
+
+  it("end to end: controller + production deps + real SDK validate -> received", async () => {
+    const b64 = await wire(BigInt(10_000_000));
+    const { rpc } = answerFn(b64, 0, 10_000_000, okParsed);
+    const result = await createTipController(createDevnetDeps({ rpc, pay, toAddress: address }), expected, () => undefined).start();
+    expect(result).toMatchObject({ status: "received", signature: sig64 });
+  });
+
+  it("end to end: wrong recipient on chain, underpayment, and overpayment each fail closed", async () => {
+    const wrongTo = answerFn(await wire(BigInt(10_000_000), key(8)), 0, 10_000_000, parsedTx({ to: key(8) }));
+    expect(await createTipController(createDevnetDeps({ rpc: wrongTo.rpc, pay, toAddress: address }), expected, () => undefined).start()).toMatchObject({ status: "failed" });
+    const under = answerFn(await wire(BigInt(5_000_000)), 0, 5_000_000, parsedTx({ lamports: 5_000_000 }));
+    expect(await createTipController(createDevnetDeps({ rpc: under.rpc, pay, toAddress: address }), expected, () => undefined).start()).toMatchObject({ status: "failed", reason: "wrong_amount" });
+    const over = answerFn(await wire(BigInt(20_000_000)), 0, 20_000_000, parsedTx({ lamports: 20_000_000 }));
+    expect(await createTipController(createDevnetDeps({ rpc: over.rpc, pay, toAddress: address }), expected, () => undefined).start()).toMatchObject({ status: "failed", reason: "wrong_amount" });
+  });
+
+  it("end to end: wrong network fails closed through the real transport", async () => {
+    const { rpc } = answerFn("", 0, 0, null, { getGenesisHash: "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d" });
+    expect(await createTipController(createDevnetDeps({ rpc, pay, toAddress: address }), expected, () => undefined).start()).toMatchObject({ reason: "wrong_network" });
+  });
+
+  it("end to end: a hanging real transport call settles promptly on cancel and aborts the transport", async () => {
+    const { rpc, seen } = answerFn("", 0, 0, null, { getSignaturesForAddress: "hang" });
+    const controller = createTipController(createDevnetDeps({ rpc, pay, toAddress: address }), expected, () => undefined);
+    const done = controller.start();
+    for (let i = 0; i < 25; i++) await Promise.resolve();
+    expect(seen.some((r) => r.method === "getSignaturesForAddress")).toBe(true);
+    controller.cancel();
+    expect(await done).toEqual({ status: "cancelled" });
+    expect(seen.every((r) => r.signal?.aborted)).toBe(true);
+  });
+
+  it("withAbortSignal forwards the signal and preserves other send options", async () => {
+    const calls: unknown[] = [];
+    const fake = { getSlot: () => ({ send: async (o?: object) => calls.push(o) }) };
+    const ac = new AbortController();
+    await (withAbortSignal(fake, ac.signal) as { getSlot(): { send(o?: object): Promise<unknown> } }).getSlot().send({ x: 1 });
+    expect(calls).toEqual([{ x: 1, abortSignal: ac.signal }]);
   });
 });

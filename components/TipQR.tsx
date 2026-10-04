@@ -1,80 +1,75 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { createTipRequest } from "@/lib/tipRequest";
+import React, { useEffect, useRef, useState } from "react";
 import {
   TIP_AMOUNT_SOL,
   DEVNET_RPC_URL,
   createDevnetDeps,
-  createFreshReference,
-  createTipController,
-  type TipController,
-  type TipState,
+  createTipSession,
+  type TipSession,
+  type TipView,
 } from "@/lib/tipReceipt";
+
+const IDLE: TipView = { status: "idle", uri: null, state: { status: "idle" } };
 
 /**
  * Minimal Solana Devnet tip: 0.01 SOL to the deal author's actual wallet.
  * Nothing is requested or polled until the viewer acknowledges Devnet and presses the button.
  * The wallet link and QR carry no cluster, so the acknowledgement is how Devnet is confirmed by the human.
+ *
+ * Request lifetime lives in `createTipSession` (single flight, generations, abort). The QR and wallet link are
+ * rendered only from `view.uri`, which the session clears at start, cancel, reset, setup failure and every
+ * terminal state, so they never point at a request that is no longer tracked.
  */
 export function TipQR({ recipient }: { recipient: string }) {
+  // Keyed by recipient: a different recipient remounts, which disposes the old session and resets all state.
+  return <TipQRForRecipient key={recipient} recipient={recipient} />;
+}
+
+function TipQRForRecipient({ recipient }: { recipient: string }) {
   const [acknowledged, setAcknowledged] = useState(false);
-  const [uri, setUri] = useState<string | null>(null);
-  const [state, setState] = useState<TipState>({ status: "idle" });
-  const [setupError, setSetupError] = useState<string | null>(null);
+  const [view, setView] = useState<TipView>(IDLE);
+  const sessionRef = useRef<TipSession | null>(null);
   const qrRef = useRef<HTMLDivElement | null>(null);
-  const controllerRef = useRef<TipController | null>(null);
-  const usedSignatures = useRef<Set<string>>(new Set());
-  const alive = useRef(true);
 
-  const stop = useCallback(() => {
-    controllerRef.current?.cancel();
-    controllerRef.current = null;
-  }, []);
-
+  // One session per mounted recipient. Unmount aborts the request; no callback can fire afterwards.
   useEffect(() => {
-    alive.current = true;
+    const session = createTipSession({
+      recipient,
+      loadDeps: async () => {
+        const [kit, pay] = await Promise.all([import("@solana/kit"), import("@solana/pay")]);
+        return createDevnetDeps({ rpc: kit.createSolanaRpc(DEVNET_RPC_URL), pay, toAddress: kit.address });
+      },
+      onChange: setView,
+    });
+    sessionRef.current = session;
     return () => {
-      alive.current = false;
-      stop();
+      session.dispose();
+      if (sessionRef.current === session) sessionRef.current = null;
     };
-  }, [stop]);
+  }, [recipient]);
 
-  async function begin() {
-    if (!acknowledged) return;
-    stop();
-    setSetupError(null);
-    setState({ status: "idle" });
-    try {
-      const request = createTipRequest({ recipient, reference: createFreshReference(), amount: TIP_AMOUNT_SOL });
-      const [kit, pay] = await Promise.all([import("@solana/kit"), import("@solana/pay")]);
-      if (!alive.current) return;
-      setUri(request.uri);
-      if (qrRef.current) {
-        qrRef.current.replaceChildren();
-        pay.createQR(request.uri, 220).append(qrRef.current);
-      }
-      const deps = createDevnetDeps({
-        rpc: kit.createSolanaRpc(DEVNET_RPC_URL),
-        pay,
-        toAddress: kit.address,
-      });
-      const controller = createTipController(
-        deps,
-        { recipient, reference: request.reference, amount: request.amount },
-        (next) => {
-          if (alive.current && controllerRef.current === controller) setState(next);
-        },
-        usedSignatures.current,
-      );
-      controllerRef.current = controller;
-      void controller.start();
-    } catch {
-      setSetupError("Could not prepare the tip request. Nothing was sent.");
-    }
-  }
+  // Draw the QR for the tracked URI only; clear it whenever the URI goes away. Stale imports are dropped.
+  useEffect(() => {
+    const target = qrRef.current;
+    if (!target) return;
+    target.replaceChildren();
+    const uri = view.uri;
+    if (!uri) return;
+    let current = true;
+    void import("@solana/pay").then((pay) => {
+      if (!current || !qrRef.current) return;
+      qrRef.current.replaceChildren();
+      pay.createQR(uri, 220).append(qrRef.current);
+    });
+    return () => {
+      current = false;
+      target.replaceChildren();
+    };
+  }, [view.uri]);
 
-  const polling = state.status === "polling";
+  const busy = view.status !== "idle";
+  const { state } = view;
 
   return (
     <section className="community-panel" aria-label="Tip the finder">
@@ -84,29 +79,38 @@ export function TipQR({ recipient }: { recipient: string }) {
         <input
           type="checkbox"
           checked={acknowledged}
-          disabled={polling}
-          onChange={(e) => setAcknowledged(e.target.checked)}
+          onChange={(e) => {
+            setAcknowledged(e.target.checked);
+            if (!e.target.checked) sessionRef.current?.reset();
+          }}
         />
         <span>My wallet is set to Solana Devnet. The QR code cannot switch it for me.</span>
       </label>
       <div style={{ display: "flex", gap: 12, marginTop: 12 }}>
-        <button type="button" className="button secondary" disabled={!acknowledged || polling} onClick={() => void begin()}>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={!acknowledged || busy}
+          onClick={() => {
+            if (acknowledged) sessionRef.current?.begin();
+          }}
+        >
           Show tip QR
         </button>
-        {polling && (
-          <button type="button" className="button secondary" onClick={stop}>
+        {busy && (
+          <button type="button" className="button secondary" onClick={() => sessionRef.current?.cancel()}>
             Cancel
           </button>
         )}
       </div>
       <div ref={qrRef} aria-label="Tip QR code" style={{ marginTop: 12 }} />
-      {uri && acknowledged && (
+      {view.uri && acknowledged && (
         <p>
-          <a href={uri}>Open in wallet</a>
+          <a href={view.uri}>Open in wallet</a>
         </p>
       )}
       <div role="status" aria-live="polite">
-        {setupError && <p>{setupError}</p>}
+        {view.status === "preparing" && <p>Preparing the tip request…</p>}
         {state.status === "polling" && <p>Waiting for your Devnet payment (up to 2 minutes)…</p>}
         {state.status === "received" && (
           <p>
