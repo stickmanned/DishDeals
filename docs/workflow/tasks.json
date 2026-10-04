@@ -949,7 +949,7 @@
         "docs/handoffs/t-07c.md"
       ],
       "packet": "docs/tasks/T-07C.md",
-      "pinnedBaseSha": "397c5977df56e7ce6eb187ccfcd534bd4535b841",
+      "pinnedBaseSha": "2c97c07aecfb5055769724d83f01eb8482da388a",
       "backendTarget": "local tests only; no deployment/provider authorized",
       "implementationState": "assigned canonical image/form/publish binding",
       "nativeChecks": "pending WKWebView",
@@ -976,7 +976,7 @@
         "docs/handoffs/t-10b.md"
       ],
       "packet": "docs/tasks/T-10B.md",
-      "pinnedBaseSha": "397c5977df56e7ce6eb187ccfcd534bd4535b841",
+      "pinnedBaseSha": "2c97c07aecfb5055769724d83f01eb8482da388a",
       "backendTarget": "local tests only; no cloud target authorized",
       "implementationState": "assigned canonical author controls",
       "nativeChecks": "pending",
@@ -998,7 +998,7 @@
         "docs/handoffs/n-remote-a.md"
       ],
       "packet": "docs/tasks/N-REMOTE-A.md",
-      "pinnedBaseSha": "397c5977df56e7ce6eb187ccfcd534bd4535b841",
+      "pinnedBaseSha": "2c97c07aecfb5055769724d83f01eb8482da388a",
       "backendTarget": "read-only published source review only; no cloud commands",
       "implementationState": "assigned concrete preservation/release artifact",
       "nativeChecks": "pending",
