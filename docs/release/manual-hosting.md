@@ -2,7 +2,7 @@
 
 William chose to handle hosting manually after the local CLI credential returned HTTP403. Connected Vercel project inventory worked, but no DishDeals hosting project was created. No existing unrelated project was changed. Backend development sync is already applied separately; hosting does not run Convex deployment.
 
-Reviewed local source: `/tmp/dishdeals-web-release` at `401603c41875c3f42c06ee88d22d411e3b3cf19f`; checkout is detached and isolated, including native-load and recording-frame integrations. Core `npm run check` passed1728Vitest/23workflow/typecheck/lint/build before authentic backend generated types; combined recheck of generated files is running separately. Published Git main does not contain this integrated work. Do not use Vercel Git import of main as equivalent, and do not push Git or buy a domain to work around hosting.
+Reviewed local source: `/tmp/dishdeals-web-release` at `401603c41875c3f42c06ee88d22d411e3b3cf19f`; checkout is detached and isolated, including native-load and recording-frame integrations. Combined `npm run check` at401603c passed1728Vitest/23workflow/typecheck/lint/build, including authentic backend generated types. Published Git main does not contain this integrated work. Do not use Vercel Git import of main as equivalent, and do not push Git or buy a domain to work around hosting.
 
 Use your Mac Terminal (existing account authentication stays on your Mac). Skip project create only if you already created the dedicated demo project:
 

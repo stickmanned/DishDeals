@@ -1299,7 +1299,7 @@
       "packet": "docs/tasks/T-15B.md",
       "pinnedBaseSha": "5f3b23e942a25758f9cebe837ab7ccbfe71aff8d",
       "backendTarget": "local implementation only; no external writes",
-      "implementationState": "dependency-ready assigned packet",
+      "implementationState": "review correction assigned: tip generation/singleflight/strict pending-RPC deadline",
       "nativeChecks": "pending relevant native build",
       "phoneAcceptance": "pending William iPhone"
     },
@@ -1326,14 +1326,67 @@
         "tests/import/androidShareInbox.test.ts",
         "tests/setup/androidShareTarget.test.ts",
         "docs/integration/android-share-target.md",
-        "docs/handoffs/t-13b.md"
+        "docs/handoffs/t-13b.md",
+        "next.config.ts"
       ],
       "packet": "docs/tasks/T-13B.md",
       "pinnedBaseSha": "33471604da6a7a926631f79c25aa1a6fe375022d",
       "backendTarget": "NONE; local source and synthetic tests only",
-      "implementationState": "secondary original Android share target assigned",
+      "implementationState": "review correction assigned: receive timeout/TTL/UI stale guards; headers amendment",
       "nativeChecks": "Android installed PWA unrun; iOS primary separate",
       "phoneAcceptance": "pending actual Android share"
+    },
+    {
+      "id": "T-16B",
+      "owner": "Loom",
+      "branch": "t-16-demo-cache-bindings",
+      "worktree": "demo-cache-bindings",
+      "status": "ready",
+      "dependencies": [
+        "T-16A",
+        "T-14B"
+      ],
+      "allowedPaths": [
+        "components/deals/CanonicalPost.tsx",
+        "lib/imageDraftFlow.ts",
+        "lib/demoCache.ts",
+        "lib/demoCacheFlow.ts",
+        "tests/import/demoCacheFlow.test.ts",
+        "tests/import/imageDraftFlow.test.ts",
+        "tests/import/demoCache.test.ts",
+        "docs/integration/demo-cache-bindings.md",
+        "docs/handoffs/t-16b.md"
+      ],
+      "packet": "docs/tasks/T-16B.md",
+      "pinnedBaseSha": "45db5af6e95f796c03e9f1a9ffb9ee874918fa29",
+      "backendTarget": "NONE; local source/tests only",
+      "implementationState": "dependency-ready bounded packet",
+      "nativeChecks": "relevant integrated runtime pending",
+      "phoneAcceptance": "pending real device"
+    },
+    {
+      "id": "T-03D",
+      "owner": "Cinder",
+      "branch": "t-03-auth-return-path",
+      "worktree": "auth-return-path",
+      "status": "ready",
+      "dependencies": [
+        "T-03"
+      ],
+      "allowedPaths": [
+        "app/signin/page.tsx",
+        "app/profile/page.tsx",
+        "lib/authReturn.ts",
+        "tests/auth/authReturn.test.ts",
+        "docs/integration/auth-return-path.md",
+        "docs/handoffs/t-03d.md"
+      ],
+      "packet": "docs/tasks/T-03D.md",
+      "pinnedBaseSha": "45db5af6e95f796c03e9f1a9ffb9ee874918fa29",
+      "backendTarget": "NONE; local source/tests only",
+      "implementationState": "dependency-ready bounded packet",
+      "nativeChecks": "relevant integrated runtime pending",
+      "phoneAcceptance": "pending real device"
     }
   ],
   "completedDependencies": {
