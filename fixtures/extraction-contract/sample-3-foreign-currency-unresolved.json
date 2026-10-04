@@ -11,7 +11,6 @@
       "validEnd": null,
       "expiresOn": "2026-10-04",
       "conditions": [
-        "Unresolved currency: Post indicates $6 without specifying CAD or USD",
         "Online orders only via mobile app",
         "Single-use promo code"
       ],

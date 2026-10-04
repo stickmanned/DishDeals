@@ -4,7 +4,7 @@
     {
       "restaurant": "Marutama Ramen",
       "address": "780 Bidwell St, Vancouver, BC",
-      "dealText": "Weekday Lunch Combo: Tamago Ramen with Gyoza",
+      "dealText": "$8.99 CAD Weekday Lunch Combo: Tamago Ramen with Gyoza",
       "priceCad": 8.99,
       "validDays": ["mon", "tue", "wed", "thu", "fri"],
       "validStart": "11:30",
