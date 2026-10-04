@@ -11,7 +11,7 @@
     "expiresOn": null,
     "conditions": [
       "Minimum order of 6 pieces",
-      "Price varies by dining area: patio $1.50/pc vs bar/lounge $1.75/pc",
+      "Price conflict in PDF menu: page 0 lists $1.75/pc (min 6) vs patio page 3 lists $1.50/pc (min 6)",
       "Located at Executive Suites Hotel Burnaby"
     ],
     "sourceUrl": "https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf"
@@ -22,8 +22,8 @@
     "accessDate": "2026-10-03",
     "status": "publicly_advertised_candidate_live_terms_unconfirmed",
     "statedAmount": null,
-    "statedCurrency": "Conflicting stated prices: $1.50 each on patio menu vs $1.75 each on bar/lounge menu (minimum 6 pieces); ISO currency unstated (pending CAD confirmation)",
-    "priceConflict": "PDF Page 1 lists $1.75 each (min 6); PDF Page 3 lists $1.50 each (min 6). Minimum order of 6 pieces applies to both.",
+    "statedCurrency": "Conflicting stated prices: HH menu page 0 lists $1.75 each vs patio page 3 lists $1.50 each (minimum 6 pieces); ISO currency unstated (pending CAD confirmation)",
+    "priceConflict": "HH menu page 0 lists $1.75 each (min 6); patio page 3 lists $1.50 each (min 6). Minimum order of 6 pieces applies to both.",
     "coordinatesStatus": "omitted_pending_pinyuan_pin",
     "adImageUrl": null,
     "fullSchedule": "Sunday-Monday 16:00-18:00; Tuesday-Saturday 16:00-18:00 and 21:00-22:00 (homepage banner also displays 'Daily from 4–6 PM')",

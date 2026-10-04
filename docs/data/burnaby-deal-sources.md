@@ -5,7 +5,7 @@
 **Access Date:** 2026-10-03  
 **Target Area:** Burnaby, BC / Simon Fraser University (SFU Burnaby Mountain & UniverCity)  
 **Evaluation Status:** Publicly advertised candidates with live terms unconfirmed  
-**Scope:** Research, primary source evidence capture, and inert candidate formatting only. No seed mutations, geocoding, or code execution.
+**Scope:** Research, primary source evidence capture, and inert candidate formatting only. Full T-06 / T-12 remain pending pins, photos, currency confirmation, and live phone/runtime checks.
 
 ---
 
@@ -22,16 +22,18 @@ This document records publicly advertised restaurant and promoter food deals in 
    - **Argo Greek (CAND-04, CAND-05):** Explicit lunch hours (11:30am–2:30pm) are verified from menu text; however, all 7 days availability was inferred from business hours and is flagged as pending (`validDays: []`). Inferred dine-in/takeout conditions have been removed.
 4. **Schedule Conflicts & Representational Schema Limitations:**
    - **Time & Place Burnaby (CAND-08, CAND-09, CAND-10):** The primary source ([menus-happyhour](https://www.timeandplaceburnaby.com/menus-happyhour)) specifies Monday–Friday 16:00–18:00 and Saturday–Sunday 17:00–18:00. The DishDeals schema supports only a single contiguous `validStart`/`validEnd` window per record. A single 16:00–18:00 all-days window is false. Canonical times and days are left pending (`null`/`[]`) with the complete dual schedule recorded in provenance.
-   - **Acqua Restaurant & Bar (CAND-11):** The official PDF ([Acqua-HH-Menu-05-2026.pdf](https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf)) reveals a direct price conflict: Lounge/Bar Happy Hour lists oysters at $1.75 each (min 6), while Patio Happy Hour lists $1.50 each (min 6). Minimum order of 6 pieces is an essential condition. Furthermore, the website and PDF conflict on hours (daily 16:00–18:00 vs Sunday–Monday 16:00–18:00 and Tuesday–Saturday 16:00–18:00 & 21:00–22:00). Because the DishDeals schema cannot represent multiple non-contiguous windows in one record, canonical times are left pending so the late-night window is not silently discarded.
+   - **Acqua Restaurant & Bar (CAND-11):** The official PDF ([Acqua-HH-Menu-05-2026.pdf](https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf)) reveals a direct price conflict without asserting external geography: **Happy Hour menu page 0 lists oysters at $1.75 each (min 6), while patio page 3 lists $1.50 each (min 6)**. Minimum order of 6 pieces is an essential condition. Furthermore, the website and PDF conflict on hours (daily 16:00–18:00 vs Sunday–Monday 16:00–18:00 and Tuesday–Saturday 16:00–18:00 & 21:00–22:00). Because the DishDeals schema cannot represent multiple non-contiguous windows in one record, canonical times are left pending so the late-night window is not silently discarded.
 5. **Exclusion of Unverified Historical Leads (BierCraft UniverCity):**
    - Live inspection of `https://biercraft.com/univercity/` confirms the restaurant location and general operating hours atop SFU Burnaby Mountain, but contains **no active menu offers, Manna Burger ($5.50), or 1 lb Wings ($12.00) specials**.
    - These items derived from historical aggregator guides and third-party mirrors. In strict compliance with review findings, they have been downgraded to unverified historical leads and excluded from the candidate set.
    - To maintain full 10-candidate coverage with verifiable primary offers, additional explicit food offers from the current Time & Place Happy Hour menu ([menus-happyhour](https://www.timeandplaceburnaby.com/menus-happyhour)) have been incorporated: Smashed Beef Slider ($6.00) and Fraser Valley Wings ($0.89 each, min 6 pcs).
-6. **Exact Primary Offer and Address URLs:** Both the exact offer page URL and the specific address URL (where the street address is explicitly evidenced) are supplied for every candidate. For Burnaby Mountain Restaurant, the offer is on `/burnaby-mountain-happy-hour`, while the address (7600 Halifax Street) is published on `/restaurants/burnaby-mountain-restaurant`.
-7. **Digital Ad Image Asset Verification:** The Burnaby Mountain banner (`https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg`) was verified reachable with HTTP 200 OK. It is documented as a digital web asset and explicitly distinguished from physical photographed flyers.
-8. **Coordinates & Pins:** Geocoding and map pin confirmation remain strictly owned by Pinyuan; `lat` and `lng` are omitted across all candidate proposals.
-9. **Zero Instagram Scraping:** No Instagram endpoints, GraphQL APIs, or third-party mirrors were queried.
-10. **Exclusion of Expired Promotions:** The March "Bite of Burnaby" festival remains excluded as historical and expired.
+6. **No Inferred Dine-In Conditions:**
+   - Unstated "dine-in only" conditions are omitted from Burnaby Mountain Restaurant (CAND-06, CAND-07) and Argo Greek (CAND-04, CAND-05). Conditions reflect strictly explicit source statements.
+7. **Exact Primary Offer and Address URLs:** Both the exact offer page URL and the specific address URL (where the street address is explicitly evidenced) are supplied for every candidate. For Burnaby Mountain Restaurant, the offer is on `/burnaby-mountain-happy-hour`, while the address (7600 Halifax Street) is published on `/restaurants/burnaby-mountain-restaurant`.
+8. **Digital Ad Image Asset Verification:** The Burnaby Mountain banner (`https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg`) was verified reachable with HTTP 200 OK. It is documented as a digital web asset and explicitly distinguished from physical photographed flyers.
+9. **Coordinates & Pins:** Geocoding and map pin confirmation remain strictly owned by Pinyuan; `lat` and `lng` are omitted across all candidate proposals.
+10. **Zero Instagram Scraping:** No Instagram endpoints, GraphQL APIs, or third-party mirrors were queried.
+11. **Exclusion of Expired Promotions:** The March "Bite of Burnaby" festival remains excluded as historical and expired.
 
 ---
 
@@ -49,7 +51,7 @@ This document records publicly advertised restaurant and promoter food deals in 
 | **CAND-08** | Time & Place Burnaby | 6083 McKay Ave, Burnaby, BC V5H 2W7 | Happy Hour: Mediterranean Beef Kebobs | $5.00 | `$5` (Pending CAD) | `[]` (Pending) | `null` (Pending) | `null` | Schedule: M–F 16–18, S–S 17–18 (schema limit); Hilton Metrotown | [Time & Place HH](https://www.timeandplaceburnaby.com/menus-happyhour) | [Time & Place Home](https://www.timeandplaceburnaby.com/) |
 | **CAND-09** | Time & Place Burnaby | 6083 McKay Ave, Burnaby, BC V5H 2W7 | Happy Hour: Smashed Beef Slider (1 pc) | $6.00 | `$6` (Pending CAD) | `[]` (Pending) | `null` (Pending) | `null` | Schedule: M–F 16–18, S–S 17–18 (schema limit); Hilton Metrotown | [Time & Place HH](https://www.timeandplaceburnaby.com/menus-happyhour) | [Time & Place Home](https://www.timeandplaceburnaby.com/) |
 | **CAND-10** | Time & Place Burnaby | 6083 McKay Ave, Burnaby, BC V5H 2W7 | Happy Hour: Fraser Valley Wings ($0.89 each, min 6) | $0.89 / pc | `$0.89 each (min. 6 pcs)` (Pending CAD) | `[]` (Pending) | `null` (Pending) | `null` | Min 6 pcs; M–F 16–18, S–S 17–18 (schema limit); Hilton Metrotown | [Time & Place HH](https://www.timeandplaceburnaby.com/menus-happyhour) | [Time & Place Home](https://www.timeandplaceburnaby.com/) |
-| **CAND-11** | Acqua Restaurant & Bar | 4201 Lougheed Hwy, Burnaby, BC V5C 3Y6 | Happy Hour: Fresh Oysters (min 6) | Conflicting: $1.50 patio vs $1.75 lounge | `$1.50` / `$1.75` (Pending CAD) | `[]` (Pending) | `null` (Pending) | `null` | Min 6 pcs; price varies by dining area; multi-window limit | [Acqua HH Menu PDF](https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf) | [Acqua Home](https://acquarestaurantandbar.com/) |
+| **CAND-11** | Acqua Restaurant & Bar | 4201 Lougheed Hwy, Burnaby, BC V5C 3Y6 | Happy Hour: Fresh Oysters (min 6) | Conflicting: HH menu p0 $1.75 vs patio p3 $1.50 | `$1.50` / `$1.75` (Pending CAD) | `[]` (Pending) | `null` (Pending) | `null` | Min 6 pcs; price varies in PDF menu (page 0 $1.75 vs patio page 3 $1.50); multi-window limit | [Acqua HH Menu PDF](https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf) | [Acqua Home](https://acquarestaurantandbar.com/) |
 
 ---
 
@@ -307,16 +309,20 @@ This document records publicly advertised restaurant and promoter food deals in 
   - `validStart`: `null`
   - `validEnd`: `null`
   - `expiresOn`: `null`
-  - `conditions`: `["Minimum order of 6 pieces", "Price varies by dining area: patio $1.50/pc vs bar/lounge $1.75/pc", "Located at Executive Suites Hotel Burnaby"]`
+  - `conditions`: [
+      `"Minimum order of 6 pieces"`,
+      `"Price conflict in PDF menu: page 0 lists $1.75/pc (min 6) vs patio page 3 lists $1.50/pc (min 6)"`,
+      `"Located at Executive Suites Hotel Burnaby"`
+    ]
   - `sourceUrl`: `"https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf"`
 - **Provenance & Uncertainty Metadata:**
   - Offer URL: `https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf`
   - Address URL: `https://acquarestaurantandbar.com/` *(Executive Suites Hotel Burnaby, 4201 Lougheed Hwy)*
   - Access Date: `2026-10-03`
   - Evaluation Status: `publicly_advertised_candidate_live_terms_unconfirmed`
-  - Stated Amount: `null` *(conflicting stated prices across dining areas)*
-  - Stated Currency: `"Conflicting stated prices: $1.50 each on patio menu vs $1.75 each on bar/lounge menu (minimum 6 pieces); ISO currency unstated (pending CAD confirmation)"`
-  - Price Conflict: PDF Page 1 lists $1.75 each (min 6); PDF Page 3 lists $1.50 each (min 6). Minimum order of 6 pieces applies to both.
+  - Stated Amount: `null` *(conflicting stated prices across PDF menu sections)*
+  - Stated Currency: `"Conflicting stated prices: HH menu page 0 lists $1.75 each vs patio page 3 lists $1.50 each (minimum 6 pieces); ISO currency unstated (pending CAD confirmation)"`
+  - Price Conflict: HH menu page 0 lists $1.75 each (min 6); patio page 3 lists $1.50 each (min 6). Minimum order of 6 pieces applies to both.
   - Full Stated Schedule: Sunday–Monday 16:00–18:00; Tuesday–Saturday 16:00–18:00 and 21:00–22:00 (homepage banner also displays "Daily from 4–6 PM").
   - Representational Limitation: DishDeals schema only supports a single contiguous `validStart`/`validEnd` window per record; it cannot combine afternoon 16:00–18:00 and late-night 21:00–22:00 without multiple records. Hours left pending to avoid silently discarding the late-night window.
   - Coordinate Status: `omitted_pending_pinyuan_pin`
@@ -340,13 +346,14 @@ To graduate these source candidates into canonical seeds, extraction test fixtur
 
 1. **Step 1: Geocoding & Map Pin Confirmation (Pinyuan Ownership):**
    - Each candidate has an evidenced street address in Burnaby or on SFU campus.
-   - Pinyuan (map lead) must generate or confirm the canonical latitude/longitude coordinates (`lat`, `lng`) for each address before inserting records into `fixtures/seed.json` or `convex/seed.ts`.
+   - Pinyuan (map lead) must generate or confirm the canonical latitude/longitude coordinates (`lat`, `lng`) for each address before inserting records into `fixtures/seed.json` or `convex/seed.ts`. Full T-06 / T-12 remain pending confirmed pins.
 2. **Step 2: Explicit Currency Confirmation (Human / Team):**
    - Confirm that all `$` listings in Burnaby are settled in CAD dollars, converting `priceCad` from pending (`null`) into confirmed numeric values.
-3. **Step 3: Schedule Representational Decisions (Team / Schema):**
-   - For Time & Place (CAND-08/09/10) and Acqua (CAND-11), decide whether to split multi-window / multi-day schedules into separate candidate records or keep simplified single windows.
+3. **Step 3: Schedule Representational Strategy (Preserving All Stated Hours):**
+   - **Never propose simplified single windows that silently drop source restrictions.**
+   - For Time & Place (CAND-08/09/10) and Acqua (CAND-11), explicitly prepare separate candidate variant records preserving all stated hours (e.g. separate weekday vs weekend variant records for Time & Place; separate afternoon vs late-night variant records for Acqua), or leave schedule pending human confirmation.
 4. **Step 4: Three Real Extraction Sources (Harry / iOS Integration):**
    - Select 3 candidates (e.g. CAND-06 Burnaby Mountain Truffle Fries, CAND-08 Time & Place Kebobs, CAND-10 Time & Place Wings).
-   - Feed the actual sharing payload (text caption / URL from Instagram share sheet) into the VLM extraction pipeline without web scraping.
+   - **A source URL alone cannot serve as input to the VLM extraction pipeline.** In accordance with the strict no-scraping rule, the system cannot fetch arbitrary external URLs at runtime. Extraction requires supplied multimodal artifacts: uploaded image bytes, video frames, transcribed caption text, or real photographed physical flyers; URL-only inputs are blocked.
 5. **Step 5: Two Real Flyer Photos (Human Supplied):**
-   - Acquire two genuine photographs of physical paper flyers or print menus from local Burnaby establishments (e.g., printed university bulletin board or takeaway flyer) to fulfill the 2-flyer demonstration requirement. Digital website hero banners cannot be substituted for photographed flyers.
+   - Acquire two genuine photographs of physical paper flyers or print menus from local Burnaby establishments (e.g., printed university bulletin board or takeaway flyer) to fulfill the 2-flyer demonstration requirement. Digital website hero banners cannot be substituted for photographed flyers. Full T-06 / T-12 remain pending real photos and live phone acceptance.
