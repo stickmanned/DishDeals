@@ -95,17 +95,23 @@ See `examples/TeamIntegration.tsx` for a copy-ready integration example. Import 
 | `fitOnLoad` | `true` | Frames the first nonempty dataset |
 | `fitKey` | None | Change to frame the current dataset again |
 | `engine` | `auto` | MapLibre, with Leaflet raster fallback if WebGL initialization fails |
-| `tileUrl` | OpenStreetMap raster tiles | Replaceable HTTPS tile template |
-| `tileAttribution` | OpenStreetMap attribution | Provider-required attribution HTML; trusted developer configuration only |
+| `tileUrl` | OpenStreetMap for raster fallback | Supplying a URL switches MapLibre to your raster basemap; also used by the fallback |
+| `tileAttribution` | OpenStreetMap attribution | Attribution for your raster provider; trusted developer configuration only |
+| `mapStyleUrl` | Built-in vector street style | Optional MapLibre style URL; takes precedence over `tileUrl` in MapLibre |
 | `showLocateControl` | `false` | Opt-in location button; requests permission only when clicked |
+| `showDealCard` | `true` | Compact selected-offer card with prices and directions; disable if your app has its own details panel |
 | `className`, `style` | None | Host application layout integration |
 | `ariaLabel` | `Restaurant deals map` | Accessible region label |
 
-Changing the tile URL, attribution, or requested engine recreates the map. Data and selection updates do not. Map resize follows the parent size. Buttons and markers support keyboard activation.
+Changing the style URL, tile URL, attribution, or requested engine recreates the map. Data and selection updates do not. Map resize follows the parent size. Buttons and markers support keyboard activation.
+
+The map uses crisp vector streets, pale blue water, green parks, white controls, red restaurant pins and a blue selected pin. Place cards have blue directions buttons and retain the listed price currency; missing currencies are labelled instead of assuming CAD. This visual direction is inspired by familiar map interfaces; it does not use Google tiles, branding or an assumed Google API key. Demo records remain labelled as demos. Cards link to coordinate-based directions and, when supplied, the original offer. Give the component about 480 px of height for comfortable map-and-card viewing; in smaller embeds the card can scroll. Styles respond to the component's width. On mobile, unselected pins omit names to reduce clutter, and selection moves the pin above the card. Set `showDealCard={false}` to use your existing detail UI.
 
 ## Basemap and operational boundaries
 
-The renderer is MapLibre GL JS. Leaflet provides an automatic compatibility path for browsers without WebGL. Both use the same raster tile source and the same data contract. No MapLibre/Geoapify key is required for this prototype's default basemap. This component does **not** include restaurant search or address geocoding; those belong in the team's Geoapify integration.
+MapLibre GL JS renders the default custom vector street style from `src/streetStyle.ts` using OpenFreeMap's OpenMapTiles source and hosted fonts. The public service requires no API key; its attribution is retained. See [OpenFreeMap's official integration guide](https://openfreemap.org/quick_start/). Labels prefer English names where available and fall back to local proper names. The custom style is original; it does not import Google's map data.
+
+Leaflet provides a raster compatibility path for browsers without WebGL. That fallback retains the OpenStreetMap raster source and does not reproduce the vector cartography. A custom `mapStyleUrl` applies only to MapLibre; set `tileUrl` and `tileAttribution` for a corresponding raster fallback. Supplying only `tileUrl` explicitly selects raster cartography in MapLibre as well. This component does **not** include restaurant search or address geocoding; those belong in the team's Geoapify integration.
 
 The default public OpenStreetMap tile service is best-effort and subject to its usage policy. Keep attribution visible, preserve the browser Referer, do not bulk download/prefetch tiles, and use a suitable tile provider for higher traffic. Configure both `tileUrl` and `tileAttribution` when switching providers. Browser-visible tile tokens must be scoped/restricted according to the provider; never put Gemini or server-side secrets in component props.
 

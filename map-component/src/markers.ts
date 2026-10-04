@@ -1,8 +1,16 @@
 import type {MapDeal} from "./types";
+const pinRecords=new WeakMap<HTMLElement,string>();
+export function pinMatches(element:HTMLElement|undefined,deal:MapDeal){return !!element&&pinRecords.get(element)===JSON.stringify(deal);}
 export function makePin(deal:MapDeal,selected:boolean,onSelect:()=>void):HTMLButtonElement{
   const button=document.createElement("button");button.type="button";
   button.className="bitemap-pin"+(selected?" bitemap-pin-selected":"");
-  button.textContent=deal.discountPercent!==undefined?`${deal.discountPercent}%`:(deal.price!==undefined?`${deal.currency??"CAD"} ${deal.price}`:"Deal");
+  const icon=document.createElementNS("http://www.w3.org/2000/svg","svg");icon.setAttribute("viewBox","0 0 34 44");icon.setAttribute("aria-hidden","true");icon.classList.add("bitemap-pin-icon");
+  // Static icon markup only; restaurant text is assigned with textContent below.
+  icon.innerHTML='<path class="bitemap-pin-shape" d="M17 1C8.2 1 1 8.2 1 17c0 11 16 26 16 26s16-15 16-26C33 8.2 25.8 1 17 1Z"/><g fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 9v7c0 2 5 2 5 0V9m-2.5 0v18m10-18c-4 0-5 10-1 10h1V9Zm0 10v8"/></g>';
+  button.appendChild(icon);
+  const label=document.createElement("span");label.className="bitemap-pin-label";label.textContent=deal.restaurantName;button.appendChild(label);
+  button.dataset.dealId=deal.id;button.title=`${deal.restaurantName} · ${deal.title}`;
+  pinRecords.set(button,JSON.stringify(deal));
   button.setAttribute("aria-label",`${deal.restaurantName}: ${deal.title}${deal.isDemo?" (demo)":""}`);
   button.setAttribute("aria-pressed",String(selected));button.addEventListener("click",onSelect);
   return button;

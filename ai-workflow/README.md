@@ -2,6 +2,10 @@
 
 这是独立的 **Convex + Gemini + Geoapify** 后端，可接入队友的 React、Next.js、手机 App 或服务端。现有 `map-site/` 网站模板不依赖此模块；地图 UI 由队友订阅已发布的优惠数据。
 
+新增自然语言优惠搜索与到店推荐，接入说明见 [SEARCH.md](SEARCH.md)。无需 key 的搜索演示：`npm.cmd run demo:search`。可通过 adapter 接入现有 `map-component`。
+
+Empty stored searches now fall back to Gemini with Google Search grounding. See [DISCOVERY.md](./DISCOVERY.md) for English integration instructions, citations, optional Geoapify branch verification, map adapters, and no-key/error behavior.
+
 ```mermaid
 flowchart LR
   A[文字 / 截图 / 公开链接] --> B[校验 + 去重 + 后台任务]
@@ -55,6 +59,8 @@ npm.cmd run dev
 | `GEOAPIFY_API_KEY` | Geoapify，必填 |
 | `GEMINI_MODEL` | 可选，默认 `gemini-2.5-flash`；可换成账号可用且支持结构化输出、图片与 URL context 的模型 |
 | `GEMINI_FALLBACK_MODEL` | 可选，只有输出 JSON 无效/不完整时尝试这个模型 |
+| `GEMINI_SEARCH_MODEL` | 可选，搜索理解和推荐使用的模型；默认复用 `GEMINI_MODEL` |
+| `GEMINI_DISCOVERY_MODEL` | Optional Google Search grounding model for restaurant discovery; defaults to the search model |
 | `WORKFLOW_API_TOKEN` | 使用 HTTP 写接口时必填，自己生成至少 32 字符的随机 secret |
 | `AUTH_JWT_ISSUER` / `AUTH_JWT_AUDIENCE` | 只有浏览器直接使用 Convex 写接口时需要，与你们现有登录服务一致 |
 
@@ -120,6 +126,8 @@ Convex CLI 会生成自己的 deployment 信息与公开客户端 URL。这里�
 | `POST /v1/jobs/retry` | `{ jobId }`，重跑失败/未审核任务 | Bearer token |
 | `POST /v1/deals/review` | `{ dealId, decision: "approve"或"reject", placeId?: "..." }` | Bearer token |
 | `GET /v1/deals?limit=100` | `{ deals: [...] }`，只读已发布且未过期的地图数据 | 公开 |
+| `POST /v1/search` | Search stored offers first; use grounded Gemini restaurant discovery if none match | Bearer token |
+| `POST /v1/deals/pitch` | 为指定 `focusDealId` 生成符合用户偏好的到店推荐理由 | Bearer token |
 
 完整 TypeScript 服务端 client 在 `examples/teammate-server.ts`。示例：
 
@@ -177,10 +185,15 @@ Job 状态：`queued → processing → completed`，失败时 `failed`。`compl
 - `src/workflow.ts`：可脱离 Convex 调用的 `processDeal()`。
 - `convex/jobs.ts` / `ai.ts`：后台调度、限流、去重、原子入库、失败和重试。
 - `convex/deals.ts` / `http.ts`：审核、实时地图、HTTP 集成。
-- `convex/schema.ts`：jobs、restaurants、deals、limits 四张表。
+- `convex/schema.ts`：jobs、restaurants、deals、limits、searchLimits 表。
+- `src/search*.ts` / `convex/search.ts`：搜索意图、筛选、证据推荐、基础 fallback 和搜索限流。
 
 本机已验证模拟响应与数据库运行流程。**真实 Gemini/Geoapify 响应、你的云项目部署、队友登录系统和地图 UI 尚需填 key 后联调。**地图接口最多扫描最近 500 条已发布记录，最多返回 100 条；MVP 量级使用，扩大数据量后改为分页和地理索引。无到期日的已确认 recurring deal 需运营定期复核。
 
 现有 Convex 项目接入时需合并 schema 和 HTTP router，安装此包的 dependencies，复制 `src/` 与相关 `convex/` 文件并重新 `convex dev`；不要覆盖队友已有表、路由或 auth 配置。已提供可在无云账号情况下 typecheck 的 `_generated/` bootstrap；正常 `convex dev` 会自动重新生成。`npm.cmd run codegen:offline` 仅供初始离线开发。
 
 官方参考：[Gemini generateContent / JSON schema](https://ai.google.dev/api/generate-content)、[Geoapify Places](https://apidocs.geoapify.com/docs/places/)、[Convex Actions](https://docs.convex.dev/functions/actions)、[Convex scheduled functions](https://docs.convex.dev/scheduling/scheduled-functions)。
+
+## Restaurant comparison
+
+See [COMPARISON.md](./COMPARISON.md) for the English comparison API and teammate integration. `POST /v1/deals/compare` and `api.compare.find` compare two to five published offers from different restaurant locations. Priorities are `value`, `price`, and `taste`; taste-first suggestions require sourced food review excerpts for every selected restaurant. The API retains restrictions and unknown fields, validates AI evidence references, and returns an explicitly labelled evidence-only result when AI is unavailable. Run `npx.cmd tsx scripts/demo-comparison.ts` for the fictional, mocked-provider demo.

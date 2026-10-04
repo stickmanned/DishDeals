@@ -1,10 +1,12 @@
 // Bootstrap checked-in types without creating a cloud project or requiring credentials.
 // Uses the installed Convex version's official templates. Normal `convex dev` replaces these.
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readdir } from "node:fs/promises";
 const templateDirectory = "../node_modules/convex/src/cli/codegen_templates/";
 const { apiCodegen } = await import(templateDirectory + "api.ts");
 const { serverCodegen } = await import(templateDirectory + "server.ts");
-const api = apiCodegen(["ai.ts", "auth.ts", "deals.ts", "http.ts", "jobs.ts", "maintenance.ts"]);
+const moduleFiles = (await readdir("convex")).filter(file => file.endsWith(".ts") &&
+  !file.endsWith(".d.ts") && !file.endsWith(".test.ts") && !["schema.ts", "crons.ts", "auth.config.ts"].includes(file)).sort();
+const api = apiCodegen(moduleFiles);
 const server = serverCodegen({ useTypeScript: false, envVars: undefined });
 await mkdir("convex/_generated", { recursive: true });
 await Promise.all([

@@ -25,7 +25,7 @@ function addressMatches(hint: string | null, address: string) {
   // An address needs a street number and enough street tokens; a city name alone proves no branch.
   return words.some(w => /^\d+[a-z]?$/.test(w)) && words.length >= 3 && words.every(w => actual.has(w));
 }
-export async function findRestaurant(deal: Deal, input: WorkflowInput,
+export async function findRestaurant(deal: Pick<Deal, "restaurantName" | "locationHint" | "addressHint">, input: Pick<WorkflowInput, "context">,
   config: { apiKey: string; fetcher?: Fetch; deadline?: number }): Promise<Place[]> {
   const area = deal.locationHint ?? input.context.city;
   const geo = new URL("https://api.geoapify.com/v1/geocode/search");
