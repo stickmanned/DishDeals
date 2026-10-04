@@ -30,13 +30,12 @@ function SignInForm() {
     try {
       await signIn("password", new FormData(event.currentTarget));
       router.push("/profile");
-    } catch (e) {
+    } catch {
       setError(
         flow === "signIn"
           ? "Could not sign in. Check your email and password."
           : "Could not sign up. Use a valid email and a password of at least 8 characters.",
       );
-      console.error(e);
     } finally {
       setBusy(false);
     }
