@@ -14,6 +14,8 @@ import type * as dealImage from "../dealImage.js";
 import type * as dealUploads from "../dealUploads.js";
 import type * as deals from "../deals.js";
 import type * as extract from "../extract.js";
+import type * as geocode from "../geocode.js";
+import type * as geocodeState from "../geocodeState.js";
 import type * as http from "../http.js";
 import type * as reels from "../reels.js";
 import type * as reelActions from "../reelActions.js";
@@ -36,6 +38,8 @@ declare const fullApi: ApiFromModules<{
   dealUploads: typeof dealUploads;
   deals: typeof deals;
   extract: typeof extract;
+  geocode: typeof geocode;
+  geocodeState: typeof geocodeState;
   http: typeof http;
   reels: typeof reels;
   reelActions: typeof reelActions;
