@@ -1489,14 +1489,14 @@
       "packet": "docs/tasks/N-SOURCE-TEXT.md",
       "pinnedBaseSha": "700c46801254010ac1433c7a4ae0f2313a3a52cd",
       "backendTarget": "NONE; local source/tests only, no cloud/provider invocation",
-      "implementationState": "Amended before dispatch: canonical pasted-source text without mandatory files; automatic URL retrieval remains blocked",
+      "implementationState": "Reviewed locally integrated 6c3f605; implementation ready",
       "nativeChecks": "Native capture reused unchanged",
-      "phoneAcceptance": "pending actual supplied caption and live extraction; URL receipt is not media",
+      "phoneAcceptance": "Pending human web deploy/live extraction/publish; no native source change",
       "blocker": "Live/phone extraction pending; bare-link automatic retrieval unavailable"
     },
     {
       "id": "N-TEXT-FORM",
-      "owner": "Mica",
+      "owner": "Cinder",
       "branch": "t-07-caption-form",
       "worktree": "caption-form",
       "status": "prepared",
@@ -1515,7 +1515,7 @@
       ],
       "pinnedBaseSha": "700c46801254010ac1433c7a4ae0f2313a3a52cd",
       "backendTarget": "NONE; local source/tests only",
-      "implementationState": "Bounded functional source/publication slice",
+      "implementationState": "Reassigned from Mica to Cinder after public-entry handoff; disjoint from native contrast",
       "nativeChecks": "No native source change",
       "phoneAcceptance": "Pending actual supplied source / public publish"
     },
@@ -1537,9 +1537,9 @@
       ],
       "pinnedBaseSha": "700c46801254010ac1433c7a4ae0f2313a3a52cd",
       "backendTarget": "NONE; local source/tests only",
-      "implementationState": "Bounded functional source/publication slice",
+      "implementationState": "Reviewed locally integrated dd93d85; implementation ready",
       "nativeChecks": "No native source change",
-      "phoneAcceptance": "Pending actual supplied source / public publish"
+      "phoneAcceptance": "Pending human web deploy/live extraction/publish; no native source change"
     },
     {
       "id": "N-SHARE-CONTRAST",
