@@ -1,4 +1,4 @@
-import type { Id } from "@/convex/_generated/dataModel";
+import type { Id } from "../convex/_generated/dataModel";
 
 export const DISPLAY_NAME_MIN = 2;
 export const DISPLAY_NAME_MAX = 24;
