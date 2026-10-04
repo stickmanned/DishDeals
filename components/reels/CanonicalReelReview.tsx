@@ -63,10 +63,16 @@ export function CanonicalReelReview({
   item,
   onSave,
   onPublish,
-  publishUnavailableReason = "Community deal publishing is not available in this view. You can save this draft privately.",
+  publishUnavailableReason,
   search,
   sourceUrl,
 }: CanonicalReelReviewProps) {
+  const effectivePublishUnavailableReason =
+    publishUnavailableReason ??
+    (onPublish
+      ? undefined
+      : "Community deal publishing is not available in this view. You can save this draft privately.");
+
   // Provenance extraction
   const extracted = useMemo<ReelExtraction | null>(() => {
     try {
@@ -229,11 +235,14 @@ export function CanonicalReelReview({
   // form's snapshot. The backend re-authorizes and re-validates independently.
   async function handlePublishFor(key: string): Promise<void> {
     const draft = liveDraft(listRef.current, key);
+    const unavailableMsg =
+      effectivePublishUnavailableReason ??
+      "Community deal publishing is not available in this view. You can save this draft privately.";
     const blocked = publishPreconditionError({
-      available: !!onPublish, unavailableReason: publishUnavailableReason, alreadyPublished: !!receipts[key],
+      available: !!onPublish, unavailableReason: unavailableMsg, alreadyPublished: !!receipts[key],
       versionChanged: changed, inFlight: publishing.current, offerExists: !!draft,
     });
-    if (blocked || !onPublish || !draft) throw new Error(blocked ?? publishUnavailableReason);
+    if (blocked || !onPublish || !draft) throw new Error(blocked ?? unavailableMsg);
     const fields = buildPublishFields(draft); // throws DraftValidationError with the unresolved items
     publishing.current = true;
     setPublishingNow(true);
@@ -247,8 +256,23 @@ export function CanonicalReelReview({
   }
 
   return (
-    <div className="panel form-stack">
+    <div id="reel-deal-review" className="panel form-stack">
       <h2>Review the draft</h2>
+      <div role="note" className="form-stack">
+        <p>
+          <b>Private save vs. Public deal:</b> You are editing a draft from a privately saved Reel.
+          Saving below keeps this draft private to your account.
+          When you confirm all required fields and click &ldquo;Publish deal&rdquo;, this offer is published publicly for everyone on the Discover feed and map.
+        </p>
+        {sourceUrl && (
+          <p className="muted">
+            Prefer standard manual post form?{" "}
+            <Link href={`/post?source=${encodeURIComponent(sourceUrl)}`}>
+              Open standard post form with this source link
+            </Link>
+          </p>
+        )}
+      </div>
       {!!item.status && ["queued", "retrieving", "extracting", "failed", "no_deal"].includes(item.status) && (
         <p role="status" className="muted">
           {item.status === "failed"
@@ -359,7 +383,7 @@ export function CanonicalReelReview({
               draft={entry.draft}
               onAction={(action) => handleActionFor(entry.key, action)}
               onPublish={onPublish ? () => handlePublishFor(entry.key) : undefined}
-              publishUnavailableReason={publishUnavailableReason}
+              publishUnavailableReason={effectivePublishUnavailableReason}
               busy={busy || publishingNow}
               renderLocation={({ draft, onConfirm }) => (
                 <DealLocationPicker

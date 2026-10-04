@@ -84,7 +84,26 @@ function Result({ itemId }: { itemId: Id<"reelItems"> }) {
   if (!item) return <p role="status">Loading your private save…</p>;
   const labels = { queued: item.sourceKind === "supplied" ? "Recording attached. Waiting to be analyzed." : "Link saved privately. It is not analyzed until you attach your own recording.", retrieving: "Reading the Reel…", extracting: "Listening and reading the video…", ready: "Your draft is ready to review.", no_deal: "No clear dining offer was found.", failed: "Processing needs attention." };
   return <><div className="panel form-stack"><p role="status" aria-live="polite">{labels[item.status]}</p><a href={item.sourceUrl} target="_blank" rel="noreferrer">Original Reel</a>{item.nativeContext?.truncated && <p role="note">The text shared with this Reel was cut off, so automatic analysis is blocked. Delete this save and share the Reel again with its complete text, or fill in the draft by hand.</p>}{item.error && <p role="alert">{item.error.message}</p>}{error && <p role="alert">{error}</p>}<div className="form-actions">{item.status === "failed" && <button disabled={busy || item.attempts >= 5} className="button primary" onClick={() => { announced.current = false; void run(() => retry({ itemId })); }}>Retry processing</button>}<button disabled={busy} className="button secondary" onClick={() => void run(async () => { await remove({ itemId }); router.replace("/reels"); })}>Delete save</button></div>
-    <label className="field">Reset automatic deletion<select disabled={busy} defaultValue="" onChange={e => { const days = Number(e.target.value); if (days) void run(() => retention({ itemId, days })); }}><option value="">Choose retention</option><option value="1">1 day from now</option><option value="7">7 days from now</option><option value="30">30 days from now</option></select></label><p className="muted">Deletes {new Date(item.expiresAt).toLocaleString()}. A recording you attach is kept for retries and deleted after analysis, when you delete this save, or at expiry.</p></div><AttachRecording item={item} processing={["retrieving", "extracting"].includes(item.status)} /><DraftEditor key={itemId} item={item} /></>;
+    <label className="field">Reset automatic deletion<select disabled={busy} defaultValue="" onChange={e => { const days = Number(e.target.value); if (days) void run(() => retention({ itemId, days })); }}><option value="">Choose retention</option><option value="1">1 day from now</option><option value="7">7 days from now</option><option value="30">30 days from now</option></select></label><p className="muted">Deletes {new Date(item.expiresAt).toLocaleString()}. A recording you attach is kept for retries and deleted after analysis, when you delete this save, or at expiry.</p></div>
+    <div className="panel form-stack">
+      <h2>Public deal entry</h2>
+      <p>
+        <b>Private save vs. Public deal:</b> This saved Reel is private to your account.
+        To share this deal with the community, review the details and publish it publicly so other users can find it on the Discover feed and map.
+      </p>
+      <div className="form-actions">
+        <a className="button secondary" href="#reel-deal-review">
+          Review and publish publicly
+        </a>
+        <Link className="button secondary" href={`/post?source=${encodeURIComponent(item.sourceUrl)}`}>
+          Use standard post form
+        </Link>
+      </div>
+      <p className="muted">
+        An Instagram link alone supplies no facts and automatic retrieval is blocked. You can attach an optional recording below for video analysis, review and publish a public deal manually below, or use the standard post form with a screenshot or caption.
+      </p>
+    </div>
+    <AttachRecording item={item} processing={["retrieving", "extracting"].includes(item.status)} /><DraftEditor key={itemId} item={item} /></>;
 }
 function browserProbe(): VideoProbe {
   return {
@@ -123,8 +142,8 @@ function AttachRecording({ item, processing }: { item: Doc<"reelItems">; process
       if (outcome.ok) setReceipt("Recording attached. Processing has started."); else setMessage(uploadErrors[outcome.reason]);
     } finally { setBusy(false); }
   }
-  return <div className="panel form-stack"><h2>Attach your recording</h2>
-    <p className="muted">To analyze the Reel itself, attach a screen recording or video of this same Reel from Photos or Files. The saved link alone is never fetched or analyzed. The recording stays private and is used only for this save. Its length is read by your browser and is not independently verified. Processing also needs video analysis to be enabled; if it is not, you will see a failed result and can edit by hand.</p>
+  return <div className="panel form-stack"><h2>Attach recording (optional)</h2>
+    <p className="muted">Attaching a recording is optional. The saved Instagram link alone supplies no facts and cannot be automatically analyzed. To analyze the Reel video, attach a screen recording or video of this same Reel from Photos or Files. Alternatively, you can review and publish a public deal manually below, or <Link href={`/post?source=${encodeURIComponent(item.sourceUrl)}`}>use the standard post form</Link> with screenshot or caption text. The recording stays private and is used only for this save. Its length is read by your browser and is not independently verified. Processing also needs video analysis to be enabled; if it is not, you will see a failed result and can edit by hand.</p>
     {!siteUrl ? <p role="status" className="muted">Recording upload is not configured for this build.</p> : <>
       <label className="field">Reel recording (MP4 or QuickTime, up to {MAX_MEDIA_BYTES / 1048576} MB, 1 to {MAX_DURATION_SECONDS} seconds)<input type="file" accept="video/mp4,video/quicktime,.mp4,.mov" onChange={e => void pick(e)} disabled={busy || processing} /></label>
       {file && duration !== null && <p role="status">{file.name} · {(file.size / 1048576).toFixed(1)} MB · about {Math.round(duration)} s (read by your browser)</p>}
