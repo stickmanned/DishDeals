@@ -2,13 +2,14 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useAuthActions, useConvexAuth as useSessionToken } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import type { Id, Doc } from "@/convex/_generated/dataModel";
 import { postNativeMessage, recoveredLink, saveReelLink } from "@/lib/nativeSession";
 import { MAX_CAPTION_BYTES, MAX_CAPTION_CHARS, MAX_DURATION_SECONDS, MAX_MEDIA_BYTES, checkFileChoice, readVideoDuration, uploadSuppliedReel, validateCaption, type VideoProbe } from "@/lib/reels/suppliedMedia";
 import { CanonicalReelReview } from "./CanonicalReelReview";
+import { PublishGuard, createPublishHandler, createSearch, type GateInput } from "@/lib/reels/publish";
 
 // Uses the canonical root auth session (ConvexClientProvider); it creates no
 // client or auth provider of its own. The session is sent to native by the
@@ -117,6 +118,23 @@ function AttachRecording({ item, processing }: { item: Doc<"reelItems">; process
 // Mounted per item (not per generation) so edits survive retries and reactive updates.
 function DraftEditor({ item }: { item: Doc<"reelItems"> }) {
   const save = useMutation(api.reels.saveDraft);
+  // Real canonical session and profile: never a local preview identity.
+  const auth = useConvexAuth();
+  const me = useQuery(api.users.me, auth.isAuthenticated ? {} : "skip");
+  const create = useMutation(api.deals.create);
+  const geocode = useAction(api.geocode.geocode);
+  // One guard per editor makes publishing single-flight. The handler is rebuilt each render so a click always
+  // sees the current session, profile and item.
+  const [guard] = useState(() => new PublishGuard());
+  const gate: GateInput = { isLoading: auth.isLoading, isAuthenticated: auth.isAuthenticated, me };
+  const publish = createPublishHandler({
+    gate: () => gate,
+    // The args are exactly deals.create's; imageId only reaches here after its shape was validated.
+    create: args => create({ ...args, imageId: args.imageId as Id<"_storage"> | undefined }),
+    item: () => ({ sourceUrl: item.sourceUrl, videoId: item.videoId }),
+    guard,
+  });
+  const search = createSearch(query => geocode({ query }));
   return (
     <CanonicalReelReview
       key={item._id}
@@ -129,6 +147,8 @@ function DraftEditor({ item }: { item: Doc<"reelItems"> }) {
           expectedRevision: expected.revision,
         })
       }
+      onPublish={publish}
+      search={search}
       sourceUrl={item.sourceUrl}
     />
   );

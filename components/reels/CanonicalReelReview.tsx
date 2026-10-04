@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import Link from "next/link";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { DealReviewForm } from "../deals/DealReviewForm";
-import { DealLocationPicker } from "../maps/DealLocationPicker";
+import { DealLocationPicker, type GeocodeCandidate } from "../maps/DealLocationPicker";
 import {
   buildPublishFields,
   dealDraftReducer,
@@ -20,6 +21,20 @@ import {
   type ReelExtraction,
 } from "../../lib/reels/contract";
 import {
+  MAX_OFFERS,
+  activeAfterRemove,
+  appendOffers,
+  applyLatePlan,
+  liveDraft,
+  offerListFrom,
+  publishPreconditionError,
+  removeOffer,
+  replaceOffers,
+  updateOffer,
+  type OfferList,
+  type PublishReceipt,
+} from "../../lib/reels/publish";
+import {
   confirmationActions,
   initDraftsFromReelItem,
   planLateExtraction,
@@ -33,8 +48,14 @@ export interface CanonicalReelReviewProps {
     draftJson: string,
     expected: { generation: number; revision: number }
   ) => Promise<unknown>;
-  onPublish?: (fields: PublishFields) => Promise<void>;
+  /**
+   * Community publish of one offer's canonical fields. It must resolve with a genuine receipt (a created
+   * deal id) or throw; the review shows the receipt's links and never navigates before it exists.
+   */
+  onPublish?: (fields: PublishFields) => Promise<PublishReceipt | void>;
   publishUnavailableReason?: string;
+  /** Explicit "Find" geocoder for the location picker. Absent means the picker reports search unavailable. */
+  search?: (query: string) => Promise<GeocodeCandidate[]>;
   sourceUrl?: string | null;
 }
 
@@ -42,7 +63,8 @@ export function CanonicalReelReview({
   item,
   onSave,
   onPublish,
-  publishUnavailableReason = "Community deal publishing will be available once deal creation is integrated (T-09C). You can save this draft privately now.",
+  publishUnavailableReason = "Community deal publishing is not available in this view. You can save this draft privately.",
+  search,
   sourceUrl,
 }: CanonicalReelReviewProps) {
   // Provenance extraction
@@ -54,15 +76,19 @@ export function CanonicalReelReview({
     }
   }, [item.extractionJson]);
 
-  // Drafts state initialized per item
-  const [drafts, setDrafts] = useState<DealDraft[]>(() =>
-    initDraftsFromReelItem(item, sourceUrl)
-  );
+  // One keyed entry per offer. Keys never change for an existing offer, so each offer's review form (and its
+  // uncommitted price text and notes) stays mounted across switching, adding and removing other offers.
+  const [list, setList] = useState<OfferList>(() => offerListFrom(initDraftsFromReelItem(item, sourceUrl)));
+  const listRef = useRef(list);
+  listRef.current = list;
+  const drafts = useMemo(() => list.entries.map((e) => e.draft), [list]);
   const [activeOfferIndex, setActiveOfferIndex] = useState(0);
-  // Bumped whenever drafts are replaced wholesale so the form's local price text re-initializes.
-  const [formEpoch, setFormEpoch] = useState(0);
   // The extraction the current drafts already reflect; a different one is offered, never auto-applied.
   const [seenExtraction, setSeenExtraction] = useState<string | undefined>(item.extractionJson);
+  // One community publish at a time, and a genuine receipt per published offer.
+  const publishing = useRef(false);
+  const [publishingNow, setPublishingNow] = useState(false);
+  const [receipts, setReceipts] = useState<Record<string, PublishReceipt>>({});
 
   // Optimistic version tracking
   const [expected, setExpected] = useState(() => ({
@@ -86,7 +112,8 @@ export function CanonicalReelReview({
     revision: item.draftRevision ?? 0,
   };
 
-  const activeDraft = drafts[activeOfferIndex] ?? drafts[0];
+  const activeEntry = list.entries[activeOfferIndex] ?? list.entries[0];
+  const activeDraft = activeEntry.draft;
   const pendingConfirmations = confirmationActions(activeDraft);
 
   const lateExtraction = useMemo(
@@ -97,32 +124,30 @@ export function CanonicalReelReview({
     [item.extractionJson, seenExtraction, drafts, sourceUrl]
   );
 
-  function handleAction(action: DealDraftAction) {
+  // Every callback targets an offer by key and reads the latest list, never a stale active index.
+  function updateByKey(key: string, change: (draft: DealDraft) => DealDraft) {
     setSaveMessage("");
     setSaveError("");
-    setDrafts((prev) =>
-      prev.map((d, idx) => (idx === activeOfferIndex ? dealDraftReducer(d, action) : d))
-    );
+    setList((prev) => updateOffer(prev, key, change));
+  }
+
+  function handleActionFor(key: string, action: DealDraftAction) {
+    updateByKey(key, (d) => dealDraftReducer(d, action));
   }
 
   function handleConfirmSaved() {
-    setSaveMessage("");
-    setSaveError("");
-    setDrafts((prev) =>
-      prev.map((d, idx) =>
-        idx === activeOfferIndex
-          ? confirmationActions(d).reduce((acc, action) => dealDraftReducer(acc, action), d)
-          : d
-      )
+    updateByKey(activeEntry.key, (d) =>
+      confirmationActions(d).reduce((acc, action) => dealDraftReducer(acc, action), d)
     );
   }
 
   function handleApplyLateExtraction() {
     if (!lateExtraction) return;
-    setDrafts(lateExtraction.drafts);
+    const before = listRef.current;
+    const next = applyLatePlan(before, lateExtraction);
+    setList(next);
     if (lateExtraction.mode === "replace") setActiveOfferIndex(0);
     setSeenExtraction(item.extractionJson);
-    setFormEpoch((n) => n + 1);
     setSaveMessage(
       lateExtraction.mode === "replace"
         ? "Model suggestions loaded. Nothing is confirmed until you review it."
@@ -132,12 +157,13 @@ export function CanonicalReelReview({
 
   function handleLoadLatest() {
     try {
-      setDrafts(initDraftsFromReelItem(item, sourceUrl));
+      // Deliberate replacement: every offer form is re-created from the saved draft (disclosed to the user).
+      setList((prev) => replaceOffers(prev, initDraftsFromReelItem(item, sourceUrl)));
+      setReceipts({});
       setSeenExtraction(item.extractionJson);
-      setFormEpoch((n) => n + 1);
       setActiveOfferIndex(0);
       setExpected(latest);
-      setSaveMessage("Loaded the latest saved draft.");
+      setSaveMessage("Loaded the latest saved draft. Unsaved typing on every offer was replaced.");
       setSaveError("");
     } catch {
       setSaveError("The latest draft could not be loaded.");
@@ -179,31 +205,45 @@ export function CanonicalReelReview({
   }
 
   function handleAddOffer() {
-    if (drafts.length >= 10) return;
-    setDrafts((prev) => [...prev, createDraft({ sourceUrl: sourceUrl ?? null })]);
-    setActiveOfferIndex(drafts.length);
+    if (listRef.current.entries.length >= MAX_OFFERS) return;
+    setList((prev) => appendOffers(prev, [createDraft({ sourceUrl: sourceUrl ?? null })]));
+    setActiveOfferIndex(listRef.current.entries.length);
   }
 
-  function handleRemoveOffer(index: number) {
-    if (drafts.length <= 1) return;
-    setDrafts((prev) => prev.filter((_, i) => i !== index));
-    setFormEpoch((n) => n + 1);
-    if (activeOfferIndex >= index && activeOfferIndex > 0) {
-      setActiveOfferIndex(activeOfferIndex - 1);
-    }
+  function handleRemoveOffer(key: string) {
+    const current = listRef.current;
+    if (current.entries.length <= 1) return;
+    const index = current.entries.findIndex((e) => e.key === key);
+    if (index < 0) return;
+    setList(removeOffer(current, key));
+    setActiveOfferIndex(activeAfterRemove(activeOfferIndex, index, current.entries.length - 1));
+    setReceipts((prev) => {
+      const { [key]: _gone, ...rest } = prev;
+      void _gone;
+      return rest;
+    });
   }
 
-  async function handleInternalPublish(fields: PublishFields): Promise<void> {
-    if (!onPublish) {
-      throw new Error(publishUnavailableReason);
+  // Publishes the offer with this key from its LIVE draft. The canonical gate (review state, FUTURE_START and
+  // unsupported restrictions, open issues, confirmed location) runs on that draft; the argument is only the
+  // form's snapshot. The backend re-authorizes and re-validates independently.
+  async function handlePublishFor(key: string): Promise<void> {
+    const draft = liveDraft(listRef.current, key);
+    const blocked = publishPreconditionError({
+      available: !!onPublish, unavailableReason: publishUnavailableReason, alreadyPublished: !!receipts[key],
+      versionChanged: changed, inFlight: publishing.current, offerExists: !!draft,
+    });
+    if (blocked || !onPublish || !draft) throw new Error(blocked ?? publishUnavailableReason);
+    const fields = buildPublishFields(draft); // throws DraftValidationError with the unresolved items
+    publishing.current = true;
+    setPublishingNow(true);
+    try {
+      const receipt = await onPublish(fields);
+      if (receipt) setReceipts((prev) => ({ ...prev, [key]: receipt }));
+    } finally {
+      publishing.current = false;
+      setPublishingNow(false);
     }
-    if (changed) {
-      throw new Error("This draft changed elsewhere. Choose Load latest or Keep my edits first.");
-    }
-    // Re-run the canonical gate (review state, FUTURE_START, issues, location) on the live draft;
-    // throws DraftValidationError when anything is unconfirmed. The built fields supersede the argument.
-    void fields;
-    await onPublish(buildPublishFields(activeDraft));
   }
 
   return (
@@ -239,9 +279,9 @@ export function CanonicalReelReview({
       {/* Multi-offer switcher */}
       {drafts.length > 1 && (
         <div className="form-actions" role="tablist" aria-label="Offer tabs">
-          {drafts.map((_, i) => (
+          {list.entries.map((entry, i) => (
             <button
-              key={i}
+              key={entry.key}
               type="button"
               role="tab"
               aria-selected={i === activeOfferIndex}
@@ -251,7 +291,7 @@ export function CanonicalReelReview({
               Offer {i + 1}
             </button>
           ))}
-          {drafts.length < 10 && (
+          {drafts.length < MAX_OFFERS && (
             <button type="button" className="text-button" onClick={handleAddOffer}>
               + Add offer
             </button>
@@ -264,7 +304,7 @@ export function CanonicalReelReview({
           <button
             type="button"
             className="text-button"
-            onClick={() => handleRemoveOffer(activeOfferIndex)}
+            onClick={() => handleRemoveOffer(activeEntry.key)}
           >
             Remove offer {activeOfferIndex + 1}
           </button>
@@ -309,23 +349,43 @@ export function CanonicalReelReview({
         </div>
       )}
 
-      <DealReviewForm
-        key={`${activeOfferIndex}:${formEpoch}`}
-        draft={activeDraft}
-        onAction={handleAction}
-        onPublish={onPublish ? handleInternalPublish : undefined}
-        publishUnavailableReason={publishUnavailableReason}
-        busy={busy}
-        renderLocation={({ draft, onConfirm }) => (
-          <DealLocationPicker
-            restaurant={draft.fields.restaurant.value ?? ""}
-            address={draft.fields.address.value}
-            location={draft.location}
-            onConfirm={onConfirm}
-            onInvalidate={() => handleAction({ type: "INVALIDATE_LOCATION" })}
-          />
-        )}
-      />
+      {/* Every offer keeps its own mounted form; only the active one is visible and focusable. */}
+      {list.entries.map((entry, i) => {
+        const isActive = i === activeOfferIndex;
+        const receipt = receipts[entry.key];
+        return (
+          <div key={entry.key} hidden={!isActive} inert={!isActive} aria-hidden={!isActive} data-offer-key={entry.key}>
+            <DealReviewForm
+              draft={entry.draft}
+              onAction={(action) => handleActionFor(entry.key, action)}
+              onPublish={onPublish ? () => handlePublishFor(entry.key) : undefined}
+              publishUnavailableReason={publishUnavailableReason}
+              busy={busy || publishingNow}
+              renderLocation={({ draft, onConfirm }) => (
+                <DealLocationPicker
+                  restaurant={draft.fields.restaurant.value ?? ""}
+                  address={draft.fields.address.value}
+                  location={draft.location}
+                  search={search}
+                  onConfirm={onConfirm}
+                  onInvalidate={() => handleActionFor(entry.key, { type: "INVALIDATE_LOCATION" })}
+                />
+              )}
+            />
+            {receipt && (
+              <div role="status" className="panel form-stack">
+                <p>
+                  <b>Published to the community.</b> This is your private Reel save&rsquo;s own offer; the
+                  private save is unchanged.
+                </p>
+                <p>
+                  <Link href={receipt.dealPath}>Open the deal</Link> · <Link href={receipt.mapPath}>See it on the map</Link>
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {/* Save draft privately controls */}
       <div className="form-actions" style={{ marginTop: "1rem" }}>
