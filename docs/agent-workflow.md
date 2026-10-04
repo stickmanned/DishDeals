@@ -1,3 +1,5 @@
+> October4 worker routing: William authorized Claude Code after Gemini quota exhaustion. Loom, Mica, Prism and Cinder are reused; no duplicate recruits. Historical Gemini routing below is superseded for current packets. Human-reported iPhone Xcode build passed; actual device flow remains pending.
+
 > Active October 3 assignment supersedes historical dispatch limits and remote Git loop below. T-01/T-02 are DONE. Northstar may release successive bounded batches T-03–T-21 plus native integration. Local commits and reviewed local integration only; do not push, publish PRs or sync cloud. Workers read current packets from the workflow checkout; preserve the root human checkout. Coverage/evidence: docs/workflow/coverage.md.
 
 # DishDeals parallel development

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PublishedDealMap } from "./PublishedDealMap";
 import {
   selectDeals,
+  viewerLocation,
   formatValidityLabel,
   type CanonicalDeal,
   type PriceFilter,
@@ -27,7 +28,7 @@ export function CanonicalDealMapPage() {
         <div className="panel empty-state">
           <Icon name="pin" size={32} />
           <h1>Live map feed unavailable</h1>
-          <p>Convex backend is not configured in this environment (NEXT_PUBLIC_CONVEX_URL is unset).</p>
+          <p>The live deal service is unavailable here. Please return when it is connected.</p>
           <Link href="/" className="button secondary">
             Back to Discover
           </Link>
@@ -36,70 +37,78 @@ export function CanonicalDealMapPage() {
     );
   }
 
-  return <CanonicalDealMapContent />;
+  return <MapQueryBoundary><CanonicalDealMapContent /></MapQueryBoundary>;
+}
+
+class MapQueryBoundary extends React.Component<{children: React.ReactNode}, {failed: boolean}> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return <div className="panel empty-state" role="alert"><h1>We couldn’t load the map deals.</h1><p>Check your connection and try again.</p><button type="button" className="button secondary" onClick={() => this.setState({failed: false})}>Retry</button><Link href="/">Back to Discover</Link></div>;
+  }
 }
 
 function CanonicalDealMapContent() {
   const { now, ready: clockReady } = useClock();
 
-  // Canonical reactive query: latest 50 published deals
-  const rawDeals = useQuery(api.deals.listRecent, { limit: 50 });
-
   const [priceFilter, setPriceFilter] = useState<PriceFilter>("any");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
-  const [sortOption, setSortOption] = useState<SortOption>("newest");
+  const [sortOption, setSortOption] = useState<SortOption>("default");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationMessage, setLocationMessage] = useState<string | null>(null);
+  // A real viewer hint selects the index query; absent/denied location uses
+  // recent published records with no guessed center or distance.
+  const recent = useQuery(api.deals.listRecent, userLocation ? "skip" : { limit: 50 });
+  const nearby = useQuery(api.deals.listNearby, userLocation ? { ...userLocation, maxKm: 50 } : "skip");
+  const rawDeals = userLocation ? nearby : recent;
 
-  // Request browser location hint (finite timeout, truthful fallback)
+  const locationRequest = useRef(0);
+  useEffect(() => () => { locationRequest.current += 1; }, []);
+  const showRecent = () => {
+    locationRequest.current += 1;
+    setLocating(false);
+    setUserLocation(null);
+    setSortOption(previous => previous === "distance" ? "default" : previous);
+    setLocationMessage("Showing recent deals without a location hint.");
+  };
   const handleRequestLocation = useCallback(() => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      setLocationMessage("Geolocation is not supported by your browser. Showing newest deals.");
+    if (!navigator.geolocation) {
+      setLocationMessage("Location is unavailable. Showing recent deals.");
       return;
     }
-
+    const requestId = ++locationRequest.current;
     setLocating(true);
     setLocationMessage(null);
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocating(false);
-        const coords: LatLng = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        };
-        setUserLocation(coords);
-        setSortOption("distance");
-        setLocationMessage(null);
-      },
-      (err) => {
-        setLocating(false);
-        setUserLocation(null);
-        if (sortOption === "distance") {
-          setSortOption("newest");
-        }
-        if (err.code === 1) {
-          setLocationMessage("Location permission denied. Showing deals sorted by newest.");
-        } else if (err.code === 3) {
-          setLocationMessage("Location request timed out. Showing deals sorted by newest.");
-        } else {
-          setLocationMessage("Location is currently unavailable. Showing deals sorted by newest.");
-        }
-      },
-      {
-        timeout: 10000,
-        enableHighAccuracy: true,
-        maximumAge: 60000,
+    navigator.geolocation.getCurrentPosition(pos => {
+      if (locationRequest.current !== requestId) return;
+      setLocating(false);
+      const coords = viewerLocation(pos.coords.latitude, pos.coords.longitude);
+      if (!coords) {
+        setLocationMessage(userLocation ? "That location could not be used. Keeping your previous location." : "That location could not be used. Showing recent deals.");
+        return;
       }
-    );
-  }, [sortOption]);
+      setUserLocation(coords);
+      // Shared default already ranks valid offers, then nearest and newest.
+      setLocationMessage(null);
+    }, err => {
+      if (locationRequest.current !== requestId) return;
+      setLocating(false);
+      if (userLocation) {
+        setLocationMessage("Location could not refresh. Keeping your previous location.");
+        return;
+      }
+      setSortOption(previous => previous === "distance" ? "default" : previous);
+      setLocationMessage(err.code === 1 ? "Location permission denied. Showing recent deals." : err.code === 3 ? "Location request timed out. Showing recent deals." : "Location is unavailable. Showing recent deals.");
+    }, { timeout: 10000, enableHighAccuracy: true, maximumAge: 60000 });
+  }, [userLocation]);
 
   // Client-side filtering and sorting
   const filteredDeals = useMemo<CanonicalDeal[]>(() => {
-    if (!rawDeals) return [];
+    if (!rawDeals || !clockReady) return [];
     return selectDeals(rawDeals as CanonicalDeal[], {
       price: priceFilter,
       time: timeFilter,
@@ -107,12 +116,12 @@ function CanonicalDealMapContent() {
       userLocation,
       now,
     });
-  }, [rawDeals, priceFilter, timeFilter, sortOption, userLocation, now]);
+  }, [rawDeals, priceFilter, timeFilter, sortOption, userLocation, now, clockReady]);
 
   const handleResetFilters = () => {
     setPriceFilter("any");
     setTimeFilter("all");
-    setSortOption("newest");
+    setSortOption("default");
     setSelectedId(null);
   };
 
@@ -122,7 +131,7 @@ function CanonicalDealMapContent() {
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: "2rem", margin: 0, fontWeight: 700 }}>Vancouver Deals Map</h1>
         <p style={{ margin: "6px 0 0 0", color: "var(--muted)", fontSize: "0.95rem" }}>
-          Showing up to 50 recent deals across Metro Vancouver. Filter by price, valid hours, or distance.
+          {userLocation ? "Showing up to 50 nearby published deals within 50 km." : "Showing up to 50 recent published deals. Enable location for nearby results."} Filter by price, valid hours, or distance.
         </p>
       </div>
 
@@ -203,10 +212,11 @@ function CanonicalDealMapContent() {
                 fontSize: "0.9rem",
               }}
             >
+              <option value="default">Valid first</option>
               <option value="newest">Newest first</option>
               <option value="price">Price: low to high</option>
               <option value="time">Valid now / ending soon</option>
-              <option value="distance">Distance: nearest</option>
+              <option value="distance" disabled={!userLocation}>Distance: nearest</option>
             </select>
           </div>
         </div>
@@ -224,6 +234,7 @@ function CanonicalDealMapContent() {
             <Icon name="pin" size={16} />
             {locating ? "Locating…" : userLocation ? "Location enabled" : "Near me"}
           </button>
+          {userLocation && <button type="button" className="text-button" onClick={showRecent}>Show recent deals</button>}
         </div>
       </div>
 
@@ -261,7 +272,8 @@ function CanonicalDealMapContent() {
       >
         <PublishedDealMap
           deals={filteredDeals}
-          selectedId={selectedId}
+          selectedId={filteredDeals.some(deal => deal._id === selectedId) ? selectedId : null}
+          fitKey={JSON.stringify([userLocation, priceFilter, timeFilter, filteredDeals.map(deal => deal._id)])}
           onSelectDeal={(deal) => setSelectedId(deal?._id ?? null)}
           ariaLabel="Published restaurant deals in Vancouver"
           fitOnLoad
@@ -270,7 +282,7 @@ function CanonicalDealMapContent() {
       </section>
 
       {/* Loading Skeleton */}
-      {rawDeals === undefined && (
+      {(rawDeals === undefined || !clockReady) && (
         <div className="skeleton-card" aria-label="Loading deals" aria-busy="true">
           <div />
           <span />
@@ -278,11 +290,11 @@ function CanonicalDealMapContent() {
       )}
 
       {/* Empty State */}
-      {rawDeals !== undefined && filteredDeals.length === 0 && (
+      {clockReady && rawDeals !== undefined && filteredDeals.length === 0 && (
         <div className="panel empty-state" style={{ marginTop: 20 }}>
           <Icon name="search" size={32} />
           <h2>No deals found</h2>
-          <p>None of the recent deals match your selected filters.</p>
+          <p>{userLocation ? (rawDeals?.length ? "No nearby deals match these filters." : "No published deals were found within 50 km of your location.") : "None of the recent deals match these filters."}</p>
           <button type="button" className="button secondary" onClick={handleResetFilters}>
             Reset filters
           </button>
@@ -317,7 +329,7 @@ function CanonicalDealMapContent() {
           >
             {filteredDeals.map((deal) => {
               const isSelected = deal._id === selectedId;
-              const val = validNow(deal, now);
+              const val = deal.validity ?? validNow(deal, now);
               const valDisplay = clockReady
                 ? formatValidityLabel(val)
                 : { label: "Checking hours…", isValid: false };

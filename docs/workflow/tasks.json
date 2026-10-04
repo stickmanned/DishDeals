@@ -729,7 +729,7 @@
       "packet": "docs/tasks/N-MAP-B.md",
       "pinnedBaseSha": "44133042340c5d4a140453a63aa445edc163e637",
       "backendTarget": "local source/tests only; no cloud",
-      "implementationState": "worker quota stopped with preserved uncommitted work; Northstar review/recovery",
+      "implementationState": "quota-preserved corrections incorporated for Northstar NMAPR; Cinder Claude read-only reviewer",
       "nativeChecks": "pending runtime/WKWebView",
       "phoneAcceptance": "pending",
       "externalBlocker": "Gemini CLI confirmed quota error, no model switch/recruit; preserve work"
@@ -791,15 +791,16 @@
         "convex/reels.ts",
         "tests/backend/reelManualDraft.test.ts",
         "docs/integration/reel-common-form.md",
-        "docs/handoffs/n-form-b.md"
+        "docs/handoffs/n-form-b.md",
+        "tests/backend/reelDraftRevisions.test.ts"
       ],
       "packet": "docs/tasks/N-FORM-B.md",
       "pinnedBaseSha": "33b894d40f7e1075c6579a297657c227dc3e4f65",
       "backendTarget": "local synthetic checks only; no cloud",
-      "implementationState": "worker quota stopped with preserved uncommitted work; Northstar review/recovery",
+      "implementationState": "Claude Code resumed same bounded ticket from quota-preserved source",
       "nativeChecks": "pending rendered map/form",
       "phoneAcceptance": "pending",
-      "externalBlocker": "Gemini CLI confirmed quota error, no model switch/recruit; preserve work"
+      "externalBlocker": "Gemini exhausted; William authorized in-place Claude Code replacement"
     },
     {
       "id": "N-SOURCE-C",
@@ -818,15 +819,16 @@
         "convex/reelActions.ts",
         "tests/import/reelConstraints.test.ts",
         "docs/integration/reel-source-constraints.md",
-        "docs/handoffs/n-source-c.md"
+        "docs/handoffs/n-source-c.md",
+        "tests/import/reelDraft.test.ts"
       ],
       "packet": "docs/tasks/N-SOURCE-C.md",
       "pinnedBaseSha": "33b894d40f7e1075c6579a297657c227dc3e4f65",
       "backendTarget": "synthetic parser/model transport only; no provider/cloud",
-      "implementationState": "worker quota stopped with preserved uncommitted work; Northstar review/recovery",
+      "implementationState": "Claude Code resumed same bounded ticket from quota-preserved source",
       "nativeChecks": "pending actual media/extraction",
       "phoneAcceptance": "pending",
-      "externalBlocker": "Gemini CLI confirmed quota error, no model switch/recruit; preserve work"
+      "externalBlocker": "Gemini exhausted; William authorized in-place Claude Code replacement"
     },
     {
       "id": "T-07B",
@@ -857,12 +859,14 @@
         "docs/integration/image-extraction.md",
         "docs/handoffs/t-07b.md",
         ".env.example",
-        "lib/extractCore.ts"
+        "lib/extractCore.ts",
+        "tests/backend/dealWrites.test.ts",
+        "convex/schema.ts"
       ],
       "packet": "docs/tasks/T-07B.md",
       "pinnedBaseSha": "84415d9b542a9e3abafa51f59d85df0817025286",
       "backendTarget": "local synthetic checks only; no cloud/provider",
-      "implementationState": "dispatched Loom owned image/extraction",
+      "implementationState": "cdc8164 reviewed; bounded quota/shared-storage corrections requested",
       "nativeChecks": "pending actual image decoding/file picker",
       "phoneAcceptance": "pending real screenshot/flyer"
     },

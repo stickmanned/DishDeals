@@ -1,6 +1,6 @@
 # Real iPhone share-to-map acceptance record
 
-Status: **real phone acceptance pending, not run**. Deadline October4,2026 noon America/Vancouver. Latest actual device inventory: paired wired booted iPhone iOS26.6.1, Developer Mode enabled after restart confirmation. Harry native547a74d is incorporated: SwiftUI/WKWebView app + UIKit share extension. Xcode27.0(27A266a) selected; unsigned generic iOS Simulator SDK app+embedded extension build passed. Simulator runtime execution is still pending. Current native website/backend URLs are placeholders and signing team is blank. Historical checkpoints below retain earlier observations, not current readiness.
+Status: **real phone acceptance pending, not run**. Deadline October4,2026 noon America/Vancouver. Latest actual device inventory: paired wired booted iPhone iOS26.6.1, Developer Mode enabled after restart confirmation. Harry native547a74d is incorporated: SwiftUI/WKWebView app + UIKit share extension. Xcode27.0(27A266a) selected; unsigned generic iOS Simulator SDK app+embedded extension build passed. Simulator runtime execution is still pending. Native website/backend URLs remain placeholders. William selected his Personal Team in the existing ignored Xcode project for both targets and reports a successful Xcode build for his iPhone; project.yml still has no shared signing-team value. Historical checkpoints below retain earlier observations, not current readiness.
 
 ## Current stage gates
 
@@ -8,7 +8,7 @@ Status: **real phone acceptance pending, not run**. Deadline October4,2026 noon 
 | --- | --- | --- |
 | Implementation/local checks | Reviewed root84415d9; npm run check PASS983Vitest/23workflow/typecheck/lint/build, synthetic/in-memory | Actual form/map/image action integration in bounded tickets |
 | Native build/simulator | Actual app+extension unsigned SDK build PASS; runtime download reported pending | Simulator execution/UI/map/media checks unrun |
-| Signing/installation | Apple Account added; paired iPhone26.6.1; Developer Mode enabled; Xcode destination found | Both target Teams/capabilities/profiles and signed build/install unverified |
+| Signing/installation | Apple Account added; paired iPhone26.6.1; Developer Mode enabled; Xcode destination found | Personal Team selected on both targets; human Xcode device Build reported successful. Installation and shared App Group/Keychain behavior remain unverified |
 | Real Instagram iPhone flow | No actual receipt yet | Exact UI/types; actual supplied recording VLM, review/pin/publish/map; persistence/ownership |
 
 ## Record each actual run
@@ -81,3 +81,7 @@ LatestWilliamnavigation: SavedPosts/Reels entry, tap-to-map. Primary share/revie
 October3 late evening update: William confirms his Apple Account is added in Xcode. Read-only devicectl still reports zero connected devices; signing/provisioning and installation unverified. Simulator runtime inventory remains empty at the fresh native SDK-build milestone. Native app/extension rebuild after storage hardening passed, but no UI run. Local browser QA request was explicitly declined by browser security policy; no workaround attempted and temporary harness/server removed. All rendered/browser/native/phone checks remain unrun.
 
 October4 00:29 device milestone: William reports cable connected/trusted/Developer Mode enabled. Actual devicectl inventory finds one paired wired booted iPhone, OS26.6.1, tunnel connected; Xcode showdestinations lists it. Inventory developerModeStatus is disabled, so discrepancy awaiting William restart/TurnOn confirmation. No device identifier recorded here. Signing/team still blank in project.yml; placeholder website/backend configuration, installation/auth/native sharing remain pending. Logs private/tmp only.
+
+October4 signing update: William selected William Wen Personal Team on both targets with automatic signing and Xcode Managed Profile, no UI errors, AppGroup/Keychain variables unresolved until build. Local ignored project preserved, no XcodeGen regeneration. Actual signed generic iOS build attempted; profile packaging and extension signing ran, but app SwiftUI @State macro compilation failed because plugin sandbox_apply Operationnotpermitted in agent execution. App build FAILED; no install or entitlement/runtime acceptance. William's Xcode build requested. Public URLs still placeholders.
+
+October4 human Xcode build result: William reports Product → Build succeeded with Dinedeals and his iPhone selected. Record as human-reported device build success, distinct from the failed sandboxed CLI app build. Preserve existing local project/team settings. No installation/run/Instagram receipt/provider extraction/publish/map or capability runtime result was reported. Simulator runtime execution remains pending independently.

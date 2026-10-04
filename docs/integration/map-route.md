@@ -83,7 +83,7 @@ Inspection of `origin/t-21-frontend-integration` (`3b0a034`), `origin/t-22-smart
    - In [`CanonicalDealDetails.tsx`](file:///Users/william/Code/DishDeals-worktrees/map-route-bindings/components/deals/CanonicalDealDetails.tsx), we aligned the embedded map panel styling and configuration with Pinyuan's `OfferMap` verified location pattern (`initialZoom={14}`, `fitOnLoad={false}`, `style={{ height: 320 }}`, ariaLabel "verified location").
 
 2. **Backend & Data Boundary Preservation**:
-   - Pinyuan's branches introduce workflow-specific tables (`workflowOffers`, `workflowJobs`, `workflowDrafts`) and anonymous guest auth sessions for experimental AI tools (`/tools`).
+   - Pinyuan's branches introduce workflow-specific tables (`workflowDeals`, `workflowRestaurants`, `workflowJobs`, `workflowLimits`, `workflowSearchLimits`) and anonymous guest auth sessions for experimental AI tools (`/tools`).
    - Per Northstar and coordinator rules, these APIs are not the canonical backend. The canonical DishDeals backend relies on the authoritative `deals`, `profiles`, and `votes` tables with authenticated user sessions (`getAuthUserId(ctx)`).
    - Our map and detail routes strictly consume the canonical backend (`api.deals.listRecent`, `api.deals.get`, `api.votes.cast`, `api.users.me`), preserving schema integrity and real user attribution without adopting anonymous session workarounds.
 

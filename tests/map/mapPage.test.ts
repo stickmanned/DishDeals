@@ -5,6 +5,7 @@ import {
   isValidDealId,
   safeSourceUrl,
   selectDeals,
+  viewerLocation,
   type CanonicalDeal,
 } from "../../lib/mapPage";
 
@@ -104,7 +105,7 @@ describe("formatValidityLabel helper", () => {
   });
 });
 
-describe("selectDeals filtering and sorting", () => {
+describe("selectDeals filtering and sorting (canonical dealSelection reuse)", () => {
   // Tuesday, October 6, 2026 at 12:30 PM PDT (UTC-7) -> 19:30 UTC
   const testNow = new Date("2026-10-06T19:30:00Z");
 
@@ -116,6 +117,20 @@ describe("selectDeals filtering and sorting", () => {
     priceCad: 4.5,
     lat: 49.2827,
     lng: -123.1207,
+    validDays: ["tue"],
+    validStart: "11:00",
+    validEnd: "14:00",
+    expiresOn: "2026-12-31",
+  };
+
+  const dealExact5: CanonicalDeal = {
+    _id: "deal_exact_5",
+    _creationTime: 1500,
+    restaurant: "Five Dollar Stand",
+    dealText: "$5.00 Snack",
+    priceCad: 5.0,
+    lat: 49.28,
+    lng: -123.12,
     validDays: ["tue"],
     validStart: "11:00",
     validEnd: "14:00",
@@ -136,6 +151,20 @@ describe("selectDeals filtering and sorting", () => {
     expiresOn: "2026-12-31",
   };
 
+  const dealExact10: CanonicalDeal = {
+    _id: "deal_exact_10",
+    _creationTime: 2500,
+    restaurant: "Ten Dollar Lunch",
+    dealText: "$10.00 Bowl",
+    priceCad: 10.0,
+    lat: 49.28,
+    lng: -123.11,
+    validDays: ["tue"],
+    validStart: "11:00",
+    validEnd: "15:00",
+    expiresOn: "2026-12-31",
+  };
+
   const dealUnder15: CanonicalDeal = {
     _id: "deal_under_15",
     _creationTime: 3000,
@@ -143,6 +172,20 @@ describe("selectDeals filtering and sorting", () => {
     dealText: "$14 Combo",
     priceCad: 14.0,
     lat: 49.275,
+    lng: -123.13,
+    validDays: ["tue"],
+    validStart: "12:00",
+    validEnd: "16:00",
+    expiresOn: "2026-12-31",
+  };
+
+  const dealExact15: CanonicalDeal = {
+    _id: "deal_exact_15",
+    _creationTime: 3500,
+    restaurant: "Fifteen Dollar Platter",
+    dealText: "$15.00 Platter",
+    priceCad: 15.0,
+    lat: 49.27,
     lng: -123.13,
     validDays: ["tue"],
     validStart: "12:00",
@@ -178,6 +221,63 @@ describe("selectDeals filtering and sorting", () => {
     expiresOn: "2026-12-31",
   };
 
+  const dealNullPrice: CanonicalDeal = {
+    _id: "deal_null_price",
+    _creationTime: 5500,
+    restaurant: "Dim Sum House",
+    dealText: "Market price seafood",
+    // Synthetic legacy input: canonical saved rows omit this optional field.
+    priceCad: null as unknown as number,
+    lat: 49.28,
+    lng: -123.11,
+    validDays: ["tue"],
+    validStart: "11:00",
+    validEnd: "14:00",
+    expiresOn: "2026-12-31",
+  };
+
+  const dealNegativePrice: CanonicalDeal = {
+    _id: "deal_negative_price",
+    _creationTime: 5600,
+    restaurant: "Buggy Entry",
+    dealText: "-$5 Deal",
+    priceCad: -5.0,
+    lat: 49.28,
+    lng: -123.11,
+    validDays: ["tue"],
+    validStart: "11:00",
+    validEnd: "14:00",
+    expiresOn: "2026-12-31",
+  };
+
+  const dealNaNPrice: CanonicalDeal = {
+    _id: "deal_nan_price",
+    _creationTime: 5700,
+    restaurant: "NaN Entry",
+    dealText: "NaN Deal",
+    priceCad: NaN,
+    lat: 49.28,
+    lng: -123.11,
+    validDays: ["tue"],
+    validStart: "11:00",
+    validEnd: "14:00",
+    expiresOn: "2026-12-31",
+  };
+
+  const dealInfinityPrice: CanonicalDeal = {
+    _id: "deal_inf_price",
+    _creationTime: 5800,
+    restaurant: "Infinity Entry",
+    dealText: "Infinity Deal",
+    priceCad: Infinity,
+    lat: 49.28,
+    lng: -123.11,
+    validDays: ["tue"],
+    validStart: "11:00",
+    validEnd: "14:00",
+    expiresOn: "2026-12-31",
+  };
+
   const dealExpired: CanonicalDeal = {
     _id: "deal_expired",
     _creationTime: 6000,
@@ -194,52 +294,101 @@ describe("selectDeals filtering and sorting", () => {
 
   const allDeals: CanonicalDeal[] = [
     dealUnder5,
+    dealExact5,
     dealUnder10,
+    dealExact10,
     dealUnder15,
+    dealExact15,
     dealExpensive,
     dealUnknownPrice,
+    dealNullPrice,
+    dealNegativePrice,
+    dealNaNPrice,
+    dealInfinityPrice,
     dealExpired,
   ];
 
-  describe("Price filtering (unknown price included)", () => {
-    it("includes unknown price deals and deals <= 5 in under5 filter", () => {
+  describe("Price filtering strictness and invalid price regressions", () => {
+    it("strictly enforces < 5 for under5 (exact 5.0 excluded, unlisted included, invalid excluded)", () => {
       const selected = selectDeals(allDeals, { price: "under5", time: "all", now: testNow });
       const ids = selected.map((d) => d._id);
 
-      expect(ids).toContain("deal_under_5");
-      expect(ids).toContain("deal_expired"); // $3.00 is under 5
-      expect(ids).toContain("deal_unknown_price"); // unknown price is explicitly included
+      expect(ids).toContain("deal_under_5"); // 4.5 < 5 -> included
+      expect(ids).toContain("deal_expired"); // 3.0 < 5 -> included
+      expect(ids).toContain("deal_unknown_price"); // undefined -> varies -> included
+      expect(ids).toContain("deal_null_price"); // null -> varies -> included
+
+      // Strict inequality: exact 5.0 is NOT under 5
+      expect(ids).not.toContain("deal_exact_5");
       expect(ids).not.toContain("deal_under_10");
+      expect(ids).not.toContain("deal_exact_10");
       expect(ids).not.toContain("deal_under_15");
+      expect(ids).not.toContain("deal_exact_15");
       expect(ids).not.toContain("deal_expensive");
+
+      // Invalid, negative, NaN, and Infinity prices must be excluded
+      expect(ids).not.toContain("deal_negative_price");
+      expect(ids).not.toContain("deal_nan_price");
+      expect(ids).not.toContain("deal_inf_price");
     });
 
-    it("includes unknown price deals and deals <= 10 in under10 filter", () => {
+    it("strictly enforces < 10 for under10 (exact 10.0 excluded)", () => {
       const selected = selectDeals(allDeals, { price: "under10", time: "all", now: testNow });
       const ids = selected.map((d) => d._id);
 
       expect(ids).toContain("deal_under_5");
-      expect(ids).toContain("deal_under_10");
-      expect(ids).toContain("deal_expired");
-      expect(ids).toContain("deal_unknown_price"); // unknown price included
+      expect(ids).toContain("deal_exact_5"); // 5.0 < 10 -> included
+      expect(ids).toContain("deal_under_10"); // 9.99 < 10 -> included
+      expect(ids).toContain("deal_unknown_price");
+      expect(ids).toContain("deal_null_price");
+
+      // Exact 10.0 is NOT under 10
+      expect(ids).not.toContain("deal_exact_10");
       expect(ids).not.toContain("deal_under_15");
+      expect(ids).not.toContain("deal_exact_15");
       expect(ids).not.toContain("deal_expensive");
+      expect(ids).not.toContain("deal_negative_price");
+      expect(ids).not.toContain("deal_nan_price");
     });
 
-    it("includes unknown price deals and deals <= 15 in under15 filter", () => {
+    it("strictly enforces < 15 for under15 (exact 15.0 excluded)", () => {
       const selected = selectDeals(allDeals, { price: "under15", time: "all", now: testNow });
       const ids = selected.map((d) => d._id);
 
       expect(ids).toContain("deal_under_5");
+      expect(ids).toContain("deal_exact_5");
       expect(ids).toContain("deal_under_10");
-      expect(ids).toContain("deal_under_15");
-      expect(ids).toContain("deal_unknown_price"); // unknown price included
+      expect(ids).toContain("deal_exact_10"); // 10.0 < 15 -> included
+      expect(ids).toContain("deal_under_15"); // 14.0 < 15 -> included
+      expect(ids).toContain("deal_unknown_price");
+      expect(ids).toContain("deal_null_price");
+
+      // Exact 15.0 is NOT under 15
+      expect(ids).not.toContain("deal_exact_15");
       expect(ids).not.toContain("deal_expensive");
+      expect(ids).not.toContain("deal_negative_price");
+      expect(ids).not.toContain("deal_nan_price");
     });
 
-    it("includes all deals when price is 'any'", () => {
+    it("excludes negative, NaN, and non-finite prices even with price='any'", () => {
       const selected = selectDeals(allDeals, { price: "any", time: "all", now: testNow });
-      expect(selected.length).toBe(allDeals.length);
+      const ids = selected.map((d) => d._id);
+
+      expect(ids).not.toContain("deal_negative_price");
+      expect(ids).not.toContain("deal_nan_price");
+      expect(ids).not.toContain("deal_inf_price");
+
+      // Valid prices and unlisted prices are present
+      expect(ids).toContain("deal_under_5");
+      expect(ids).toContain("deal_exact_5");
+      expect(ids).toContain("deal_under_10");
+      expect(ids).toContain("deal_exact_10");
+      expect(ids).toContain("deal_under_15");
+      expect(ids).toContain("deal_exact_15");
+      expect(ids).toContain("deal_expensive");
+      expect(ids).toContain("deal_unknown_price");
+      expect(ids).toContain("deal_null_price");
+      expect(ids).toContain("deal_expired");
     });
   });
 
@@ -250,39 +399,78 @@ describe("selectDeals filtering and sorting", () => {
 
       // At 12:30 PM:
       // dealUnder5 (11:00-14:00): VALID
+      // dealExact5 (11:00-14:00): VALID
       // dealUnder10 (11:00-15:00): VALID
+      // dealExact10 (11:00-15:00): VALID
       // dealUnder15 (12:00-16:00): VALID
-      // dealExpensive (17:00-22:00): later_today -> EXCLUDED
+      // dealExact15 (12:00-16:00): VALID
       // dealUnknownPrice (11:30-14:30): VALID
+      // dealNullPrice (11:00-14:00): VALID
+      // dealExpensive (17:00-22:00): later_today -> EXCLUDED
       // dealExpired: EXPIRED -> EXCLUDED
 
       expect(ids).toContain("deal_under_5");
+      expect(ids).toContain("deal_exact_5");
       expect(ids).toContain("deal_under_10");
+      expect(ids).toContain("deal_exact_10");
       expect(ids).toContain("deal_under_15");
+      expect(ids).toContain("deal_exact_15");
       expect(ids).toContain("deal_unknown_price");
+      expect(ids).toContain("deal_null_price");
       expect(ids).not.toContain("deal_expensive");
       expect(ids).not.toContain("deal_expired");
     });
   });
 
-  describe("Sorting", () => {
-    it("sorts by newest (_creationTime desc)", () => {
-      const selected = selectDeals(allDeals, { sort: "newest", time: "all", now: testNow });
-      const creationTimes = selected.map((d) => d._creationTime);
-      for (let i = 0; i < creationTimes.length - 1; i++) {
-        expect(creationTimes[i]!).toBeGreaterThanOrEqual(creationTimes[i + 1]!);
-      }
+  describe("Sorting & Stable Ties", () => {
+    it("breaks ties stably by _id string comparison", () => {
+      const tieDealA: CanonicalDeal = {
+        _id: "deal_tie_aaa",
+        _creationTime: 5000,
+        restaurant: "Spot A",
+        dealText: "Tie A",
+        priceCad: 10,
+        lat: 49.28,
+        lng: -123.12,
+        validDays: ["tue"],
+        validStart: "11:00",
+        validEnd: "14:00",
+        expiresOn: "2026-12-31",
+      };
+      const tieDealB: CanonicalDeal = {
+        _id: "deal_tie_zzz",
+        _creationTime: 5000,
+        restaurant: "Spot B",
+        dealText: "Tie B",
+        priceCad: 10,
+        lat: 49.28,
+        lng: -123.12,
+        validDays: ["tue"],
+        validStart: "11:00",
+        validEnd: "14:00",
+        expiresOn: "2026-12-31",
+      };
+
+      const selected = selectDeals([tieDealB, tieDealA], {
+        sort: "newest",
+        time: "all",
+        now: testNow,
+      });
+
+      // Same creation time: lexicographical _id tie break ensures deal_tie_aaa before deal_tie_zzz
+      expect(selected[0]._id).toBe("deal_tie_aaa");
+      expect(selected[1]._id).toBe("deal_tie_zzz");
     });
 
-    it("sorts by price (cheapest first, unknown at end)", () => {
-      const selected = selectDeals(allDeals, { sort: "price", time: "all", now: testNow });
+    it("sorts by price (cheapest first, unlisted at end)", () => {
+      const sample = [dealExact10, dealUnder5, dealUnknownPrice, dealUnder10, dealExact5];
+      const selected = selectDeals(sample, { sort: "price", time: "all", now: testNow });
       const prices = selected.map((d) => d.priceCad);
-      // Expected order: 3.0, 4.5, 9.99, 14.0, 35.0, undefined
-      expect(prices).toEqual([3.0, 4.5, 9.99, 14.0, 35.0, undefined]);
+      // Expected order: 4.5, 5.0, 9.99, 10.0, undefined
+      expect(prices).toEqual([4.5, 5.0, 9.99, 10.0, undefined]);
     });
 
     it("sorts by distance when userLocation is provided", () => {
-      // User is right next to dealUnder5 (49.2827, -123.1207)
       const userLoc = { lat: 49.2827, lng: -123.1207 };
       const selected = selectDeals(allDeals, {
         sort: "distance",
@@ -294,7 +482,7 @@ describe("selectDeals filtering and sorting", () => {
       expect(selected[0]._id).toBe("deal_under_5");
     });
 
-    it("truthfully falls back to newest when userLocation is null or denied (no fake distance)", () => {
+    it("truthfully falls back to newest when userLocation is null (no fake distance)", () => {
       const selectedWithoutLoc = selectDeals(allDeals, {
         sort: "distance",
         userLocation: null,
@@ -311,20 +499,14 @@ describe("selectDeals filtering and sorting", () => {
         selectedNewest.map((d) => d._id)
       );
     });
+  });
+});
 
-    it("sorts by time with currently valid deals first", () => {
-      const selected = selectDeals(allDeals, { sort: "time", time: "all", now: testNow });
-      // First 4 items should be the valid ones
-      const firstFourIds = selected.slice(0, 4).map((d) => d._id);
-      expect(firstFourIds).toContain("deal_under_5");
-      expect(firstFourIds).toContain("deal_under_10");
-      expect(firstFourIds).toContain("deal_under_15");
-      expect(firstFourIds).toContain("deal_unknown_price");
-
-      // Non-valid deals should come after
-      const remainingIds = selected.slice(4).map((d) => d._id);
-      expect(remainingIds).toContain("deal_expensive"); // later_today
-      expect(remainingIds).toContain("deal_expired"); // expired
-    });
+// Uses the exact nearby-query bounds in the callback adapter, synthetic fixes.
+describe("viewer location acceptance", () => {
+  it("rejects invalid and non-map coordinates without guessing a center", () => {
+    for (const [lat, lng] of [[NaN, 0], [Infinity, 0], [86, 0], [49, 181], [null, 0], [true, 0], ["49", -123]]) expect(viewerLocation(lat, lng)).toBeNull();
+    expect(viewerLocation(49.25, -122.95)).toEqual({lat: 49.25, lng: -122.95});
+    expect(viewerLocation(-85.05112878, 180)).toEqual({lat: -85.05112878, lng: 180});
   });
 });

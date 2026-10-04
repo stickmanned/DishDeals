@@ -129,7 +129,7 @@ All changes strictly conform to the allowed writable paths for N-MAP-B:
    - `CanonicalDealDetails.tsx` adopts Pinyuan's verified location panel styling pattern (`initialZoom={14}`, `fitOnLoad={false}`, `style={{ height: 320 }}`, ariaLabel "verified location").
 
 2. **Backend Contract Integrity**:
-   - Pinyuan's branches introduce experimental workflow tables (`workflowOffers`, `workflowJobs`, `workflowDrafts`) and anonymous guest auth sessions for `/tools/`.
+   - Pinyuan's branches introduce experimental workflow tables (`workflowDeals`, `workflowRestaurants`, `workflowJobs`, `workflowLimits`, `workflowSearchLimits`) and anonymous guest auth sessions for `/tools/`.
    - Per Northstar and coordinator rules, these APIs are not the canonical backend. The canonical DishDeals backend relies on the authoritative `deals`, `profiles`, and `votes` tables with authenticated user sessions (`getAuthUserId(ctx)`).
    - Our map and detail routes strictly consume the canonical backend (`api.deals.listRecent`, `api.deals.get`, `api.votes.cast`, `api.users.me`), preserving schema integrity and real user attribution without adopting anonymous session workarounds.
 
