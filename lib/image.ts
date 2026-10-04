@@ -6,6 +6,7 @@
  */
 
 export const MAX_IMAGE_WIDTH = 1280;
+export const MAX_IMAGE_HEIGHT = 3200;
 export const MAX_INPUT_BYTES = 20 * 1024 * 1024; // 20 MiB
 export const MAX_OUTPUT_FRAME_BYTES = 5 * 1024 * 1024; // 5 MiB
 export const MAX_VIDEO_DURATION_SECONDS = 180;
@@ -53,9 +54,9 @@ export const RECOGNIZED_VIDEO_EXTENSIONS = [
 ] as const;
 
 export interface ResizeImageOptions {
-  /** Maximum output width in pixels (defaults to 1280). Never upscales. */
+  /** Maximum output width in pixels (defaults to 1280, capped at 1280). Never upscales. */
   maxWidth?: number;
-  /** Maximum pixel allocation (width * height). */
+  /** Maximum pixel allocation (defaults to 1280*3200 = 4,096,000, capped at default). */
   maxPixels?: number;
   /** JPEG compression quality (0.0 to 1.0, defaults to 0.85). */
   quality?: number;
@@ -78,17 +79,30 @@ export interface GrabFramesOptions {
 
 /**
  * Validates optional configuration parameters for resizeImage.
+ * Enforces positive finite integer bounds capped at safe defaults and quality in 0..1.
  */
 export function validateResizeOptions(options?: ResizeImageOptions): void {
   if (!options) return;
   if (options.maxWidth !== undefined) {
-    if (!Number.isFinite(options.maxWidth) || options.maxWidth <= 0) {
-      throw new Error(`Invalid maxWidth: ${options.maxWidth}. Must be a positive finite number.`);
+    if (
+      !Number.isFinite(options.maxWidth) ||
+      options.maxWidth <= 0 ||
+      options.maxWidth > MAX_IMAGE_WIDTH
+    ) {
+      throw new Error(
+        `Invalid maxWidth: ${options.maxWidth}. Must be a positive finite number <= ${MAX_IMAGE_WIDTH}.`
+      );
     }
   }
   if (options.maxPixels !== undefined) {
-    if (!Number.isFinite(options.maxPixels) || options.maxPixels < 1) {
-      throw new Error(`Invalid maxPixels: ${options.maxPixels}. Must be a finite number >= 1.`);
+    if (
+      !Number.isFinite(options.maxPixels) ||
+      options.maxPixels < 1 ||
+      options.maxPixels > MAX_PIXEL_ALLOCATION
+    ) {
+      throw new Error(
+        `Invalid maxPixels: ${options.maxPixels}. Must be a finite number between 1 and ${MAX_PIXEL_ALLOCATION}.`
+      );
     }
   }
   if (options.quality !== undefined) {
@@ -156,10 +170,15 @@ export function getFileExtension(filename: string): string {
 }
 
 /**
- * Computes constrained target dimensions for resizing.
- * Maintains aspect ratio, bounds width to maxWidth, bounds total pixel area,
- * and never upscales smaller images.
- * Validates that all dimension constraints are finite positive numbers.
+ * Computes constrained target dimensions for resizing in O(1) time without decrement loops.
+ *
+ * Maintains aspect ratio, bounds width to maxWidth (<= 1280), height to MAX_IMAGE_HEIGHT (3200),
+ * and total area to maxPixels (<= 4,096,000). Never upscales smaller images.
+ *
+ * Aspect ratio quantization note: Due to discrete integer pixel grid constraints (minimum 1px),
+ * extreme aspect ratios (e.g. 1x1e9 or 1e9x1) are safely quantized to 1px on the thin axis
+ * and capped by MAX_IMAGE_HEIGHT (3200px) or maxWidth (1280px), preserving stability without
+ * allocating huge canvas memory.
  */
 export function computeTargetDimensions(
   srcWidth: number,
@@ -178,38 +197,58 @@ export function computeTargetDimensions(
     );
   }
 
-  if (!Number.isFinite(maxWidth) || maxWidth <= 0) {
-    throw new Error(`Invalid maxWidth: ${maxWidth}. maxWidth must be a positive finite number.`);
+  if (!Number.isFinite(maxWidth) || maxWidth <= 0 || maxWidth > MAX_IMAGE_WIDTH) {
+    throw new Error(
+      `Invalid maxWidth: ${maxWidth}. maxWidth must be a positive finite number <= ${MAX_IMAGE_WIDTH}.`
+    );
   }
 
-  if (!Number.isFinite(maxPixels) || maxPixels < 1) {
-    throw new Error(`Invalid maxPixels: ${maxPixels}. maxPixels must be a finite number >= 1.`);
+  if (!Number.isFinite(maxPixels) || maxPixels < 1 || maxPixels > MAX_PIXEL_ALLOCATION) {
+    throw new Error(
+      `Invalid maxPixels: ${maxPixels}. maxPixels must be a finite number between 1 and ${MAX_PIXEL_ALLOCATION}.`
+    );
   }
 
-  // Never upscale: starting scale is at most 1.0
-  let scale = 1.0;
+  const effectiveMaxWidth = Math.min(MAX_IMAGE_WIDTH, Math.max(1, Math.floor(maxWidth)));
+  const effectiveMaxPixels = Math.min(MAX_PIXEL_ALLOCATION, Math.max(1, Math.floor(maxPixels)));
 
-  if (srcWidth > maxWidth) {
-    scale = Math.min(scale, maxWidth / srcWidth);
+  // Starting scale based on maxWidth and MAX_IMAGE_HEIGHT constraints (never upscale: scale <= 1.0)
+  let scale = Math.min(1.0, effectiveMaxWidth / srcWidth, MAX_IMAGE_HEIGHT / srcHeight);
+
+  // If pixel area at this scale exceeds effectiveMaxPixels, scale down further
+  const areaAtScale = srcWidth * scale * (srcHeight * scale);
+  if (areaAtScale > effectiveMaxPixels) {
+    scale = Math.min(scale, Math.sqrt(effectiveMaxPixels / (srcWidth * srcHeight)));
   }
 
-  const currentPixels = srcWidth * scale * (srcHeight * scale);
-  if (currentPixels > maxPixels) {
-    scale = Math.min(scale, Math.sqrt(maxPixels / (srcWidth * srcHeight)));
-  }
+  let w = Math.max(1, Math.min(effectiveMaxWidth, Math.round(srcWidth * scale)));
+  let h = Math.max(1, Math.min(MAX_IMAGE_HEIGHT, Math.round(srcHeight * scale)));
 
-  let targetWidth = Math.max(1, Math.round(srcWidth * scale));
-  let targetHeight = Math.max(1, Math.round(srcHeight * scale));
-
-  while (targetWidth * targetHeight > maxPixels && (targetWidth > 1 || targetHeight > 1)) {
-    if (targetHeight >= targetWidth && targetHeight > 1) {
-      targetHeight--;
-    } else if (targetWidth > 1) {
-      targetWidth--;
+  // Direct O(1) floor adjustment if rounding caused w * h to exceed effectiveMaxPixels
+  if (w * h > effectiveMaxPixels) {
+    if (w >= h) {
+      w = Math.max(1, Math.floor(effectiveMaxPixels / h));
+    } else {
+      h = Math.max(1, Math.floor(effectiveMaxPixels / w));
     }
   }
 
-  return { width: targetWidth, height: targetHeight };
+  // Never upscale: if source dimension was >= 1, output should not exceed original integer dimension
+  if (srcWidth >= 1) w = Math.min(w, Math.floor(srcWidth));
+  if (srcHeight >= 1) h = Math.min(h, Math.floor(srcHeight));
+
+  w = Math.max(1, Math.min(effectiveMaxWidth, w));
+  h = Math.max(1, Math.min(MAX_IMAGE_HEIGHT, h));
+
+  if (w * h > effectiveMaxPixels) {
+    if (w >= h) {
+      w = Math.max(1, Math.floor(effectiveMaxPixels / h));
+    } else {
+      h = Math.max(1, Math.floor(effectiveMaxPixels / w));
+    }
+  }
+
+  return { width: w, height: h };
 }
 
 /**
@@ -545,8 +584,8 @@ export async function resizeImage(
 /**
  * Extracts an ordered array of sampled JPEG frames from a video file in the browser.
  * Uses deterministic interior sample times (avoiding 0.0s and duration), bounds dimensions to 1280px,
- * cleans up DOM resources and object URLs, and enforces finite overall/seek deadlines, single settlement,
- * and AbortSignal cancellation.
+ * cleans up DOM resources and object URLs, enforces finite overall/seek deadlines, single settlement,
+ * active inner step rejection on cancellation/timeout, and AbortSignal cancellation.
  */
 export async function grabFrames(
   videoFile: Blob | File,
@@ -587,6 +626,7 @@ export async function grabFrames(
     let overallTimer: ReturnType<typeof setTimeout> | null = null;
     let seekTimer: ReturnType<typeof setTimeout> | null = null;
     let abortHandler: (() => void) | null = null;
+    let cancelActiveStep: ((err: Error) => void) | null = null;
 
     function cleanup() {
       if (overallTimer) {
@@ -596,6 +636,15 @@ export async function grabFrames(
       if (seekTimer) {
         clearTimeout(seekTimer);
         seekTimer = null;
+      }
+      // Actively reject any currently awaited inner seek/encode step so the async coroutine immediately exits
+      if (cancelActiveStep) {
+        cancelActiveStep(
+          options?.signal?.aborted
+            ? new DOMException("The operation was aborted.", "AbortError")
+            : new Error("Frame extraction was cancelled or timed out.")
+        );
+        cancelActiveStep = null;
       }
       if (options?.signal && abortHandler) {
         options.signal.removeEventListener("abort", abortHandler);
@@ -704,11 +753,23 @@ export async function grabFrames(
           const frameBlob = await new Promise<Blob>((resolveSeek, rejectSeek) => {
             let seekStepFinished = false;
 
+            cancelActiveStep = (stepErr: Error) => {
+              if (seekStepFinished || settled) return;
+              seekStepFinished = true;
+              if (seekTimer) {
+                clearTimeout(seekTimer);
+                seekTimer = null;
+              }
+              video.onseeked = null;
+              rejectSeek(stepErr);
+            };
+
             // Timer covers BOTH the seeked event AND canvas.toBlob encoding (prevents hung encoder)
             seekTimer = setTimeout(() => {
               if (seekStepFinished || settled) return;
               seekStepFinished = true;
               video.onseeked = null;
+              cancelActiveStep = null;
               rejectSeek(
                 new Error(
                   `Seek or encode for frame ${i + 1} at ${targetTime.toFixed(2)}s timed out after ${seekTimeoutMs}ms.`
@@ -730,6 +791,7 @@ export async function grabFrames(
                     // Check if step or entire operation finished/timed out while encoding
                     if (seekStepFinished || settled) return;
                     seekStepFinished = true;
+                    cancelActiveStep = null;
                     if (seekTimer) {
                       clearTimeout(seekTimer);
                       seekTimer = null;
@@ -755,6 +817,7 @@ export async function grabFrames(
               } catch (drawErr) {
                 if (seekStepFinished || settled) return;
                 seekStepFinished = true;
+                cancelActiveStep = null;
                 if (seekTimer) {
                   clearTimeout(seekTimer);
                   seekTimer = null;
@@ -770,6 +833,7 @@ export async function grabFrames(
             video.currentTime = targetTime;
           });
 
+          cancelActiveStep = null;
           if (settled) return;
           capturedFrames.push(frameBlob);
         }

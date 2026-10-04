@@ -79,13 +79,54 @@ describe("T-14A image and video frame core utilities", () => {
       expect(() => computeTargetDimensions(100, 100, 1000, -50)).toThrow("Invalid maxPixels");
       expect(() => computeTargetDimensions(100, 100, 1000, NaN)).toThrow("Invalid maxPixels");
     });
+
+    it("safely handles extreme aspect ratios (1x1e9, 1x1e308, 1e308x1, 1e9x1) in O(1) time without decrement loops", () => {
+      // 1x1e9: ultra-tall image. 1px width is discrete minimum, height capped at MAX_IMAGE_HEIGHT (3200)
+      const tall1e9 = computeTargetDimensions(1, 1e9);
+      expect(tall1e9.width).toBe(1);
+      expect(tall1e9.height).toBe(3200);
+      expect(tall1e9.width * tall1e9.height).toBeLessThanOrEqual(MAX_PIXEL_ALLOCATION);
+
+      // 1x1e308: near-infinite tall image
+      const tall1e308 = computeTargetDimensions(1, 1e308);
+      expect(tall1e308.width).toBe(1);
+      expect(tall1e308.height).toBe(3200);
+      expect(tall1e308.width * tall1e308.height).toBeLessThanOrEqual(MAX_PIXEL_ALLOCATION);
+
+      // 1e308x1: near-infinite wide image
+      const wide1e308 = computeTargetDimensions(1e308, 1);
+      expect(wide1e308.width).toBe(1280);
+      expect(wide1e308.height).toBe(1);
+      expect(wide1e308.width * wide1e308.height).toBeLessThanOrEqual(MAX_PIXEL_ALLOCATION);
+
+      // 1e9x1: ultra-wide image
+      const wide1e9 = computeTargetDimensions(1e9, 1);
+      expect(wide1e9.width).toBe(1280);
+      expect(wide1e9.height).toBe(1);
+      expect(wide1e9.width * wide1e9.height).toBeLessThanOrEqual(MAX_PIXEL_ALLOCATION);
+    });
+
+    it("handles fractional maxWidth and maxPixels options safely into integer bounds", () => {
+      const res = computeTargetDimensions(800, 600, 500.5, 200000.5);
+      expect(Number.isInteger(res.width)).toBe(true);
+      expect(Number.isInteger(res.height)).toBe(true);
+      expect(res.width).toBeLessThanOrEqual(500);
+      expect(res.width * res.height).toBeLessThanOrEqual(200000);
+    });
+
+    it("rejects oversized options exceeding MAX_IMAGE_WIDTH or MAX_PIXEL_ALLOCATION", () => {
+      expect(() => computeTargetDimensions(100, 100, 2000)).toThrow("Invalid maxWidth");
+      expect(() => computeTargetDimensions(100, 100, 1280, 10000000)).toThrow("Invalid maxPixels");
+    });
   });
 
   describe("options validation (validateResizeOptions & validateGrabFramesOptions)", () => {
     it("validates resizeImage options strictly before allocation", () => {
       expect(() => validateResizeOptions({ maxWidth: -100 })).toThrow("Invalid maxWidth");
       expect(() => validateResizeOptions({ maxWidth: 0 })).toThrow("Invalid maxWidth");
+      expect(() => validateResizeOptions({ maxWidth: 2000 })).toThrow("Invalid maxWidth");
       expect(() => validateResizeOptions({ maxPixels: 0 })).toThrow("Invalid maxPixels");
+      expect(() => validateResizeOptions({ maxPixels: 10000000 })).toThrow("Invalid maxPixels");
       expect(() => validateResizeOptions({ quality: 1.5 })).toThrow("Invalid JPEG quality");
       expect(() => validateResizeOptions({ quality: -0.1 })).toThrow("Invalid JPEG quality");
       expect(() => validateResizeOptions({ timeoutMs: 0 })).toThrow("Invalid timeoutMs");
@@ -716,6 +757,113 @@ describe("T-14A image and video frame core utilities", () => {
 
       globalThis.window = originalWindow;
       globalThis.document = originalDocument;
+    });
+
+    it("settles inner coroutine immediately when aborted during pending canvas encoding with no late capture", async () => {
+      const originalWindow = globalThis.window;
+      const originalDocument = globalThis.document;
+
+      let pendingToBlobCallback: ((blob: Blob | null) => void) | null = null;
+      let seekCount = 0;
+
+      class PendingEncodeCanvas {
+        width = 640;
+        height = 480;
+        getContext() {
+          return {
+            fillStyle: "",
+            fillRect: vi.fn(),
+            drawImage: vi.fn(),
+          };
+        }
+        toBlob(cb: (blob: Blob | null) => void) {
+          // Keep callback pending so we can abort while encoding is in-flight
+          pendingToBlobCallback = cb;
+        }
+      }
+
+      class SteppingVideo {
+        duration = 10;
+        videoWidth = 640;
+        videoHeight = 480;
+        muted = false;
+        playsInline = false;
+        preload = "";
+        onloadedmetadata: (() => void) | null = null;
+        onseeked: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        currentTime = 0;
+
+        set src(val: string) {
+          if (val) {
+            setTimeout(() => {
+              if (this.onloadedmetadata) this.onloadedmetadata();
+            }, 5);
+          }
+        }
+
+        pause = vi.fn();
+        removeAttribute = vi.fn();
+        load = vi.fn();
+      }
+
+      globalThis.window = {} as unknown as Window & typeof globalThis;
+      globalThis.document = {
+        createElement: (tag: string) => {
+          if (tag === "video") {
+            const v = new SteppingVideo();
+            Object.defineProperty(v, "currentTime", {
+              get: () => 0,
+              set: function (this: SteppingVideo) {
+                seekCount++;
+                setTimeout(() => {
+                  if (this.onseeked) this.onseeked();
+                }, 5);
+              },
+            });
+            return v as unknown as HTMLVideoElement;
+          }
+          if (tag === "canvas") {
+            return new PendingEncodeCanvas() as unknown as HTMLCanvasElement;
+          }
+          return {} as unknown as HTMLElement;
+        },
+      } as unknown as Document;
+
+      const controller = new AbortController();
+
+      try {
+        const videoFile = new File(["bytes"], "step.mp4", { type: "video/mp4" });
+        const grabPromise = grabFrames(videoFile, 2, { signal: controller.signal });
+
+        // Wait until canvas.toBlob is called and pendingToBlobCallback is captured
+        await vi.waitFor(() => {
+          expect(pendingToBlobCallback).not.toBeNull();
+        });
+
+        expect(seekCount).toBe(1);
+
+        // Abort while canvas.toBlob is actively in flight
+        controller.abort();
+
+        // The outer grabFrames promise must reject immediately with AbortError
+        await expect(grabPromise).rejects.toThrow("The operation was aborted");
+
+        // Now simulate the in-flight canvas encoder eventually finishing late
+        expect(pendingToBlobCallback).not.toBeNull();
+        if (pendingToBlobCallback) {
+          expect(() => {
+            pendingToBlobCallback!(new Blob(["late-frame"], { type: "image/jpeg" }));
+          }).not.toThrow();
+        }
+
+        // Verify that no subsequent seek occurred (frame 2 was never sought)
+        // and inner work settled cleanly without late capture
+        expect(seekCount).toBe(1);
+      } finally {
+        globalThis.window = originalWindow;
+        globalThis.document = originalDocument;
+      }
     });
   });
 
