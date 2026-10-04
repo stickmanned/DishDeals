@@ -199,7 +199,7 @@
       "packet": "docs/tasks/T-09A.md",
       "pinnedBaseSha": "56f23c31da4ba78d2883a117574a795034da9836",
       "backendTarget": "none; pure logic",
-      "implementationState": "review corrections requested",
+      "implementationState": "reviewed 67adeb2; queued for integration",
       "nativeChecks": "pending UI integration",
       "phoneAcceptance": "pending"
     },
@@ -222,8 +222,31 @@
       "packet": "docs/tasks/T-11A.md",
       "pinnedBaseSha": "56f23c31da4ba78d2883a117574a795034da9836",
       "backendTarget": "in-memory convex-test only; no cloud authorization",
-      "implementationState": "packet prepared; dispatch after source review",
+      "implementationState": "dispatched",
       "nativeChecks": "pending Harry UI bindings",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-19A",
+      "owner": "Cinder",
+      "branch": "t-19-demo-runbook",
+      "worktree": "demo-runbook",
+      "status": "ready",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/demo/setup-and-release.md",
+        "docs/demo/demo-script.md",
+        "docs/demo/submission-draft.md",
+        "docs/handoffs/t-19a.md"
+      ],
+      "packet": "docs/tasks/T-19A.md",
+      "pinnedBaseSha": "5f26c892647a0336f18e5e4340ea544a7d94f7c0",
+      "backendTarget": "none; documentation only",
+      "implementationState": "prepared",
+      "nativeChecks": "pending Harry source/Xcode",
       "phoneAcceptance": "pending"
     }
   ],

@@ -10,7 +10,7 @@ October 3, 2026. T-01 and T-02: **DONE by William confirmation**, code reused. T
 | T-06 | 10 real deals + 2 flyer photos; validated fields and coordinates | Same canonical fixtures; Pinyuan validates actual pins | William / Prism validation / Pinyuan | 02 | T-06A official Burnaby source research underway; photos/confirmed pins/valid seed still pending |
 | T-07 | Phone screenshot to confirmed published deal under 15 seconds | Common native-share/image/flyer draft; edit/confirm every field; user-confirmed pin | Functional worker TBD / Harry / Pinyuan | 03,05; pin integration 08 | T-07A pure draft state in review/correction; actual form/backend/native/pin wiring pending |
 | T-08 | Burnaby geocode; dragging updates coordinates | Native-compatible confirmed location adapter | Pinyuan | 02 | Published browser map exists; confirmation/geocoder/runtime not agreed |
-| T-09 | Price/time badges; A post appears on B without refresh | Map-first filtering/time/distance; supporting feed | Backend worker TBD / Harry / Pinyuan | 04,07 | T-09A pure selection in review/correction; deals.ts/geospatial contract/subscriptions and cross-device pending |
+| T-09 | Price/time badges; A post appears on B without refresh | Map-first filtering/time/distance; supporting feed | Backend worker TBD / Harry / Pinyuan | 04,07 | T-09A pure selection reviewed 67adeb2; integration queued; deals.ts/geospatial contract/subscriptions and cross-device pending |
 | T-10 | Author edits/deletes; others cannot | Native details with canonical fields and map | Backend worker TBD / Harry / Pinyuan | 07,08 | Pending; ownership tests independent once create model exists |
 | T-11 | One vote/user; switching updates both counts | Native controls over same protected votes.cast | Loom backend / Harry UI | Full 10; backend split 02,03 | T-11A prepared: in-memory auth/atomic vote checks; live/detail/native pending |
 | T-12 | Seed fills feed; two actual profiles/devnet wallets | Validated real canonical seeds populate map | Worker TBD / William / Pinyuan | 06,09 | No live seed run authorized; real data/profile/wallet missing |
@@ -20,7 +20,7 @@ October 3, 2026. T-01 and T-02: **DONE by William confirmation**, code reused. T
 | T-16 | Genuine cached demo results work without Gemini key | Separate replay provenance; does not imply offline Convex | Worker TBD | 07 | No genuine extraction outputs yet; never manufacture |
 | T-17 | Every plan edge case tested on phone | Add actual share/cancel/retry/late extract/unchecked publish/device persistence | QA worker TBD / William | Phase 2 | Pending actual native/phone execution |
 | T-18 | Slow network never blank; matches human design | Functional states in native; Harry polish | Functional worker TBD / Harry | 09,10 | Pending |
-| T-19 | Clean-clone setup; logged-out <=3m video | Native build/signing/share docs and adapted demo script | Docs worker TBD / William | Phase 2 | Materials can be prepared; recording/review/submission pending |
+| T-19 | Clean-clone setup; logged-out <=3m video | Native build/signing/share docs and adapted demo script | Cinder preparation / William | Phase 2 | T-19A runbook/script/submission preparation released; recording/review/submission pending |
 | T-20 | Claimed domain loads HTTPS app | Retain website/domain path alongside installed iOS app | William / docs worker TBD | 01 | Instructions only; no domain/hosting action authorized |
 | T-21 | Full-screen map pins match feed filter | Map is primary home now; same filter contract, no second map | Pinyuan / Harry | 04,09,N-IOS (replaces stretch gate) | Published browser component only; integration/device evidence pending |
 
@@ -55,3 +55,5 @@ T-09 split: T-09A Cinder shared pure price/time/distance selection after reviewe
 Milestone evidence at 56f23c3: Northstar combined `npm run check` exit 0; 100 Vitest tests, 23 workflow tests, typecheck/lint/build passed. T-03 backend/web source, T-04A/B pure logic, T-05R reconciliation reviewed/integrated. No live auth/provider/native/phone claim. T-09A now dispatched Cinder.
 
 T-11 split: T-11A backend uses completed canonical schema and reviewed auth on synthetic in-memory saved deals; does not require a mock publishing application or touch deals.ts. Full T-11 still depends real T-10 detail/native controls and live saved deals. Only votes API type registration owned by Loom in this serialized slice.
+
+T-19A preparation split: actual shared/web setup and native gates, demo script/submission draft, domain instructions; full clean-clone native setup and human video/submission remain pending.
