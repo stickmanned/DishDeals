@@ -6,6 +6,7 @@ import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { retrieveReel, RetrievalError } from "../lib/reels/provider";
 import { ReelExtractionError, runReelExtraction } from "../lib/reels/contract";
+import { isUploadType } from "../lib/dealImageUpload";
 import { extractionBlock } from "../lib/reels/nativeContext";
 const args = { itemId: v.id("reelItems"), generation: v.number() };
 // Supplied recordings use only the Gemini gate; the resolver gate and key stay untouched.
@@ -32,7 +33,7 @@ export const retrieve = internalAction({ args, returns: v.boolean(), handler: as
     await ctx.runMutation(internal.reels.markRetrieving, args);
     const media = await retrieveReel(item.sourceUrl, env.SCRAPECREATORS_API_KEY!);
     videoId = await ctx.storage.store(media.blob);
-    return await ctx.runMutation(internal.reels.attachMedia, { ...args, videoId, caption: media.caption, duration: media.duration, publishedAt: media.publishedAt });
+    return await ctx.runMutation(internal.reels.attachMedia, { ...args, videoId, caption: media.caption, duration: media.duration, publishedAt: media.publishedAt, mediaMime: isUploadType(media.blob.type) ? media.blob.type : "video/mp4" });
   } catch (error) {
     if (videoId) await ctx.storage.delete(videoId);
     const known = error instanceof RetrievalError;
@@ -49,16 +50,18 @@ export const retrieve = internalAction({ args, returns: v.boolean(), handler: as
 export const extract = internalAction({ args, returns: v.null(), handler: async (ctx, args): Promise<null> => {
   const item: Doc<"reelItems"> | null = await ctx.runQuery(internal.reels.workSource, args);
   if (!item?.videoId) return null;
+  const image = isUploadType(item.mediaMime);
   const supplied = item.sourceKind === "supplied";
   // Truncated supplied text blocks automatic extraction before any configuration read, download or model call.
   const blocked = extractionBlock(item);
   if (blocked) { await ctx.runMutation(internal.reels.fail, { ...args, ...blocked }); return null; }
   try {
     if (supplied) configuredForSupplied(); else configured();
+    if (image && (env.IMAGE_PROVIDER_USAGE_AUTHORIZED !== "true" || !env.GEMINI_IMAGE_MODEL)) throw new RetrievalError("CONFIGURATION", "Photo analysis is not enabled on this server. You can still edit by hand.");
     const video = await ctx.storage.get(item.videoId);
     if (!video) throw new Error("Video missing");
     const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY, httpOptions: { timeout: 90000 } });
-    const result = await runReelExtraction(ai, { model: env.GEMINI_REEL_MODEL!, mimeType: item.mediaMime ?? "video/mp4",
+    const result = await runReelExtraction(ai, { model: image ? env.GEMINI_IMAGE_MODEL! : env.GEMINI_REEL_MODEL!, mimeType: item.mediaMime ?? "video/mp4",
       videoBase64: Buffer.from(await video.arrayBuffer()).toString("base64"), caption: item.caption ?? "", publishedAt: item.publishedAt ?? null,
       duration: item.duration ?? null, nativeContext: item.nativeContext ?? null, ...(supplied ? { supplied: { sourceUrl: item.sourceUrl } } : {}) }, item.duration ?? 0);
     await ctx.runMutation(internal.reels.finish, { ...args, extractionJson: JSON.stringify(result) });
@@ -67,10 +70,10 @@ export const extract = internalAction({ args, returns: v.null(), handler: async 
       // Fixed fields only: failure kind, HTTP status and a short reason with the key removed. Never the video, caption or model text.
       const key = env.GEMINI_API_KEY ?? "";
       const reason = (error instanceof Error ? error.message : "").split(key || "\u0000").join("[key]").replace(/\s+/g, " ").slice(0, 200);
-      console.warn(JSON.stringify({ event: "reel_extract_failed", kind: error instanceof ReelExtractionError ? error.kind : "other", status: error instanceof ReelExtractionError ? error.status ?? null : null, reason, model: env.GEMINI_REEL_MODEL ?? null, durationSeconds: item.duration ?? null }));
+      console.warn(JSON.stringify({ event: "reel_extract_failed", kind: error instanceof ReelExtractionError ? error.kind : "other", status: error instanceof ReelExtractionError ? error.status ?? null : null, reason, model: (image ? env.GEMINI_IMAGE_MODEL : env.GEMINI_REEL_MODEL) ?? null, durationSeconds: item.duration ?? null }));
     }
     await ctx.runMutation(internal.reels.fail, { ...args, code: error instanceof RetrievalError ? error.code : "EXTRACTION_FAILED",
-      message: error instanceof RetrievalError ? error.message : "The video could not produce a validated draft. Retry or use your own caption/screenshot." });
+      message: error instanceof RetrievalError ? error.message : "The source could not produce a validated draft. Retry or use your own caption/screenshot." });
   }
   return null;
 } });

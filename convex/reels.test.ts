@@ -202,3 +202,54 @@ test("valid private editable drafts preserve immutable extraction and canonical 
   expect(await t.query(api.test.ping, {})).toEqual({ message: "Hello from Convex" });
   expect(await t.run(ctx => ctx.db.query("deals").collect())).toEqual([]);
 });
+
+// Synthetic regression matching the live provider's single-photo shape. No real provider calls.
+test("a shared photo post reaches Gemini as an image and saves a private editable draft", async () => {
+  sdk.generateContent.mockClear();
+  const { t, alice } = await sessions();
+  for (const [key, value] of Object.entries({ ...reelEnv, IMAGE_PROVIDER_USAGE_AUTHORIZED: "true", GEMINI_IMAGE_MODEL: "image-model" })) vi.stubEnv(key, value);
+  const net = vi.spyOn(globalThis, "fetch").mockImplementation(async input => String(input).startsWith("https://api.scrapecreators.com/")
+    ? Response.json(providerJson({ __typename: "XDTGraphImage", is_video: false, video_url: null, video_duration: null, display_url: "https://scontent.cdninstagram.com/photo.jpg" }))
+    : new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), { headers: { "content-type": "image/jpeg" } }));
+  const answer = { isDeal: true, drafts: [deal], evidence: [
+    { draftIndex: 0, field: "dealText", channel: "caption", quote: "Lunch special", timestampSeconds: null },
+    { draftIndex: 0, field: "price", channel: "visual", quote: "$8", timestampSeconds: 0 },
+  ], transcript: "", warnings: [], constraints: [] };
+  sdk.generateContent.mockResolvedValueOnce({ candidates: [{ finishReason: "STOP" }], text: JSON.stringify(answer) });
+  const { itemId } = await alice.mutation(api.reels.submit, { text: "https://instagram.com/p/AbCdEf123/" });
+  await settle(t);
+  const item = await alice.query(api.reels.get, { itemId });
+  expect(item).toMatchObject({ status: "ready", mediaMime: "image/jpeg", duration: 0, caption: "Lunch special" });
+  expect(JSON.parse(item.draftJson!)).toEqual([deal]);
+  expect(item.videoId).toBeUndefined();
+  expect(net).toHaveBeenCalledTimes(2);
+  expect(sdk.generateContent).toHaveBeenCalledTimes(1);
+  const request = sdk.generateContent.mock.calls[0][0];
+  expect(request.model).toBe("image-model");
+  expect(request.contents[0].parts[0].inlineData.mimeType).toBe("image/jpeg");
+  expect(request.config.systemInstruction).toContain("one still photo");
+  expect(await t.run(ctx => ctx.db.query("deals").collect())).toEqual([]);
+});
+
+test("photo extraction respects its image gate and rejects invented audio", async () => {
+  sdk.generateContent.mockClear();
+  const { t, alice } = await sessions();
+  for (const [key, value] of Object.entries({ ...reelEnv, GEMINI_IMAGE_MODEL: "image-model" })) vi.stubEnv(key, value);
+  const { itemId } = await alice.mutation(api.reels.submit, { text: "https://instagram.com/p/AbCdEf123/" });
+  const attach = async () => t.mutation(internal.reels.attachMedia, { itemId, generation: 1,
+    videoId: await t.run(ctx => ctx.storage.store(new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: "image/jpeg" }))),
+    mediaMime: "image/jpeg", caption: "Lunch special", duration: 0, publishedAt: null });
+  await attach();
+  await t.action(internal.reelActions.extract, { itemId, generation: 1 });
+  expect(await alice.query(api.reels.get, { itemId })).toMatchObject({ status: "failed", error: { code: "CONFIGURATION" } });
+  expect(sdk.generateContent).not.toHaveBeenCalled();
+  vi.stubEnv("IMAGE_PROVIDER_USAGE_AUTHORIZED", "true");
+  await attach();
+  const answer = JSON.parse(modelAnswer().text);
+  answer.evidence.forEach((e: { timestampSeconds: number }) => { e.timestampSeconds = 0; });
+  sdk.generateContent.mockResolvedValueOnce({ candidates: [{ finishReason: "STOP" }], text: JSON.stringify(answer) });
+  await t.action(internal.reelActions.extract, { itemId, generation: 1 });
+  const item = await alice.query(api.reels.get, { itemId });
+  expect(item).toMatchObject({ status: "failed", error: { code: "EXTRACTION_FAILED" } });
+  expect(item.draftJson).toBeUndefined();
+});
