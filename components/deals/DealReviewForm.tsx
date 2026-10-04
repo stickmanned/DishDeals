@@ -15,6 +15,7 @@ import {
   getPriceDisplayOnAcceptAll,
   hasPendingSuggestions,
   OMISSION_SEMANTICS,
+  nextTimeAction,
   parsePriceInput,
   submitForPublish,
   transitionWeekdaySelection,
@@ -82,6 +83,11 @@ export function DealReviewForm({
   const addressId = `${idPrefix}-address`;
   const validStartId = `${idPrefix}-validStart`;
   const validEndId = `${idPrefix}-validEnd`;
+  // Read the field's real value on change, input and blur: iOS's native time picker can empty it without a change event.
+  const syncTime = (field: "validStart" | "validEnd", raw: string) => {
+    if (raw === (draft.fields[field].value ?? "")) return;
+    onAction(nextTimeAction(field, raw, { validStart: draft.fields.validStart.value, validEnd: draft.fields.validEnd.value }));
+  };
   const conditionsId = `${idPrefix}-conditions`;
 
   const [publishErrors, setPublishErrors] = useState<string[]>([]);
@@ -646,13 +652,9 @@ export function DealReviewForm({
             id={validStartId}
             type="time"
             value={f.validStart.value ?? ""}
-            onChange={(e) =>
-              onAction({
-                type: "SET_FIELD",
-                field: "validStart",
-                value: e.target.value || null,
-              })
-            }
+            onChange={(e) => syncTime("validStart", e.currentTarget.value)}
+            onInput={(e) => syncTime("validStart", e.currentTarget.value)}
+            onBlur={(e) => syncTime("validStart", e.currentTarget.value)}
           />
           {f.validStart.suggestion !== undefined && (
             <SuggestionItem
@@ -680,13 +682,9 @@ export function DealReviewForm({
             id={validEndId}
             type="time"
             value={f.validEnd.value ?? ""}
-            onChange={(e) =>
-              onAction({
-                type: "SET_FIELD",
-                field: "validEnd",
-                value: e.target.value || null,
-              })
-            }
+            onChange={(e) => syncTime("validEnd", e.currentTarget.value)}
+            onInput={(e) => syncTime("validEnd", e.currentTarget.value)}
+            onBlur={(e) => syncTime("validEnd", e.currentTarget.value)}
           />
           {f.validEnd.suggestion !== undefined && (
             <SuggestionItem
@@ -703,16 +701,24 @@ export function DealReviewForm({
           )}
         </div>
       </div>
+      {(f.validStart.value !== null || f.validEnd.value !== null) && (
+        <button type="button" className="text-button" onClick={() => onAction({ type: "CLEAR_HOURS" })}>
+          Reset times
+        </button>
+      )}
       {f.validStart.value === null &&
         f.validEnd.value === null &&
         (!f.validStart.isReviewed || !f.validEnd.isReviewed) && (
-          <button
-            type="button"
-            className="text-button"
-            onClick={() => onAction({ type: "REVIEW_OMISSION", field: "hours" })}
-          >
-            {OMISSION_SEMANTICS.hours.label}
-          </button>
+          <>
+            <p className="quiet-note">{OMISSION_SEMANTICS.hours.explanation}</p>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => onAction({ type: "REVIEW_OMISSION", field: "hours" })}
+            >
+              {OMISSION_SEMANTICS.hours.label}
+            </button>
+          </>
         )}
 
       {/* Conditions */}

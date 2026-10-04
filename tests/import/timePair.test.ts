@@ -43,3 +43,28 @@ describe("publish failure copy", () => {
     expect(publishMessage(err)).toBe(GENERIC_PUBLISH_FAILURE);
   });
 });
+
+describe("resetting the valid times", () => {
+  const withTimes = () => {
+    const d = createDraft({ restaurant: "Ramen Danbo", dealText: "Lunch combo", validDays: ["mon"], conditions: [], validStart: "17:00", validEnd: "21:00" });
+    return dealDraftReducer(dealDraftReducer(d, { type: "REVIEW_FIELD", field: "validStart" }), { type: "REVIEW_FIELD", field: "validEnd" });
+  };
+
+  it("CLEAR_HOURS empties both times and asks for the all-day confirmation again", () => {
+    const next = dealDraftReducer(withTimes(), { type: "CLEAR_HOURS" });
+    expect(next.fields.validStart.value).toBeNull();
+    expect(next.fields.validEnd.value).toBeNull();
+    expect(next.fields.validStart.isReviewed).toBe(false);
+    expect(next.fields.validEnd.isReviewed).toBe(false);
+  });
+
+  it("an all-day deal publishes once the empty hours are confirmed, and not before", () => {
+    let d = reviewed({});
+    d = dealDraftReducer(d, { type: "SET_FIELD", field: "validStart", value: "17:00" });
+    d = dealDraftReducer(d, { type: "SET_FIELD", field: "validEnd", value: "21:00" });
+    d = dealDraftReducer(d, { type: "CLEAR_HOURS" });
+    expect(validateForPublish(d).valid).toBe(false);
+    d = dealDraftReducer(d, { type: "REVIEW_OMISSION", field: "hours" });
+    expect(validateForPublish(d).valid).toBe(true);
+  });
+});

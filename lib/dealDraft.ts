@@ -330,6 +330,10 @@ export type DealDraftAction =
       field: OmissibleFieldKey;
     }
   | {
+      /** Empty both valid times and ask for the all-day confirmation again. */
+      type: "CLEAR_HOURS";
+    }
+  | {
       type: "REVIEW_FIELD";
       field: DraftFieldKey;
     }
@@ -742,6 +746,11 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
         }
       }
       return nextState;
+    }
+
+    case "CLEAR_HOURS": {
+      const emptied = { value: null, isManuallyEdited: true, isReviewed: false, suggestion: undefined };
+      return { ...state, fields: { ...state.fields, validStart: emptied, validEnd: emptied } };
     }
 
     case "REVIEW_OMISSION": {

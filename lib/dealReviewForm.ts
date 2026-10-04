@@ -49,6 +49,21 @@ export const OMISSION_SEMANTICS: Record<OmissibleFieldKey, { label: string; expl
 };
 
 /**
+ * The action for a valid-time input whose real value is `raw` (read from the field itself, because a phone's native
+ * time picker can empty it without firing a change event). Emptying the last remaining time clears both and asks for
+ * the all-day confirmation again; emptying one of two leaves the other as the person set it.
+ */
+export function nextTimeAction(
+  field: "validStart" | "validEnd",
+  raw: string,
+  current: { validStart: string | null; validEnd: string | null },
+): { type: "CLEAR_HOURS" } | { type: "SET_FIELD"; field: "validStart" | "validEnd"; value: string | null } {
+  if (raw !== "") return { type: "SET_FIELD", field, value: raw };
+  const other = field === "validStart" ? current.validEnd : current.validStart;
+  return other === null ? { type: "CLEAR_HOURS" } : { type: "SET_FIELD", field, value: null };
+}
+
+/**
  * Formats a model confidence self-assessment as a human-readable percentage.
  * Rejects and hides values outside 0..1, NaN, or non-numbers without fabricating.
  */
