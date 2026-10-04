@@ -1,4 +1,5 @@
 import { CanonicalPost, LegacyPostLinkNotice, PreviewPost } from "@/components/deals/CanonicalPost";
+import { MyPublishedDeals } from "@/components/deals/MyPublishedDeals";
 import { parsePostSourceParam } from "@/lib/postSource";
 
 export const metadata = { title: "Post a deal", referrer: "no-referrer" };
@@ -22,5 +23,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<Par
   if (job !== undefined) return <LegacyPostLinkNotice kind="job" />;
   if (first(params.preview) === "1") return <PreviewPost />;
   const initialSourceUrl = parsePostSourceParam(params.source);
-  return <CanonicalPost initialSourceUrl={initialSourceUrl ?? undefined} />;
+  return (
+    <>
+      <CanonicalPost initialSourceUrl={initialSourceUrl ?? undefined} />
+      <MyPublishedDeals />
+    </>
+  );
 }
