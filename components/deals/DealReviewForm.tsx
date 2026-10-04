@@ -292,7 +292,7 @@ export function DealReviewForm({
                   padding: "0.75rem",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "space-between", alignItems: "center" }}>
                   <strong>{issue.code}</strong>
                   <span className="quiet-note">{issue.blocking ? "Blocking" : "Warning"}</span>
                 </div>
