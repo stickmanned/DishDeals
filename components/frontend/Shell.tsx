@@ -27,6 +27,9 @@ export function Shell({ children }: { children: ReactNode }) {
             <Link href="/" aria-current={path === "/" ? "page" : undefined}>
               Discover
             </Link>
+            <Link href="/map" aria-current={path === "/map" ? "page" : undefined}>
+              Map
+            </Link>
             <Link
               href="/post"
               aria-current={path.startsWith("/post") ? "page" : undefined}
@@ -79,6 +82,10 @@ export function Shell({ children }: { children: ReactNode }) {
         <Link href="/" aria-current={path === "/" ? "page" : undefined}>
           <Icon name="compass" />
           <span>Discover</span>
+        </Link>
+        <Link href="/map" aria-current={path === "/map" ? "page" : undefined}>
+          <Icon name="pin" />
+          <span>Map</span>
         </Link>
         <Link
           href="/post"
