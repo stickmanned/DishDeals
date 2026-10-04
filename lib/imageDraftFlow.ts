@@ -385,6 +385,17 @@ export class ImageDraftFlow {
 
   // ------------------------------------------------------------- source
 
+  /**
+   * Picker handler: select the file and, when it was accepted, start the analysis straight away so the user
+   * does not have to find a second button. A cancelled picker or an invalid file never starts a run.
+   */
+  async chooseAndAnalyze(file: File | null | undefined): Promise<void> {
+    if (!file) return;
+    this.selectFile(file);
+    if (this.snap.source.file !== file) return;
+    await this.analyze();
+  }
+
   /** Pick (or clear, with null) the screenshot/flyer. An invalid pick keeps the previous selection. */
   selectFile(file: File | null): void {
     if (file === null) {

@@ -186,6 +186,34 @@ describe("source selection", () => {
     expect(flow.getSnapshot().source.file).toBeNull();
   });
 
+  it("chooseAndAnalyze starts analysis right after a valid pick, uploading then extracting once", async () => {
+    const { deps, calls } = makeDeps();
+    const flow = new ImageDraftFlow(deps);
+    await flow.chooseAndAnalyze(file("flyer.png"));
+    expect(calls).toEqual(["prepare", "token", "url", "upload", "extract"]);
+    expect(flow.getSnapshot().phase).toBe("done");
+    expect(flow.getSnapshot().offers).toHaveLength(1);
+  });
+
+  it("chooseAndAnalyze does not analyze an invalid pick and keeps the earlier file", async () => {
+    const { deps, calls } = makeDeps();
+    const flow = new ImageDraftFlow(deps);
+    const good = file("flyer.png");
+    flow.selectFile(good);
+    await flow.chooseAndAnalyze(file("photo.heic", "image/heic"));
+    expect(calls).toEqual([]);
+    expect(flow.getSnapshot().source.file).toBe(good);
+    expect(flow.getSnapshot().source.fileError).toMatch(/HEIC/);
+  });
+
+  it("chooseAndAnalyze ignores a cancelled picker (no file)", async () => {
+    const { deps, calls } = makeDeps();
+    const flow = new ImageDraftFlow(deps);
+    await flow.chooseAndAnalyze(undefined);
+    expect(calls).toEqual([]);
+    expect(flow.getSnapshot().phase).toBe("idle");
+  });
+
   it("returns a stable snapshot until something changes and notifies subscribers", () => {
     const { deps } = makeDeps();
     const flow = new ImageDraftFlow(deps);

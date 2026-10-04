@@ -216,6 +216,29 @@ function Gate({ loading, signedIn, children }: { loading: boolean; signedIn: boo
   );
 }
 
+/** Shows the chosen image under the picker, read locally on this device (nothing is uploaded for the preview). */
+function SourceImagePreview({ file }: { file: File }) {
+  const [shown, setShown] = useState<{ file: File; url: string } | null>(null);
+  useEffect(() => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setShown({ file, url: reader.result });
+    };
+    reader.readAsDataURL(file);
+    return () => {
+      reader.onload = null;
+      if (reader.readyState === 1) reader.abort();
+    };
+  }, [file]);
+  if (!shown || shown.file !== file) return null;
+  return (
+    <figure className="attachment-preview">
+      {/* eslint-disable-next-line @next/next/no-img-element -- a local preview of the chosen file, not an optimizable remote image */}
+      <img src={shown.url} alt={`Preview of ${file.name}`} style={{ maxWidth: "100%", maxHeight: "18rem", borderRadius: "0.5rem" }} />
+    </figure>
+  );
+}
+
 function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot }) {
   const running = isRunning(snap.phase);
   const { source } = snap;
@@ -225,7 +248,7 @@ function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot 
   function pick(e: ChangeEvent<HTMLInputElement>) {
     const chosen = e.target.files?.[0];
     e.target.value = ""; // allow choosing the same file again; canceling the picker keeps the previous choice
-    if (chosen) flow.selectFile(chosen);
+    if (chosen) void flow.chooseAndAnalyze(chosen);
   }
 
   return (
@@ -243,6 +266,7 @@ function SourcePanel({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot 
         Or take a photo
         <input type="file" accept="image/*" capture="environment" onChange={pick} disabled={running} />
       </label>
+      {source.file && <SourceImagePreview file={source.file} />}
       <RecordingPicker flow={flow} snap={snap} />
       <label className="field">
         <span>
