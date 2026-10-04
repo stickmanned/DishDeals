@@ -28,28 +28,28 @@ import type { DataModel } from "./dataModel.js";
  * `convex.config.ts`.
  */
 type Env = {
-  readonly REEL_PROVIDER_USAGE_AUTHORIZED?: string;
-  readonly SCRAPECREATORS_API_KEY?: string;
-  readonly GEMINI_API_KEY?: string;
-  readonly GEMINI_REEL_MODEL?: string;
-  readonly REEL_MEDIA_USAGE_AUTHORIZED?: string;
-  readonly REEL_WEB_ORIGIN?: string;
-  readonly IMAGE_PROVIDER_USAGE_AUTHORIZED?: string;
-  readonly GEMINI_IMAGE_MODEL?: string;
-  readonly GEMINI_IMAGE_FALLBACK_MODEL?: string;
-  readonly GEOCODE_USAGE_AUTHORIZED?: string;
-  readonly GEOCODE_USER_AGENT?: string;
-  readonly GEOCODE_ENDPOINT?: string;
-  readonly GEOAPIFY_API_KEY?: string;
-  readonly GEMINI_MODEL?: string;
-  readonly GEMINI_FALLBACK_MODEL?: string;
-  readonly GEMINI_SEARCH_MODEL?: string;
-  readonly GEMINI_WEB_SEARCH_MODEL?: string;
-  readonly GEMINI_COMPARISON_MODEL?: string;
-  readonly WORKFLOW_API_TOKEN?: string;
-  readonly WORKFLOW_PROVIDER_USAGE_AUTHORIZED?: string;
   readonly CONVEX_CLOUD_URL: string;
   readonly CONVEX_SITE_URL: string;
+  readonly GEMINI_API_KEY: string | undefined;
+  readonly GEMINI_COMPARISON_MODEL: string | undefined;
+  readonly GEMINI_FALLBACK_MODEL: string | undefined;
+  readonly GEMINI_IMAGE_FALLBACK_MODEL: string | undefined;
+  readonly GEMINI_IMAGE_MODEL: string | undefined;
+  readonly GEMINI_MODEL: string | undefined;
+  readonly GEMINI_REEL_MODEL: string | undefined;
+  readonly GEMINI_SEARCH_MODEL: string | undefined;
+  readonly GEMINI_WEB_SEARCH_MODEL: string | undefined;
+  readonly GEOAPIFY_API_KEY: string | undefined;
+  readonly GEOCODE_ENDPOINT: string | undefined;
+  readonly GEOCODE_USAGE_AUTHORIZED: string | undefined;
+  readonly GEOCODE_USER_AGENT: string | undefined;
+  readonly IMAGE_PROVIDER_USAGE_AUTHORIZED: string | undefined;
+  readonly REEL_MEDIA_USAGE_AUTHORIZED: string | undefined;
+  readonly REEL_PROVIDER_USAGE_AUTHORIZED: string | undefined;
+  readonly REEL_WEB_ORIGIN: string | undefined;
+  readonly SCRAPECREATORS_API_KEY: string | undefined;
+  readonly WORKFLOW_API_TOKEN: string | undefined;
+  readonly WORKFLOW_PROVIDER_USAGE_AUTHORIZED: string | undefined;
 };
 
 /**
