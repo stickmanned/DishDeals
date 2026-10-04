@@ -16,15 +16,19 @@
   - `docs/handoffs/n-text-form.md`
 
 ## Summary of Changes
-1. **Provenance Parameter Normalization (`lib/postSource.ts`):**
+1. **Provenance Parameter Normalization & Token-Parity Text Checking (`lib/postSource.ts`):**
    - Implemented `parsePostSourceParam`:
      - Accepts single query string parameters from `/post?source=...`.
      - Validates and canonicalizes strictly via `normalizeInstagramUrl` to `https://www.instagram.com/reel/<shortcode>/`.
-     - Rejects duplicate parameters (arrays), non-string, empty, non-Instagram domains, credentials, ports, and path tricks safely by returning `null`.
+     - Rejects duplicate parameters (arrays), non-string, empty, non-Instagram domains, credentials, ports, path tricks, and arbitrary surrounding prefix/suffix text or whitespace (`/\s/.test(trimmed)`) safely by returning `null`.
      - Never fetches URLs, inspects network, or populates private media/tokens.
-   - Implemented `hasNonUrlText`:
-     - Strips URLs (http/https/www) and asserts non-whitespace content remains.
-     - Guards against triggering text analysis when only URLs or whitespace are entered.
+   - Implemented `hasNonUrlText` matching Loom backend `6c3f605` (`convex/extract.ts` `hasSourceText`):
+     - Tokenizes input by whitespace.
+     - Strips quote, parenthesis, bracket, and trailing punctuation wrappers (`^[([{<"'“‘]+` and `[)\]}>"'”’,;.!?]+$`).
+     - Requires at least one Unicode letter or digit (`/[\p{L}\p{N}]/u`).
+     - Recognizes and filters out links: `scheme://`, known schemes (`mailto|tel|data|javascript:`), scheme-relative (`//`), `www.`, and bare domains (`(?:[\p{L}\p{N}-]+\.)+[\p{L}]{2,}`).
+     - Guards against triggering text analysis when only URLs (including bare domains, scheme-relative links, or parenthesized links) or punctuation-only content is entered.
+     - Accurately identifies real deal copy like `Pho:C$10`, `拉面 $10`, or `2-for-1 pho on Tuesday https://...`.
 2. **Pure Controller Text Analysis (`lib/imageDraftFlow.ts`):**
    - Enabled `analyze()` for text-only sources when actual non-URL caption/text is entered without an attached file:
      - No prepare (`prepareImage`/`prepareFrames`), no upload token (`getToken`), no upload URL (`generateUploadUrl`), and no storage upload (`upload`) calls.
@@ -33,7 +37,7 @@
      - Passes `imageIds: []` to `extract`, along with trimmed `caption`, `text`, `provenanceUrl`, and `publishedAt`.
      - Creates `Offer` with `source: "text"`, `imageId: null`, `imageIds: []`, `imageName: "Pasted text"`, and `cached: undefined`.
      - Reuses canonical `extractOutcomeToDrafts` with `imageId: null`.
-     - Blocks calls if no file is present and text is empty, whitespace-only, or URL-only (`phase: "failed"`, `code: "NO_SOURCE"`).
+     - Blocks calls if no file is present and text is empty, whitespace-only, punctuation-only, or URL-only (`phase: "failed"`, `code: "NO_SOURCE"`).
      - Supports `cancel()`, retry, context-switching (e.g. adding a file supersedes run), and out-of-order/stale resolution prevention.
 3. **Canonical Post View & Route Integration (`components/deals/CanonicalPost.tsx`, `app/post/page.tsx`):**
    - In `app/post/page.tsx`:
@@ -44,19 +48,19 @@
      - Updates `SourcePanel` `hasSource` calculation to consider `hasNonUrlText(caption, text)` so that "Get suggestions" is enabled for text-only input.
      - Adjusts copy to clarify suggestions can come from an image or entered post text.
 4. **Comprehensive Synthetic Regression Tests:**
-   - `tests/import/postSource.test.ts`:
-     - Verified URL normalization, duplicate array rejection, non-Instagram rejection, credential/port/path trick rejection.
-     - Verified `hasNonUrlText` with empty, whitespace, URL-only, and valid text.
+   - `tests/import/postSource.test.ts` (14/14 tests):
+     - Verified URL normalization, duplicate array rejection, non-Instagram rejection, credential/port/path trick rejection, and surrounding text rejection.
+     - Verified `hasNonUrlText` with empty, whitespace, URL-only across bare domains, scheme-relative links, quoted/parenthesized links, punctuation-only, and valid multilingual text.
      - Verified provenance prefill initialization and manual edit persistence.
-   - `tests/import/imageDraftFlow.test.ts`:
-     - Verified blocking of empty/whitespace/URL-only analysis with zero backend calls.
+   - `tests/import/imageDraftFlow.test.ts` (87/87 tests):
+     - Verified blocking of empty/whitespace/URL-only (including bare-domain and scheme-relative) analysis with zero backend calls.
      - Verified text-only extraction with `imageIds: []` and zero prepare/upload/token/cache calls.
      - Verified cancel, late results, context switches, and retry semantics.
 
 ## Checks Actually Run
-- `npx vitest run tests/import/postSource.test.ts`: 12/12 passed in 70ms.
-- `npx vitest run tests/import/imageDraftFlow.test.ts`: 87/87 passed in 51ms.
-- `npx vitest run tests/import/`: 21 test files / 797 tests passed in 1.22s.
+- `npx vitest run tests/import/postSource.test.ts`: 14/14 passed in 64ms.
+- `npx vitest run tests/import/imageDraftFlow.test.ts`: 87/87 passed in 43ms.
+- `npx vitest run tests/import/`: 21 test files / 799 tests passed in 1.31s.
 - `npm run typecheck` (`tsc --noEmit`): clean (exit code 0).
 - `npm run lint` (`eslint .`): clean (exit code 0).
 

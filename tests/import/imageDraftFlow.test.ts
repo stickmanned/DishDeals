@@ -301,7 +301,31 @@ describe("analyze: owned upload then extraction", () => {
     expect(flow.getSnapshot().phase).toBe("failed");
     expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
 
-    // 5. Only provenanceUrl set, no caption or text
+    // 5. Bare domain only
+    flow.setContext({ caption: "instagram.com/p/ABC/", text: "instagram.com" });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 6. Scheme-relative link only
+    flow.setContext({ caption: "//www.instagram.com/p/ABC/", text: "" });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 7. Quoted or parenthesized link only
+    flow.setContext({ caption: "(https://www.instagram.com/p/ABC/)", text: "“https://example.org”" });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 8. Punctuation only
+    flow.setContext({ caption: "...!", text: "  ---  " });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 9. Only provenanceUrl set, no caption or text
     flow.setContext({ caption: "", text: "", provenanceUrl: "https://www.instagram.com/reel/C9_deal123/" });
     await flow.analyze();
     expect(flow.getSnapshot().phase).toBe("failed");

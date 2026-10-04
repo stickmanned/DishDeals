@@ -49,6 +49,12 @@ describe("parsePostSourceParam (synthetic URL validation, no network/provider)",
   it("safely rejects strings with multiple URLs or trailing text", () => {
     expect(parsePostSourceParam("https://instagram.com/reel/C9_deal123/ https://instagram.com/reel/C9_other456/")).toBeNull();
   });
+
+  it("safely rejects arbitrary prefix or suffix text surrounding the URL", () => {
+    expect(parsePostSourceParam("Have a look https://www.instagram.com/reel/C9_deal123/")).toBeNull();
+    expect(parsePostSourceParam("https://www.instagram.com/reel/C9_deal123/ check this out")).toBeNull();
+    expect(parsePostSourceParam("Shared: https://instagram.com/p/C9_deal123/")).toBeNull();
+  });
 });
 
 describe("hasNonUrlText (guards against empty, whitespace, and URL-only text analysis)", () => {
@@ -58,11 +64,36 @@ describe("hasNonUrlText (guards against empty, whitespace, and URL-only text ana
     expect(hasNonUrlText(null, " \t\n ")).toBe(false);
   });
 
-  it("returns false for URL-only strings in caption or text", () => {
+  it("returns false for URL-only strings in caption or text across all link forms", () => {
+    // standard scheme links
     expect(hasNonUrlText("https://www.instagram.com/reel/C9_deal123/", "")).toBe(false);
     expect(hasNonUrlText("", "http://example.com/deal")).toBe(false);
     expect(hasNonUrlText("https://instagram.com/reel/123 https://instagram.com/reel/456", "")).toBe(false);
     expect(hasNonUrlText("www.instagram.com/reel/123", "")).toBe(false);
+    expect(hasNonUrlText("HTTPS://WWW.INSTAGRAM.COM/p/ABC/", "")).toBe(false);
+
+    // bare domain links
+    expect(hasNonUrlText("instagram.com/p/ABC/", "")).toBe(false);
+    expect(hasNonUrlText("instagram.com", "")).toBe(false);
+    expect(hasNonUrlText("", "example.org")).toBe(false);
+
+    // scheme-relative links
+    expect(hasNonUrlText("//www.instagram.com/p/ABC/", "")).toBe(false);
+
+    // parenthesized or quoted links
+    expect(hasNonUrlText("(https://www.instagram.com/p/ABC/)", "")).toBe(false);
+    expect(hasNonUrlText("“https://www.instagram.com/p/ABC/”", "")).toBe(false);
+    expect(hasNonUrlText("[https://www.instagram.com/p/ABC/]", "")).toBe(false);
+    expect(hasNonUrlText("<https://www.instagram.com/p/ABC/>", "")).toBe(false);
+
+    // multiple link lines
+    expect(hasNonUrlText("https://example.org/a\nhttps://example.org/b", "")).toBe(false);
+  });
+
+  it("returns false for punctuation-only content with no letters or digits", () => {
+    expect(hasNonUrlText("...!", "  ")).toBe(false);
+    expect(hasNonUrlText("---", "()")).toBe(false);
+    expect(hasNonUrlText(";:,.", "??!!")).toBe(false);
   });
 
   it("returns true when actual non-URL caption or text is present", () => {
@@ -70,6 +101,9 @@ describe("hasNonUrlText (guards against empty, whitespace, and URL-only text ana
     expect(hasNonUrlText("", "Tacos $2.50 all day Tuesday")).toBe(true);
     expect(hasNonUrlText("Special lunch menu https://instagram.com/reel/123", "")).toBe(true);
     expect(hasNonUrlText("Check this out!", "https://instagram.com/reel/123")).toBe(true);
+    expect(hasNonUrlText("Pho:C$10", "")).toBe(true);
+    expect(hasNonUrlText("拉面 $10", "")).toBe(true);
+    expect(hasNonUrlText("2-for-1 pho on Tuesday https://www.instagram.com/p/ABC/", "")).toBe(true);
   });
 });
 
