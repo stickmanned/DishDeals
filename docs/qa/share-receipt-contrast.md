@@ -1,10 +1,11 @@
 # N-SHARE-CONTRAST — Readable Native Share Receipt QA Report
 
 **Tester / Role:** Mica (Antigravity Gemini 3.8 Flash High)  
-**Date:** 2026-10-04 06:13 Vancouver  
+**Date:** 2026-10-04 06:17 Vancouver  
 **Scope:** ONE bounded ticket N-SHARE-CONTRAST. Fix paired adaptive UIKit background and status label text color across both light and dark modes in `ios/ShareExtension/ShareViewController.swift`.  
 **Target Device:** Sole assigned iPhone 18 Pro simulator (`22E6EF8B-CC88-4109-870C-6C924AF613D6`, iOS 27.0).  
 **Repository Branch / Base:** `t-18-share-receipt-contrast` at base `8a46e5304949e8c2fa9a84e0333a8e7a6682c982`.  
+**Extra Approved Path:** `tests/native/ShareReceiptContrastChecks.swift` (native UIKit contrast regression test).
 
 ---
 
@@ -12,7 +13,7 @@
 
 ### A. Physical Device Evidence (William's iPhone Screenshot)
 - **Screenshot Path:** `/var/folders/1z/7lgwqv1n5x58rt93ks8c2s6c0000gn/T/Maestri-drops/4D093C79-944E-4174-B8E2-65F8F2FDB074.png`
-- **Sampled Colors:**
+- **Sampled Colors from Device:**
   - Background: `RGB(250, 247, 242)` / `#FAF7F2` (warm cream)
   - Text: `RGB(255, 255, 255)` / `#FFFFFF` (pure white)
 - **Luminance & Contrast Calculation:**
@@ -34,7 +35,7 @@ status.numberOfLines = 0; status.textAlignment = .center; status.font = UIFont(n
 ### C. Architecture & Media Boundary Confirmation
 William's screenshot confirms:
 `"Offered 1 item type (public.url); loaded link. No video was loaded."`
-This provides photographic proof on physical hardware that the Instagram share extension receives only `public.url` (the text link), with zero video bytes. DishDeals' architectural rule prohibiting Instagram scraping is strictly upheld; the link is saved privately without unauthorized scraping.
+This provides photographic proof on physical hardware that the Instagram share extension receives only `public.url` (the text link), with zero video bytes. DishDeals' architectural rule prohibiting Instagram scraping is strictly upheld; the link is saved privately without scraping.
 
 ---
 
@@ -69,14 +70,63 @@ The following modifications were applied strictly to `ios/ShareExtension/ShareVi
    ```
 
 4. **Safe-Area Vertical Boundaries:**
-   Constrained the content stack to `view.safeAreaLayoutGuide` with both vertical boundaries (`greaterThanOrEqualTo: guide.topAnchor` and `lessThanOrEqualTo: guide.bottomAnchor`) to prevent multiline text clipping on small screens.
+   Constrained the content stack to `view.safeAreaLayoutGuide` with both vertical boundaries (`greaterThanOrEqualTo: guide.topAnchor` and `lessThanOrEqualTo: guide.bottomAnchor`) to prevent multiline text clipping.
 
 5. **Untouched Systems:**
-   Payload parsing (`receive()`), NSItemProvider loading (`load()`), storage synchronization (`ShareStore.enqueue`, `ShareStore.submit`), timeouts (10s budget, 4s per item), and extension lifecycle (`completeRequest`) are 100% unchanged.
+   Payload parsing (`receive()`), NSItemProvider loading (`load()`), storage synchronization (`ShareStore.enqueue`, `ShareStore.submit`), timeouts (10s budget, 4s per item), and extension lifecycle (`completeRequest`) are 100% untouched.
 
 ---
 
-## 3. Build & Compilation Verification
+## 3. Native Regression Test (`tests/native/ShareReceiptContrastChecks.swift`)
+
+A dedicated native regression harness was authored and retained in Git at `tests/native/ShareReceiptContrastChecks.swift`.
+- Instantiates a real `ShareViewController` instance.
+- Locates `status` `UILabel` inside the view hierarchy stack.
+- Resolves actual `view.backgroundColor` and `statusLabel.textColor` under both `UITraitCollection(userInterfaceStyle: .light)` and `UITraitCollection(userInterfaceStyle: .dark)`.
+- Calculates sRGB relative luminance and WCAG 2.1 contrast ratio.
+- Strictly asserts contrast $\ge 4.5:1$ with non-zero exit code on failure.
+
+### A. Failure Against Unfixed Original Source (Reproduction)
+```bash
+xcrun -sdk iphonesimulator swiftc -target arm64-apple-ios16.0-simulator -parse-as-library \
+  tests/native/ShareReceiptContrastChecks.swift \
+  /Users/william/Code/DishDeals-worktrees/workflow/ios/ShareExtension/ShareViewController.swift \
+  /Users/william/Code/DishDeals-worktrees/workflow/ios/Shared/ShareStore.swift \
+  -o /tmp/dishdeals-share-contrast-build/check_unfixed
+
+xcrun simctl spawn 22E6EF8B-CC88-4109-870C-6C924AF613D6 /tmp/dishdeals-share-contrast-build/check_unfixed
+```
+**Output:**
+```
+[ShareReceiptContrast] Light Mode: bg=#FBF7F2 text=#000000 ratio=19.69:1
+[ShareReceiptContrast] Dark Mode:  bg=#FBF7F2 text=#FFFFFF ratio=1.07:1
+ASSERTION FAILURE: Dark mode contrast ratio 1.07:1 < 4.5:1 (WCAG AA requirement)
+Exit code: 1
+```
+**Result: PROVEN FAILURE (Exit Code 1).**
+
+### B. Pass Against Fixed Checkout Source
+```bash
+xcrun -sdk iphonesimulator swiftc -target arm64-apple-ios16.0-simulator -parse-as-library \
+  tests/native/ShareReceiptContrastChecks.swift \
+  ios/ShareExtension/ShareViewController.swift \
+  ios/Shared/ShareStore.swift \
+  -o /tmp/dishdeals-share-contrast-build/check_fixed
+
+xcrun simctl spawn 22E6EF8B-CC88-4109-870C-6C924AF613D6 /tmp/dishdeals-share-contrast-build/check_fixed
+```
+**Output:**
+```
+[ShareReceiptContrast] Light Mode: bg=#FBF7F2 text=#000000 ratio=19.69:1
+[ShareReceiptContrast] Dark Mode:  bg=#000000 text=#FFFFFF ratio=21.00:1
+[ShareReceiptContrast] ALL CONTRAST ASSERTIONS PASSED (>= 4.5:1)
+Exit code: 0
+```
+**Result: VERIFIED PASS (Exit Code 0).**
+
+---
+
+## 4. Build & Compilation Verification
 
 ### A. Scratch Project Configuration
 - **Location:** `/tmp/dishdeals-share-contrast-build/ios/Dinedeals.xcodeproj`
@@ -109,27 +159,23 @@ The following modifications were applied strictly to `ios/ShareExtension/ShareVi
 
 ---
 
-## 4. Quantitative WCAG Contrast Verification & Visual Captures
+## 5. Visual Captures & Evidence Boundaries
 
-The `ShareViewController` view hierarchy was instantiated and rendered inside the iOS Simulator runtime environment under both light and dark trait collections:
+> [!NOTE]
+> **Controlled Fixture State Disclosure:** The visual captures below are generated by instantiating the real `ShareViewController` view hierarchy in a controlled UIKit harness under simulator execution. They demonstrate view controller rendering and contrast styling, not an actual Instagram share gesture.
 
-| State | Background Color | Text Color | Contrast Ratio | WCAG 2.1 AA | WCAG 2.1 AAA | Visual Artifact |
+| State | Background Color | Text Color | Contrast Ratio | WCAG 2.1 AA | WCAG 2.1 AAA | Artifact |
 |---|---|---|---|---|---|---|
 | **Before Fix (Dark Mode)** | `#FBF7F2` (cream) | `#FFFFFF` (white) | **1.07:1** | **FAIL** | **FAIL** | `/tmp/dishdeals-share-contrast-build/receipt_before_dark.png` |
 | **After Fix (Light Mode)** | `#FBF7F2` (cream) | `#000000` (black) | **19.69:1** | **PASS** | **PASS** | `/tmp/dishdeals-share-contrast-build/receipt_full_light.png` |
 | **After Fix (Dark Mode)** | `#000000` (black) | `#FFFFFF` (white) | **21.00:1** | **PASS** | **PASS** | `/tmp/dishdeals-share-contrast-build/receipt_full_dark.png` |
 
-### Key Observations:
-1. In Light Mode, the DishDeals warm cream aesthetic is fully preserved while delivering 19.69:1 contrast.
-2. In Dark Mode, system dark background provides maximum readability at 21.00:1 contrast.
-3. Multiline text wraps cleanly with proper spacing and high button visibility.
-
 ---
 
-## 5. Phone Acceptance Gate & Next Steps
+## 6. Phone Acceptance Gate & Next Steps
 
 1. **Unsigned Simulator Boundary:**
-   On unsigned simulator builds (`CODE_SIGNING_ALLOWED=NO`), App Group sharing (`group.dev.dishdeals`) is stripped by iOS security policies. Any synthetic share extension invocation in simulator would encounter an unsigned group container error (`"Could not save locally. Check App Group setup."`).
+   On unsigned simulator builds (`CODE_SIGNING_ALLOWED=NO`), App Group sharing (`group.dev.dishdeals`) is stripped by iOS security policies, so synthetic share extension calls report container setup errors. Successful private-save validation requires a signed build.
 2. **Physical iPhone Signing:**
    William must perform a signed rebuild with development team provisioning (`CODE_SIGNING_ALLOWED=YES` and `DEVELOPMENT_TEAM`) to deploy to his physical device.
 3. **Receipt Check:**

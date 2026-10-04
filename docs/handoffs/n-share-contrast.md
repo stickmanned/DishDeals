@@ -6,9 +6,10 @@
   - **Branch:** `t-18-share-receipt-contrast`
   - **Worktree:** `/Users/william/Code/DishDeals-worktrees/share-receipt-contrast`
   - **Pinned Base SHA:** `8a46e5304949e8c2fa9a84e0333a8e7a6682c982`
-  - **Head SHA:** `e9b9413b8e4f114f18bb105de724eb3575783017`
+  - **Head SHA:** `62693d29a75befa88b45c7b1cab3695b63f71836`
 - **Scope and Writable Paths:**
   - `ios/ShareExtension/ShareViewController.swift`
+  - `tests/native/ShareReceiptContrastChecks.swift` *(Approved extra path for native contrast regression)*
   - `docs/qa/share-receipt-contrast.md`
   - `docs/handoffs/n-share-contrast.md`
   *(All scratch build and test artifacts strictly confined under `/tmp/dishdeals-share-contrast-build/` and `/tmp/dishdeals-share-contrast-tests/`).*
@@ -48,15 +49,19 @@
   4. **Simulator App Installation:**
      `xcrun simctl install 22E6EF8B-CC88-4109-870C-6C924AF613D6 /tmp/dishdeals-share-contrast-build/derived-data/Build/Products/Debug-iphonesimulator/Dinedeals.app`
      **Exit Code 0**.
-  5. **Simulator Runtime Rendering & WCAG Contrast Evaluation:**
-     Executed `render_full_tool` in simulator (`22E6EF8B-CC88-4109-870C-6C924AF613D6`) via `simctl spawn`:
-     - **Before Fix (Dark Mode):** Background `#FBF7F2`, Text `#FFFFFF` $\to$ **1.07:1** (WCAG FAIL). Replicated William's exact failure.
-     - **After Fix (Light Mode):** Background `#FBF7F2`, Text `#000000` $\to$ **19.69:1** (WCAG AAA PASS).
-     - **After Fix (Dark Mode):** Background `#000000`, Text `#FFFFFF` $\to$ **21.00:1** (WCAG AAA PASS).
-  6. **Visual Captures:**
-     - `/tmp/dishdeals-share-contrast-build/receipt_before_dark.png`
-     - `/tmp/dishdeals-share-contrast-build/receipt_full_light.png`
-     - `/tmp/dishdeals-share-contrast-build/receipt_full_dark.png`
+  5. **Native Contrast Regression Harness (`tests/native/ShareReceiptContrastChecks.swift`):**
+     - Run against original unfixed source:
+       `[ShareReceiptContrast] Dark Mode: bg=#FBF7F2 text=#FFFFFF ratio=1.07:1`
+       `ASSERTION FAILURE: Dark mode contrast ratio 1.07:1 < 4.5:1` $\to$ **Exit code 1 (FAIL)**.
+     - Run against fixed checkout source:
+       `[ShareReceiptContrast] Light Mode: bg=#FBF7F2 text=#000000 ratio=19.69:1`
+       `[ShareReceiptContrast] Dark Mode: bg=#000000 text=#FFFFFF ratio=21.00:1`
+       `ALL CONTRAST ASSERTIONS PASSED (>= 4.5:1)` $\to$ **Exit code 0 (PASS)**.
+  6. **Controlled Fixture State Visual Captures:**
+     *(Note: Renders are controlled UIKit fixture state, not real Instagram gesture)*
+     - `/tmp/dishdeals-share-contrast-build/receipt_before_dark.png` (replicates William's white-on-cream failure)
+     - `/tmp/dishdeals-share-contrast-build/receipt_full_light.png` (19.69:1 contrast)
+     - `/tmp/dishdeals-share-contrast-build/receipt_full_dark.png` (21.00:1 contrast)
 
 - **Unrun Live / Phone Checks and Why:**
   - Physical iPhone installation and developer signing (`CODE_SIGNING_ALLOWED=YES` with Team ID) require William's developer profile.
@@ -67,5 +72,5 @@
 
 - **Stop Condition Met:**
   - One bounded ticket N-SHARE-CONTRAST complete.
-  - Writable paths respected.
+  - Writable paths respected (including approved `tests/native/ShareReceiptContrastChecks.swift`).
   - Ready for Northstar review and integration.
