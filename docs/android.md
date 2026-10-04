@@ -34,6 +34,6 @@ Never put Gemini, Geoapify, or Reel provider keys in `NEXT_PUBLIC_*`, native res
 
 ## Verification
 
-The Android Actions workflow builds and lints the real APK, installs it in an Android 15 emulator, and checks startup, cold/warm text sharing, preserving an existing draft, Back navigation, and crash logs. Screenshots/UI XML are available in `DishDeals-Android-QA`. It does not submit test offers. Physical-phone camera/picker behavior and Play Store signing remain manual checks.
+The Android Actions workflow builds and lints the real APK, installs it in an Android 15 emulator, and checks startup, cold/warm text sharing, preserving an existing draft, Back navigation, map/Reels navigation, and crash logs. Screenshots/UI XML are available in `DishDeals-Android-QA`. It does not submit test offers. Physical-phone camera/picker behavior and Play Store signing remain manual checks.
 
 SDK references: [Capacitor Android](https://capacitorjs.com/docs/android), [native plugin registration](https://capacitorjs.com/docs/android/custom-code), [System Bars](https://capacitorjs.com/docs/apis/system-bars).
