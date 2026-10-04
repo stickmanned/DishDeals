@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { BrandMark, Icon } from "./Icon";
 import { useFrontend } from "./FrontendProvider";
 import type { ReactNode } from "react";
+import { AndroidBridge } from "./AndroidBridge";
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
@@ -12,6 +13,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const profileHref = app.authenticated ? "/profile" : "/signin";
   return (
     <>
+      <AndroidBridge />
       <a href="#content" className="skip-link">
         Skip to content
       </a>

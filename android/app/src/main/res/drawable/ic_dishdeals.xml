@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The existing public/icon.svg brand mark, expressed as an Android vector. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp" android:height="128dp"
+    android:viewportWidth="128" android:viewportHeight="128">
+    <path android:fillColor="#FBF7F2" android:pathData="M0,0H128V128H0Z" />
+    <group android:translateX="39" android:translateY="30" android:scaleX="0.5" android:scaleY="0.5">
+        <path android:fillColor="#F0304F" android:pathData="M50,0C22.4,0 0,22.4 0,50c0,34 40,66 46,72a6,6 0,0 0,8 0c6,-6 46,-38 46,-72C100,22.4 77.6,0 50,0Z" />
+        <path android:fillColor="#FBF7F2" android:pathData="M22,50a28,28 0,1 0,56 0a28,28 0,1 0,-56 0" />
+        <path android:fillColor="#F0304F" android:pathData="M35,50a15,15 0,1 0,30 0a15,15 0,1 0,-30 0" />
+    </group>
+</vector>

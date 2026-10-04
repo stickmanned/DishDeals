@@ -1,0 +1,59 @@
+name: Android trial
+
+on:
+  pull_request:
+    paths: ["android/**", "capacitor.config.ts", "components/**", "app/**", "lib/**", "public/**", "package*.json", "scripts/build-android.mjs", "scripts/android-smoke.py", ".github/workflows/android.yml"]
+  push:
+    branches: [main, t-26-android-app]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      # Public endpoint only. Provider keys stay in Convex, never in the APK or Actions.
+      NEXT_PUBLIC_CONVEX_URL: https://proper-marmot-82.ca-central-1.convex.cloud
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run build:android
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: DishDeals-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - name: Prepare emulator
+        run: |
+          # GitHub's Android SDK runner image already has accepted SDK licenses.
+          sdkmanager "emulator" "system-images;android-35;google_apis;x86_64"
+          echo no | avdmanager create avd --force --name dishdeals --package "system-images;android-35;google_apis;x86_64" --device pixel_6
+          sudo chmod 666 /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -avd dishdeals -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > emulator.log 2>&1 &
+      - name: Test installed app
+        run: python3 scripts/android-smoke.py android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Save emulator evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: DishDeals-Android-QA
+          path: |
+            android-qa/
+            emulator.log
