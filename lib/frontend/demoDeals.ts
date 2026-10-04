@@ -1,5 +1,6 @@
 import type { DealView } from "./deals";
 import { demoRestaurants, type DemoCuisine, type DemoRestaurant } from "./demoRestaurants";
+import { restaurantPhotos } from "./restaurantPhotos";
 
 /**
  * Placeholder offers for the preview feed. The restaurants are real Burnaby businesses (see
@@ -114,7 +115,11 @@ function build(restaurant: DemoRestaurant, index: number): DealView {
   const seed = hash(restaurant.name);
   const choices = templates[restaurant.cuisine];
   const t = choices[seed % choices.length];
-  const photo = photos[restaurant.cuisine];
+  const own = restaurantPhotos[restaurant.name];
+  // The restaurant's own website photo wins over the cuisine stock photo.
+  const photo: Photo | undefined = own
+    ? { url: own.file, alt: `${restaurant.name}, from the restaurant's website` }
+    : photos[restaurant.cuisine];
   const expiry = seed % 11 === 0 ? { expiresOn: "2026-09-30" } : seed % 5 === 0 ? { expiresOn: "2026-12-31" } : {};
   return {
     id: `demo-${slug(restaurant.name)}`,

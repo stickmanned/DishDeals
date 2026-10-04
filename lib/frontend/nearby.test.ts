@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { DealView } from "./deals";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { demoDeals, previewSeedPosts } from "./demoDeals";
+import { restaurantPhotos } from "./restaurantPhotos";
 import {
   DEFAULT_ORIGIN,
   distanceKm,
@@ -107,5 +110,22 @@ describe("preview seed posts", () => {
       expect(demoDeals.some((d) => d.restaurant === post.restaurant)).toBe(true);
     }
     expect(new Set(posts.map((p) => p.id)).size).toBe(posts.length);
+  });
+});
+
+describe("restaurant photos", () => {
+  it("each photo belongs to an example restaurant, exists on disk, and records its source", () => {
+    const names = new Set(demoDeals.map((d) => d.restaurant));
+    for (const [name, photo] of Object.entries(restaurantPhotos)) {
+      expect(names.has(name)).toBe(true);
+      expect(existsSync(join(process.cwd(), "public", photo.file))).toBe(true);
+      expect(photo.page).toMatch(/^https?:\/\//);
+      expect(photo.source).toMatch(/^https?:\/\//);
+    }
+  });
+  it("shows a restaurant's own photo instead of the cuisine stock photo", () => {
+    const deal = demoDeals.find((d) => d.restaurant === "The Ramen Butcher");
+    expect(deal?.imageUrl).toBe("/images/restaurants/the-ramen-butcher.jpg");
+    expect(Object.keys(restaurantPhotos).length).toBeGreaterThanOrEqual(25);
   });
 });

@@ -446,7 +446,9 @@ describe("workflow public feed adapter", () => {
       "/images/burger.jpg",
     ]);
     for (const row of demoDeals) {
-      if (row.imageUrl) expect(photos.has(row.imageUrl)).toBe(true);
+      if (row.imageUrl) {
+        expect(photos.has(row.imageUrl) || row.imageUrl.startsWith("/images/restaurants/")).toBe(true);
+      }
     }
     expect(new Set(demoDeals.map((row) => row.imageUrl)).size).toBeGreaterThan(5);
   });
