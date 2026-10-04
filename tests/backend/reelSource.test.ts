@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import schema from "../../convex/schema";
 import { api, internal } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { READ_DEADLINE_MS, encodeUploadMeta } from "../../lib/reels/suppliedMedia";
 
 const sdk = vi.hoisted(() => ({ generateContent: vi.fn() }));
 vi.mock("@google/genai", () => ({ GoogleGenAI: class { models = sdk; } }));
@@ -18,6 +19,7 @@ const modules = import.meta.glob(["../../convex/**/*.ts", "!../../convex/**/*.te
 const ORIGIN = "https://app.example.test";
 const link = "https://www.instagram.com/reel/AbCdEf123/";
 const T0 = new Date("2026-10-04T12:00:00Z").getTime();
+const rawMeta = (o: unknown) => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(o)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(T0); vi.stubEnv("REEL_WEB_ORIGIN", ORIGIN); sdk.generateContent.mockReset(); });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
@@ -45,13 +47,19 @@ async function setup() {
   const exists = (id: Id<"_storage">) => t.run(async ctx => (await ctx.storage.get(id)) !== null);
   const bytesOf = (id: Id<"_storage">) => t.run(async ctx => { const b = await ctx.storage.get(id); return b ? Array.from(new Uint8Array(await b.arrayBuffer())) : null; });
   const limits = () => t.run(ctx => ctx.db.query("reelLimits").collect());
-  const post = (caller: { fetch: typeof t.fetch }, bytes: Uint8Array | null, o: { id?: string; type?: string | null; duration?: string; extra?: string; origin?: string | null; length?: string | null } = {}) => {
+  type PostOpts = { id?: string; type?: string | null; duration?: string; extra?: string; origin?: string | null; length?: string | null; meta?: { caption?: string; publishedAt?: string }; metaRaw?: string };
+  const post = (caller: { fetch: typeof t.fetch }, body: Uint8Array | ReadableStream<Uint8Array> | null, o: PostOpts = {}) => {
     const headers: Record<string, string> = {};
     if (o.origin !== null) headers.Origin = o.origin ?? ORIGIN;
     if (o.type !== null) headers["Content-Type"] = o.type ?? "video/mp4";
-    const len = o.length === undefined ? (bytes ? String(bytes.length) : "0") : o.length;
+    const bytes = body instanceof Uint8Array ? body : null;
+    const len = o.length === undefined ? (bytes ? String(bytes.length) : null) : o.length;
     if (len !== null) headers["Content-Length"] = len;
-    return caller.fetch(`/reel-source?itemId=${o.id ?? itemId}&duration=${o.duration ?? "30"}${o.extra ?? ""}`, { method: "POST", headers, body: (bytes ?? undefined) as BodyInit | undefined });
+    const meta = o.metaRaw ?? (o.meta ? encodeUploadMeta(o.meta) : null);
+    if (meta) headers["X-Reel-Meta"] = meta;
+    const init: RequestInit & { duplex?: string } = { method: "POST", headers, body: (body ?? undefined) as BodyInit | undefined };
+    if (body && !(body instanceof Uint8Array)) init.duplex = "half";
+    return caller.fetch(`/reel-source?itemId=${o.id ?? itemId}&duration=${o.duration ?? "30"}${o.extra ?? ""}`, init);
   };
   const settle = async () => { for (let i = 0; i < 40; i++) { vi.advanceTimersByTime(200); await t.finishInProgressScheduledFunctions(); } };
   return { t, alice, bob, a, b, itemId, item, stored, exists, bytesOf, limits, post, settle };
@@ -66,7 +74,7 @@ describe("CORS and configuration", () => {
     expect(ok.status).toBe(204);
     expect(ok.headers.get("Access-Control-Allow-Origin")).toBe(ORIGIN);
     expect(ok.headers.get("Access-Control-Allow-Credentials")).toBeNull();
-    expect(ok.headers.get("Access-Control-Allow-Headers")).toBe("Authorization, Content-Type");
+    expect(ok.headers.get("Access-Control-Allow-Headers")).toBe("Authorization, Content-Type, X-Reel-Meta");
     for (const origin of ["https://evil.example", "http://app.example.test", "null"]) {
       const bad = await s.t.fetch("/reel-source", { method: "OPTIONS", headers: { Origin: origin } });
       expect(bad.status).toBe(403);
@@ -133,10 +141,17 @@ describe("request validation happens before storage", () => {
     ["non-numeric duration", s => s.post(s.alice as never, mp4(), { duration: "NaN" }), 400],
     ["unknown query key", s => s.post(s.alice as never, mp4(), { extra: "&url=https://www.instagram.com/reel/x/" }), 400],
     ["repeated key", s => s.post(s.alice as never, mp4(), { extra: "&duration=31" }), 400],
-    ["bad publication date", s => s.post(s.alice as never, mp4(), { extra: "&publishedAt=2026-02-30" }), 400],
-    ["future publication date", s => s.post(s.alice as never, mp4(), { extra: "&publishedAt=2027-01-01" }), 400],
-    ["over-long caption", s => s.post(s.alice as never, mp4(), { extra: `&caption=${"a".repeat(2201)}` }), 400],
-    ["caption control character", s => s.post(s.alice as never, mp4(), { extra: "&caption=a%00b" }), 400],
+    ["caption in the URL (content must not travel there)", s => s.post(s.alice as never, mp4(), { extra: "&caption=Lunch" }), 400],
+    ["publication date in the URL", s => s.post(s.alice as never, mp4(), { extra: "&publishedAt=2026-10-01" }), 400],
+    ["bad publication date", s => s.post(s.alice as never, mp4(), { metaRaw: rawMeta({ publishedAt: "2026-02-30" }) }), 400],
+    ["future publication date", s => s.post(s.alice as never, mp4(), { metaRaw: rawMeta({ publishedAt: "2027-01-01" }) }), 400],
+    ["over-long caption", s => s.post(s.alice as never, mp4(), { metaRaw: rawMeta({ caption: "a".repeat(2201) }) }), 400],
+    ["caption over the byte limit", s => s.post(s.alice as never, mp4(), { metaRaw: rawMeta({ caption: "€".repeat(801) }) }), 400],
+    ["caption control character", s => s.post(s.alice as never, mp4(), { metaRaw: rawMeta({ caption: "a\u0000b" }) }), 400],
+    ["unknown metadata key", s => s.post(s.alice as never, mp4(), { metaRaw: rawMeta({ caption: "a", url: "https://www.instagram.com/reel/x/" }) }), 400],
+    ["garbage metadata header", s => s.post(s.alice as never, mp4(), { metaRaw: "***not*base64***" }), 400],
+    ["malformed Content-Length", s => s.post(s.alice as never, mp4(), { length: "12abc" }), 400],
+    ["negative Content-Length", s => s.post(s.alice as never, mp4(), { length: "-5" }), 400],
     ["text/html content type", s => s.post(s.alice as never, mp4(), { type: "text/html" }), 415],
     ["octet-stream content type", s => s.post(s.alice as never, mp4(), { type: "application/octet-stream" }), 415],
     ["missing content type", s => s.post(s.alice as never, mp4(), { type: null }), 415],
@@ -166,11 +181,113 @@ describe("request validation happens before storage", () => {
   });
 });
 
+const streamOf = (chunks: Uint8Array[], then: "close" | "stall" | "error") => {
+  let i = 0;
+  return new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (i < chunks.length) { controller.enqueue(chunks[i++]); return; }
+      if (then === "close") controller.close();
+      else if (then === "error") controller.error(new Error("client aborted the upload"));
+      else return new Promise<void>(() => {}); // stall: never produces more, never closes
+    },
+  });
+};
+
+describe("streamed bodies: no Content-Length, stalls and aborts", () => {
+  it("accepts a body with no Content-Length (browsers cannot set it), capped on the streamed bytes", async () => {
+    const s = await setup();
+    const bytes = mp4(9000);
+    const r = await s.post(s.alice as never, bytes, { length: null });
+    expect(r.status).toBe(200);
+    expect(await s.bytesOf((await s.item())!.videoId!)).toEqual(Array.from(bytes));
+  });
+  it("accepts a chunked stream with no Content-Length and verifies the signature after reading", async () => {
+    const s = await setup(); const bytes = qt(10000);
+    const r = await s.post(s.alice as never, streamOf([bytes.slice(0, 4000), bytes.slice(4000)], "close"), { type: "video/quicktime" });
+    expect(r.status).toBe(200);
+    expect((await s.item())!.mediaBytes).toBe(10000);
+  });
+  it("enforces the 12 MiB cap on a header-less stream, exactly at the limit and one byte over", async () => {
+    const s = await setup();
+    expect((await s.post(s.alice as never, mp4(12 * 1024 * 1024), { length: null })).status).toBe(200);
+    const s2 = await setup(); const before = await s2.item();
+    const over = mp4(12 * 1024 * 1024 + 1);
+    const r = await s2.post(s2.alice as never, streamOf([over.slice(0, 6 * 1024 * 1024), over.slice(6 * 1024 * 1024)], "close"));
+    expect(r.status).toBe(413);
+    expect(r.headers.get("Access-Control-Allow-Origin")).toBe(ORIGIN);
+    await unchanged(s2, before);
+  });
+  it("rejects a streamed body that disagrees with a present Content-Length, before storage", async () => {
+    const s = await setup(); const before = await s.item();
+    expect((await s.post(s.alice as never, streamOf([mp4(5000)], "close"), { length: "4096" })).status).toBe(413);
+    expect((await s.post(s.alice as never, streamOf([mp4(4000)], "close"), { length: "4096" })).status).toBe(400);
+    await unchanged(s, before);
+  });
+  it("times out a stalled upload with a CORS-bearing 408, storing and changing nothing", async () => {
+    const s = await setup(); const before = await s.item();
+    const pending = s.post(s.alice as never, streamOf([mp4(2000)], "stall"));
+    await vi.advanceTimersByTimeAsync(READ_DEADLINE_MS + 1000);
+    const r = await pending;
+    expect(r.status).toBe(408);
+    expect(r.headers.get("Access-Control-Allow-Origin")).toBe(ORIGIN);
+    expect(await r.json()).toEqual({ error: "timeout" });
+    await unchanged(s, before);
+  });
+  it("a stream that errors mid-upload gets a CORS-bearing 400 and leaves nothing behind", async () => {
+    const s = await setup(); const before = await s.item();
+    const r = await s.post(s.alice as never, streamOf([mp4(2000)], "error"));
+    expect(r.status).toBe(400);
+    expect(r.headers.get("Access-Control-Allow-Origin")).toBe(ORIGIN);
+    await unchanged(s, before);
+  });
+  it("an unexpected server failure is answered with CORS, the orphan removed and nothing logged", async () => {
+    const s = await setup();
+    // an item whose superseded media reference is already gone makes the atomic association throw
+    const dead = await s.t.run(ctx => ctx.storage.store(new Blob(["old"])));
+    await s.t.run(async ctx => { await ctx.db.patch(s.itemId, { videoId: dead, sourceKind: "supplied" }); await ctx.storage.delete(dead); });
+    const logs = (["log", "error", "warn"] as const).map(m => vi.spyOn(console, m).mockImplementation(() => {}));
+    const before = await s.item();
+    const r = await s.post(s.alice as never, mp4());
+    expect(r.status).toBe(500);
+    expect(r.headers.get("Access-Control-Allow-Origin")).toBe(ORIGIN);
+    expect(await r.json()).toEqual({ error: "unexpected" });
+    expect(await s.stored()).toHaveLength(0); // the new upload was removed
+    expect(await s.item()).toEqual(before);
+    for (const l of logs) expect(l).not.toHaveBeenCalled();
+  });
+  it("every error response after the origin check carries CORS headers", async () => {
+    const s = await setup();
+    const responses = [
+      await s.post(s.t as never, mp4()), // 401
+      await s.post(s.alice as never, mp4(), { duration: "0" }), // 400
+      await s.post(s.alice as never, mp4(), { type: "text/plain" }), // 415
+      await s.post(s.bob as never, mp4()), // 404
+      await s.post(s.alice as never, mp4(), { length: String(13 * 1024 * 1024) }), // 413
+    ];
+    expect(responses.map(r => r.status)).toEqual([401, 400, 415, 404, 413]);
+    for (const r of responses) expect(r.headers.get("Access-Control-Allow-Origin")).toBe(ORIGIN);
+  });
+});
+
+describe("workflow cancellation is tolerated only when nothing is running", () => {
+  it("a finished workflow never blocks retry, replacement or deletion (covered above), but an arbitrary failure is not swallowed", async () => {
+    const s = await setup();
+    await s.post(s.alice as never, mp4()); await s.settle();
+    expect(await s.item()).toMatchObject({ status: "failed" });
+    await s.t.run(ctx => ctx.db.patch(s.itemId, { workflowId: "not-a-real-workflow-id" }));
+    const before = await s.item();
+    await expect(s.alice.mutation(api.reels.retry, { itemId: s.itemId })).rejects.toThrow();
+    await expect(s.alice.mutation(api.reels.remove, { itemId: s.itemId })).rejects.toThrow();
+    expect(await s.item()).toEqual(before);
+    expect(await s.stored()).toHaveLength(1);
+  });
+});
+
 describe("successful attachment", () => {
   it("stores the bytes server-side, associates them atomically and returns the receipt", async () => {
     const s = await setup();
     const bytes = mp4(8192);
-    const r = await s.post(s.alice as never, bytes, { duration: "42.5", extra: "&publishedAt=2026-10-01&caption=Lunch%20special" });
+    const r = await s.post(s.alice as never, bytes, { duration: "42.5", meta: { publishedAt: "2026-10-01", caption: "Lunch special" } });
     expect(r.status).toBe(200);
     expect(r.headers.get("Access-Control-Allow-Origin")).toBe(ORIGIN);
     expect(await r.json()).toEqual({ status: "attached", generation: 2 });
@@ -238,7 +355,7 @@ describe("race, rate-limit and orphan handling", () => {
     const s = await setup();
     await s.post(s.alice as never, mp4(4096));
     const first = (await s.item())!;
-    const r = await s.post(s.alice as never, mp4(5000), { extra: "&caption=Second" });
+    const r = await s.post(s.alice as never, mp4(5000), { meta: { caption: "Second" } });
     expect(await r.json()).toEqual({ status: "attached", generation: 3 });
     const second = (await s.item())!;
     expect(second.videoId).not.toBe(first.videoId);
@@ -298,7 +415,7 @@ describe("workflow source selection and retention", () => {
       evidence: [{ draftIndex: 0, field: "dealText", channel: "caption", quote: "Lunch special", timestampSeconds: null }], transcript: "", warnings: [] }) });
     const net = vi.spyOn(globalThis, "fetch");
     const bytes = qt(6000);
-    await s.post(s.alice as never, bytes, { type: "video/quicktime", duration: "20", extra: "&publishedAt=2026-10-01&caption=Lunch%20special%20today" });
+    await s.post(s.alice as never, bytes, { type: "video/quicktime", duration: "20", meta: { publishedAt: "2026-10-01", caption: "Lunch special today" } });
     await s.settle();
     expect(sdk.generateContent).toHaveBeenCalledTimes(1);
     const call = sdk.generateContent.mock.calls[0][0];
@@ -343,7 +460,7 @@ describe("workflow source selection and retention", () => {
     await s.t.mutation(internal.reels.finish, { itemId: s.itemId, generation: 1, extractionJson: JSON.stringify({ isDeal: true, drafts: [d()], evidence: [], transcript: "", warnings: [] }) });
     await s.alice.mutation(api.reels.saveDraft, { itemId: s.itemId, draftJson: JSON.stringify([d({ restaurant: "Mine" })]), expectedGeneration: 1, expectedRevision: 1 });
     // user attaches a recording: generation advances, edits remain
-    await s.post(s.alice as never, mp4(), { extra: "&caption=Cafe%20Meal" });
+    await s.post(s.alice as never, mp4(), { meta: { caption: "Cafe Meal" } });
     await s.settle(); // disabled gate -> failed, recording kept
     const failed = (await s.item())!;
     expect(failed).toMatchObject({ status: "failed", generation: 2, draftEdited: true, draftRevision: 2 });

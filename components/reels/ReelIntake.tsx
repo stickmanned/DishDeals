@@ -9,7 +9,7 @@ import type { Id, Doc } from "@/convex/_generated/dataModel";
 import { reelDraft, reelExtraction, type ReelDraft } from "@/lib/reels/contract";
 import { afterOwnSave, versionStatus } from "@/lib/reels/draftRevision";
 import { postNativeMessage, recoveredLink, saveReelLink } from "@/lib/nativeSession";
-import { MAX_CAPTION_CHARS, MAX_DURATION_SECONDS, MAX_MEDIA_BYTES, checkFileChoice, readVideoDuration, uploadSuppliedReel, type VideoProbe } from "@/lib/reels/suppliedMedia";
+import { MAX_CAPTION_BYTES, MAX_CAPTION_CHARS, MAX_DURATION_SECONDS, MAX_MEDIA_BYTES, checkFileChoice, readVideoDuration, uploadSuppliedReel, validateCaption, type VideoProbe } from "@/lib/reels/suppliedMedia";
 
 // Uses the canonical root auth session (ConvexClientProvider); it creates no
 // client or auth provider of its own. The session is sent to native by the
@@ -75,7 +75,7 @@ function browserProbe(): VideoProbe {
   };
 }
 const uploadErrors = { invalid: "That recording or its details cannot be uploaded.", auth: "Your session expired. Sign in again.", rejected: "The server did not accept this recording. Check its type and length, then try again.",
-  rate_limited: "Too many uploads or retries this hour. Try later.", network: "The upload did not reach the server. Your choices are kept; try again.", unexpected: "The upload could not be confirmed. Try again." } as const;
+  rate_limited: "Too many uploads or retries this hour. Try later.", network: "The upload did not reach the server. Your choices are kept; try again.", timeout: "The upload took too long and was stopped. Your choices are kept; try again.", aborted: "The upload was cancelled. Your choices are kept.", unexpected: "The upload could not be confirmed. Try again." } as const;
 // The user's own recording of this same Reel. File, caption and date are kept on every cancel or error.
 function AttachRecording({ item }: { item: Doc<"reelItems"> }) {
   const session = useSessionToken(), siteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
@@ -95,6 +95,7 @@ function AttachRecording({ item }: { item: Doc<"reelItems"> }) {
   }
   async function send() {
     if (!file || duration === null || !siteUrl) return;
+    if (validateCaption(caption) === null) { setMessage(`The caption is too long or has unsupported characters (up to ${MAX_CAPTION_CHARS} characters and ${MAX_CAPTION_BYTES} bytes). It was not changed.`); return; }
     setBusy(true); setMessage(""); setReceipt("");
     try {
       const token = await session.fetchAccessToken({ forceRefreshToken: false });

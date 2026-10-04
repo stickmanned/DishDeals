@@ -2,8 +2,8 @@
 // real browser, WKWebView, Photos picker, upload to a deployment or provider.
 import { describe, expect, it, vi } from "vitest";
 import {
-  MAX_CAPTION_CHARS, MAX_MEDIA_BYTES, buildUploadUrl, checkFileChoice, classifyMedia, corsHeaders, declaredTypeFor,
-  originAllowed, parseConfiguredOrigin, parseUploadQuery, readVideoDuration, uploadSuppliedReel,
+  MAX_CAPTION_BYTES, MAX_CAPTION_CHARS, MAX_MEDIA_BYTES, MAX_META_HEADER_CHARS, buildUploadRequest, checkFileChoice, classifyMedia, corsHeaders, declaredTypeFor,
+  encodeUploadMeta, originAllowed, parseConfiguredOrigin, parseUploadMeta, parseUploadQuery, parseUploadRequest, readVideoDuration, uploadSuppliedReel,
   validateCaption, validateDuration, validatePublishedAt, type VideoProbe,
 } from "../../lib/reels/suppliedMedia";
 
@@ -15,7 +15,7 @@ const ftyp = (brand: string, size = 24) => {
   return b;
 };
 const NOW = Date.parse("2026-10-04T12:00:00Z");
-const q = (qs: string) => parseUploadQuery(new URL(`https://x.convex.site/reel-source?${qs}`), NOW);
+const q = (qs: string) => parseUploadQuery(new URL(`https://x.convex.site/reel-source?${qs}`));
 const ID = "k17abcdefghijklmnop";
 
 describe("classifyMedia (signature only)", () => {
@@ -46,6 +46,8 @@ describe("field validators", () => {
     expect(validateCaption("a".repeat(MAX_CAPTION_CHARS))).toHaveLength(MAX_CAPTION_CHARS);
     expect(validateCaption("a".repeat(MAX_CAPTION_CHARS + 1))).toBeNull();
     expect(validateCaption("bad\u0000byte")).toBeNull();
+    expect(validateCaption("€".repeat(800))).toHaveLength(800); // 2,400 bytes: at the byte limit
+    expect(validateCaption("€".repeat(801))).toBeNull(); // 801 characters but 2,403 bytes
     expect(validateCaption(5)).toBeNull();
   });
   it("publication date is a real ISO date or datetime, not in the future", () => {
@@ -57,21 +59,57 @@ describe("field validators", () => {
   });
 });
 
-describe("parseUploadQuery (strict)", () => {
-  it("accepts the minimal and full forms", () => {
+describe("parseUploadQuery (strict; no content in the URL)", () => {
+  it("accepts only itemId and duration", () => {
     expect(q(`itemId=${ID}&duration=30`)).toEqual({ itemId: ID, duration: 30 });
-    expect(q(`itemId=${ID}&duration=12.5&publishedAt=2026-10-01&caption=Lunch%20special`)).toEqual({ itemId: ID, duration: 12.5, publishedAt: "2026-10-01", caption: "Lunch special" });
+    expect(q(`itemId=${ID}&duration=12.5`)).toEqual({ itemId: ID, duration: 12.5 });
   });
   it.each([
     "duration=30", `itemId=${ID}`, `itemId=short&duration=30`, `itemId=${ID}&duration=0`, `itemId=${ID}&duration=181`, `itemId=${ID}&duration=abc`,
     `itemId=${ID}&duration=NaN`, `itemId=${ID}&duration=1e2`, `itemId=${ID}&duration=-3`, `itemId=${ID}&duration=30&extra=1`,
-    `itemId=${ID}&itemId=${ID}&duration=30`, `itemId=${ID}&duration=30&publishedAt=2026-02-30`, `itemId=${ID}&duration=30&publishedAt=2027-01-01`,
-    `itemId=${ID}&duration=30&caption=${"a".repeat(MAX_CAPTION_CHARS + 1)}`, `itemId=${ID}&duration=30&caption=%00`,
-    `itemId=${ID}%2F..&duration=30`,
+    `itemId=${ID}&itemId=${ID}&duration=30`, `itemId=${ID}%2F..&duration=30`,
+    `itemId=${ID}&duration=30&caption=Lunch`, `itemId=${ID}&duration=30&publishedAt=2026-10-01`, // content must not travel in the URL
   ])("rejects %s", qs => expect(q(qs)).toBeNull());
-  it("rejects another path and an over-long URL", () => {
-    expect(parseUploadQuery(new URL(`https://x.convex.site/other?itemId=${ID}&duration=30`), NOW)).toBeNull();
-    expect(q(`itemId=${ID}&duration=30&caption=${encodeURIComponent("€".repeat(2200))}`)).toBeNull(); // percent-encoded URL exceeds the cap
+  it("rejects another path", () => {
+    expect(parseUploadQuery(new URL(`https://x.convex.site/other?itemId=${ID}&duration=30`))).toBeNull();
+  });
+});
+
+describe("metadata header (caption and publication date)", () => {
+  const roundTrip = (m: { caption?: string; publishedAt?: string }) => parseUploadMeta(encodeUploadMeta(m), NOW);
+  it("round-trips, including non-ASCII, and carries nothing readable in plain text", () => {
+    expect(roundTrip({ caption: "Lunch € special 🍜", publishedAt: "2026-10-01" })).toEqual({ caption: "Lunch € special 🍜", publishedAt: "2026-10-01" });
+    expect(roundTrip({ caption: "only caption" })).toEqual({ caption: "only caption" });
+    expect(roundTrip({ publishedAt: "2026-10-01" })).toEqual({ publishedAt: "2026-10-01" });
+    expect(encodeUploadMeta({ caption: "Lunch special" })).not.toContain("Lunch");
+    expect(encodeUploadMeta({ caption: "x" })).toMatch(/^[A-Za-z0-9_-]+$/);
+  });
+  it("encodes nothing for empty metadata and refuses to truncate an over-long one", () => {
+    expect(encodeUploadMeta({})).toBeNull();
+    expect(encodeUploadMeta({ caption: "" })).toBeNull();
+    expect(encodeUploadMeta({ caption: "a".repeat(MAX_META_HEADER_CHARS * 2) })).toBeNull();
+  });
+  it("absent header means no metadata", () => {
+    expect(parseUploadMeta(null)).toEqual({});
+    expect(parseUploadMeta(undefined)).toEqual({});
+  });
+  const enc = (o: unknown) => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(o)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  it.each([
+    ["empty", ""], ["not base64url", "***"], ["standard base64 padding", "e30="], ["not JSON", btoa("hello")], ["JSON array", enc([1])], ["JSON string", enc("x")],
+    ["unknown key", enc({ caption: "a", url: "https://x" })], ["caption not a string", enc({ caption: 5 })], ["caption control char", enc({ caption: "a\u0000" })],
+    ["caption over the byte limit", enc({ caption: "€".repeat(801) })], ["bad date", enc({ publishedAt: "2026-02-30" })], ["future date", enc({ publishedAt: "2027-01-01" })],
+    ["header too long", "A".repeat(MAX_META_HEADER_CHARS + 1)],
+  ])("rejects %s", (_n, header) => expect(parseUploadMeta(header, NOW)).toBeNull());
+  it("rejects invalid UTF-8", () => {
+    const bad = btoa(String.fromCharCode(0x7b, 0x22, 0xff, 0xfe, 0x22, 0x7d)).replace(/=+$/, "");
+    expect(parseUploadMeta(bad, NOW)).toBeNull();
+  });
+  it("combines with the query, and invalid metadata invalidates the request", () => {
+    const url = new URL(`https://x.convex.site/reel-source?itemId=${ID}&duration=30`);
+    expect(parseUploadRequest(url, encodeUploadMeta({ caption: "c", publishedAt: "2026-10-01" }), NOW)).toEqual({ itemId: ID, duration: 30, caption: "c", publishedAt: "2026-10-01" });
+    expect(parseUploadRequest(url, null, NOW)).toEqual({ itemId: ID, duration: 30 });
+    expect(parseUploadRequest(url, "***", NOW)).toBeNull();
+    expect(MAX_CAPTION_BYTES).toBe(2400);
   });
 });
 
@@ -96,7 +134,7 @@ describe("origin configuration and CORS", () => {
     expect(Object.values(h).join(" ")).not.toContain("*");
     expect(h["Access-Control-Allow-Credentials"]).toBeUndefined();
     expect(h.Vary).toBe("Origin");
-    expect(h["Access-Control-Allow-Headers"]).toBe("Authorization, Content-Type");
+    expect(h["Access-Control-Allow-Headers"]).toBe("Authorization, Content-Type, X-Reel-Meta");
   });
 });
 
@@ -171,20 +209,25 @@ describe("readVideoDuration", () => {
   });
 });
 
-describe("buildUploadUrl", () => {
-  it("builds from an explicit site URL and encodes query values", () => {
-    const url = buildUploadUrl("https://happy-animal-1.convex.site", { itemId: ID, duration: 30, publishedAt: "2026-10-01", caption: "a & b" })!;
-    const u = new URL(url);
+describe("buildUploadRequest", () => {
+  it("puts only id and duration in the URL and the content in the header", () => {
+    const built = buildUploadRequest("https://happy-animal-1.convex.site", { itemId: ID, duration: 30, publishedAt: "2026-10-01", caption: "a & b secret" })!;
+    const u = new URL(built.url);
     expect(u.origin).toBe("https://happy-animal-1.convex.site");
     expect(u.pathname).toBe("/reel-source");
-    expect(u.searchParams.get("caption")).toBe("a & b");
-    expect(q(url.split("?")[1])).toMatchObject({ itemId: ID, duration: 30 });
+    expect([...u.searchParams.keys()].sort()).toEqual(["duration", "itemId"]);
+    expect(built.url).not.toContain("secret");
+    expect(built.url).not.toContain("2026-10-01");
+    expect(parseUploadRequest(u, built.metaHeader, NOW)).toEqual({ itemId: ID, duration: 30, caption: "a & b secret", publishedAt: "2026-10-01" });
   });
-  it("refuses non-https (except localhost), junk and over-long URLs", () => {
-    expect(buildUploadUrl("http://localhost:3210", { itemId: ID, duration: 30 })).not.toBeNull();
-    expect(buildUploadUrl("http://evil.example", { itemId: ID, duration: 30 })).toBeNull();
-    expect(buildUploadUrl("not a url", { itemId: ID, duration: 30 })).toBeNull();
-    expect(buildUploadUrl("https://x.convex.site", { itemId: ID, duration: 30, caption: "€".repeat(2200) })).toBeNull();
+  it("has no header when there is no metadata", () => {
+    expect(buildUploadRequest("https://x.convex.site", { itemId: ID, duration: 30 })!.metaHeader).toBeNull();
+  });
+  it("refuses non-https (except localhost), junk, and metadata that cannot be sent whole", () => {
+    expect(buildUploadRequest("http://localhost:3210", { itemId: ID, duration: 30 })).not.toBeNull();
+    expect(buildUploadRequest("http://evil.example", { itemId: ID, duration: 30 })).toBeNull();
+    expect(buildUploadRequest("not a url", { itemId: ID, duration: 30 })).toBeNull();
+    expect(buildUploadRequest("https://x.convex.site", { itemId: ID, duration: 30, caption: "a".repeat(MAX_META_HEADER_CHARS * 2) })).toBeNull();
   });
 });
 
@@ -192,25 +235,70 @@ describe("uploadSuppliedReel", () => {
   const file = Object.assign(new Blob([ftyp("isom")], { type: "video/mp4" }), { name: "r.mp4" });
   const args = { siteUrl: "https://x.convex.site", token: "synthetic-bearer", query: { itemId: ID, duration: 30 }, file };
   const reply = (status: number, body: unknown = {}) => vi.fn(async () => new Response(JSON.stringify(body), { status }));
-  it("reports ok only for the server's attached receipt, sending a Bearer header and the declared type", async () => {
+  const stalledBody = () => new Response(new ReadableStream({ start() { /* headers arrive; body never does */ } }), { status: 200 });
+  it("reports ok only for the server's attached receipt, with Bearer, declared type and header metadata", async () => {
     const fetchImpl = reply(200, { status: "attached", generation: 3 });
-    expect(await uploadSuppliedReel(args, fetchImpl as never)).toEqual({ ok: true, generation: 3 });
-    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    const out = await uploadSuppliedReel({ ...args, query: { ...args.query, caption: "Lunch special", publishedAt: "2026-10-01" } }, fetchImpl as never);
+    expect(out).toEqual({ ok: true, generation: 3 });
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit & { headers: Record<string, string> }];
     expect(url).toContain("/reel-source?itemId=");
+    expect(url).not.toContain("Lunch");
     expect(init.method).toBe("POST");
-    expect(init.headers).toEqual({ Authorization: "Bearer synthetic-bearer", "Content-Type": "video/mp4" });
+    expect(init.headers.Authorization).toBe("Bearer synthetic-bearer");
+    expect(init.headers["Content-Type"]).toBe("video/mp4");
+    expect(parseUploadMeta(init.headers["X-Reel-Meta"], NOW)).toEqual({ caption: "Lunch special", publishedAt: "2026-10-01" });
     expect(init.body).toBe(file);
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+  it("sends no metadata header when there is none", async () => {
+    const fetchImpl = reply(200, { status: "attached", generation: 1 });
+    await uploadSuppliedReel(args, fetchImpl as never);
+    expect((fetchImpl.mock.calls[0] as unknown as [string, { headers: object }])[1].headers).not.toHaveProperty("X-Reel-Meta");
   });
   it.each([[{}], [{ status: "stored" }], [{ status: "attached" }], [{ status: "attached", generation: -1 }], [{ status: "attached", generation: 1.5 }]])(
     "a 200 without a valid receipt is not success: %j", async body => {
       expect(await uploadSuppliedReel(args, reply(200, body) as never)).toEqual({ ok: false, reason: "unexpected" });
     });
+  it("an unparseable 200 body is not success", async () => {
+    expect(await uploadSuppliedReel(args, vi.fn(async () => new Response("not json", { status: 200 })) as never)).toEqual({ ok: false, reason: "unexpected" });
+  });
   it("maps statuses to reasons", async () => {
     expect(await uploadSuppliedReel(args, reply(401) as never)).toEqual({ ok: false, reason: "auth" });
     expect(await uploadSuppliedReel(args, reply(429) as never)).toEqual({ ok: false, reason: "rate_limited" });
-    for (const s of [400, 403, 404, 409, 413, 415]) expect(await uploadSuppliedReel(args, reply(s) as never)).toEqual({ ok: false, reason: "rejected" });
+    for (const s of [400, 403, 404, 408, 409, 413, 415]) expect(await uploadSuppliedReel(args, reply(s) as never)).toEqual({ ok: false, reason: "rejected" });
     expect(await uploadSuppliedReel(args, reply(500) as never)).toEqual({ ok: false, reason: "unexpected" });
     expect(await uploadSuppliedReel(args, vi.fn(async () => { throw new Error("offline"); }) as never)).toEqual({ ok: false, reason: "network" });
+  });
+  it("times out a request that never answers, aborting it", async () => {
+    let signal: AbortSignal | undefined;
+    const hang = vi.fn((_url: string, init: RequestInit) => { signal = init.signal as AbortSignal; return new Promise<Response>(() => {}); });
+    expect(await uploadSuppliedReel({ ...args, timeoutMs: 20 }, hang as never)).toEqual({ ok: false, reason: "timeout" });
+    expect(signal!.aborted).toBe(true);
+  });
+  it("times out when headers arrive but the receipt body stalls", async () => {
+    const stalled = vi.fn(async () => stalledBody());
+    const started = Date.now();
+    expect(await uploadSuppliedReel({ ...args, timeoutMs: 20 }, stalled as never)).toEqual({ ok: false, reason: "timeout" });
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+  it("a caller abort ends the upload as aborted, before or during the request", async () => {
+    const early = new AbortController(); early.abort();
+    const fetchImpl = vi.fn();
+    expect(await uploadSuppliedReel({ ...args, signal: early.signal }, fetchImpl as never)).toEqual({ ok: false, reason: "aborted" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    const live = new AbortController();
+    const pending = uploadSuppliedReel({ ...args, signal: live.signal, timeoutMs: 5000 }, vi.fn(() => new Promise<Response>(() => {})) as never);
+    live.abort();
+    expect(await pending).toEqual({ ok: false, reason: "aborted" });
+    const live2 = new AbortController();
+    const body = uploadSuppliedReel({ ...args, signal: live2.signal, timeoutMs: 5000 }, vi.fn(async () => stalledBody()) as never);
+    setTimeout(() => live2.abort(), 10);
+    expect(await body).toEqual({ ok: false, reason: "aborted" });
+  });
+  it.each([0, -1, NaN, Infinity, 600_001])("rejects an invalid timeout %s without fetching", async timeoutMs => {
+    const fetchImpl = vi.fn();
+    expect(await uploadSuppliedReel({ ...args, timeoutMs }, fetchImpl as never)).toEqual({ ok: false, reason: "invalid" });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
   it("does not call fetch for invalid inputs and never logs the token", async () => {
     const spies = (["log", "error", "warn"] as const).map(m => vi.spyOn(console, m).mockImplementation(() => {}));
@@ -219,8 +307,9 @@ describe("uploadSuppliedReel", () => {
       { ...args, token: "" }, { ...args, siteUrl: "http://evil.example" },
       { ...args, file: Object.assign(new Blob(["x"], { type: "image/png" }), { name: "a.png" }) },
       { ...args, file: Object.assign(new Blob([], { type: "video/mp4" }), { name: "a.mp4" }) },
+      { ...args, query: { ...args.query, caption: "€".repeat(801) } },
     ];
-    for (const a of bad) expect(await uploadSuppliedReel(a, fetchImpl as never)).toEqual({ ok: false, reason: "invalid" });
+    for (const a of bad.slice(0, 4)) expect(await uploadSuppliedReel(a, fetchImpl as never)).toEqual({ ok: false, reason: "invalid" });
     expect(fetchImpl).not.toHaveBeenCalled();
     await uploadSuppliedReel(args, vi.fn(async () => { throw new Error("synthetic-bearer"); }) as never);
     for (const s of spies) { expect(s).not.toHaveBeenCalled(); s.mockRestore(); }

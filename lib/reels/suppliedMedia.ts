@@ -9,6 +9,12 @@ export const MAX_MEDIA_BYTES = 12 * 1024 * 1024; // 12 MiB request body
 export const MIN_DURATION_SECONDS = 1;
 export const MAX_DURATION_SECONDS = 180;
 export const MAX_CAPTION_CHARS = 2200;
+export const MAX_CAPTION_BYTES = 2400; // UTF-8; keeps the metadata header small
+export const MAX_META_HEADER_CHARS = 4096;
+export const META_HEADER = "X-Reel-Meta";
+export const READ_DEADLINE_MS = 60_000; // server: total time allowed to receive the body
+export const DEFAULT_UPLOAD_TIMEOUT_MS = 120_000; // browser: whole fetch plus receipt parsing
+export const MAX_UPLOAD_TIMEOUT_MS = 600_000;
 export const MAX_URL_CHARS = 8000;
 export const UPLOAD_PATH = "/reel-source";
 
@@ -54,7 +60,7 @@ export function validateCaption(value: unknown): string | undefined | null {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== "string") return null;
   const text = value.trim();
-  if (text.length > MAX_CAPTION_CHARS) return null;
+  if (text.length > MAX_CAPTION_CHARS || new TextEncoder().encode(text).length > MAX_CAPTION_BYTES) return null;
   if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(text)) return null;
   return text || undefined;
 }
@@ -74,11 +80,16 @@ export function validatePublishedAt(value: unknown, now: number = Date.now()): s
 }
 
 export type UploadQuery = { itemId: string; duration: number; publishedAt?: string; caption?: string };
+export type UploadMeta = { publishedAt?: string; caption?: string };
 
-/** Strict parse of the upload URL query. Unknown or repeated keys are rejected. */
-export function parseUploadQuery(url: URL, now: number = Date.now()): UploadQuery | null {
+/**
+ * Strict parse of the upload URL query. Only the item id and duration travel
+ * in the URL: caption and publication date are content and are carried in the
+ * metadata header so they do not appear in URL logs.
+ */
+export function parseUploadQuery(url: URL): { itemId: string; duration: number } | null {
   if (url.href.length > MAX_URL_CHARS || url.pathname !== UPLOAD_PATH) return null;
-  const allowed = new Set(["itemId", "duration", "publishedAt", "caption"]);
+  const allowed = new Set(["itemId", "duration"]);
   const seen = new Set<string>();
   for (const key of url.searchParams.keys()) {
     if (!allowed.has(key) || seen.has(key)) return null;
@@ -89,10 +100,55 @@ export function parseUploadQuery(url: URL, now: number = Date.now()): UploadQuer
   if (!itemId || !/^[A-Za-z0-9]{10,64}$/.test(itemId)) return null;
   if (!rawDuration || !/^\d{1,3}(\.\d{1,3})?$/.test(rawDuration)) return null;
   const duration = validateDuration(Number(rawDuration));
-  const caption = validateCaption(url.searchParams.get("caption") ?? undefined);
-  const publishedAt = validatePublishedAt(url.searchParams.get("publishedAt") ?? undefined, now);
-  if (duration === null || caption === null || publishedAt === null) return null;
-  return { itemId, duration, ...(publishedAt ? { publishedAt } : {}), ...(caption ? { caption } : {}) };
+  return duration === null ? null : { itemId, duration };
+}
+
+const toBase64Url = (bytes: Uint8Array) => {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+};
+const fromBase64Url = (text: string): Uint8Array | null => {
+  if (!/^[A-Za-z0-9_-]*$/.test(text)) return null;
+  try {
+    const bin = atob(text.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(text.length / 4) * 4, "="));
+    return Uint8Array.from(bin, c => c.charCodeAt(0));
+  } catch { return null; }
+};
+
+/** Encode bounded metadata for the `X-Reel-Meta` header (base64url JSON). `null` when there is none. */
+export function encodeUploadMeta(meta: UploadMeta): string | null {
+  const body: UploadMeta = {};
+  if (meta.caption) body.caption = meta.caption;
+  if (meta.publishedAt) body.publishedAt = meta.publishedAt;
+  if (!body.caption && !body.publishedAt) return null;
+  const encoded = toBase64Url(new TextEncoder().encode(JSON.stringify(body)));
+  return encoded.length <= MAX_META_HEADER_CHARS ? encoded : null;
+}
+
+/** Strict decode and validation of the metadata header. `undefined` header = no metadata; `null` = invalid. */
+export function parseUploadMeta(header: string | null | undefined, now: number = Date.now()): UploadMeta | null {
+  if (header === null || header === undefined) return {};
+  if (header.length === 0 || header.length > MAX_META_HEADER_CHARS) return null;
+  const bytes = fromBase64Url(header);
+  if (!bytes) return null;
+  let raw: unknown;
+  try { raw = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)); } catch { return null; }
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const keys = Object.keys(raw);
+  if (keys.some(k => k !== "caption" && k !== "publishedAt")) return null;
+  const rec = raw as { caption?: unknown; publishedAt?: unknown };
+  const caption = validateCaption(rec.caption);
+  const publishedAt = validatePublishedAt(rec.publishedAt, now);
+  if (caption === null || publishedAt === null) return null;
+  return { ...(caption ? { caption } : {}), ...(publishedAt ? { publishedAt } : {}) };
+}
+
+/** URL query plus metadata header, validated together. */
+export function parseUploadRequest(url: URL, metaHeader: string | null, now: number = Date.now()): UploadQuery | null {
+  const query = parseUploadQuery(url);
+  const meta = parseUploadMeta(metaHeader, now);
+  return query && meta ? { ...query, ...meta } : null;
 }
 
 // ------------------------------------------------------------------ origin
@@ -125,7 +181,7 @@ export function corsHeaders(origin: string): Record<string, string> {
   return {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Reel-Meta",
     "Access-Control-Max-Age": "600",
     Vary: "Origin",
   };
@@ -206,53 +262,81 @@ export function readVideoDuration(file: unknown, probe: VideoProbe, timeoutMs = 
   });
 }
 
-export function buildUploadUrl(siteUrl: string, q: UploadQuery): string | null {
+export function buildUploadRequest(siteUrl: string, q: UploadQuery): { url: string; metaHeader: string | null } | null {
   let base: URL;
   try { base = new URL(siteUrl); } catch { return null; }
   if (base.protocol !== "https:" && !(base.protocol === "http:" && (base.hostname === "localhost" || base.hostname === "127.0.0.1"))) return null;
   const url = new URL(UPLOAD_PATH, base.origin);
   url.searchParams.set("itemId", q.itemId);
   url.searchParams.set("duration", String(q.duration));
-  if (q.publishedAt) url.searchParams.set("publishedAt", q.publishedAt);
-  if (q.caption) url.searchParams.set("caption", q.caption);
-  return url.href.length <= MAX_URL_CHARS ? url.href : null;
+  const metaHeader = encodeUploadMeta({ caption: q.caption, publishedAt: q.publishedAt });
+  // The metadata must survive encoding whole; it is never silently dropped.
+  if ((q.caption || q.publishedAt) && metaHeader === null) return null;
+  return url.href.length <= MAX_URL_CHARS ? { url: url.href, metaHeader } : null;
 }
 
 export type UploadOutcome =
   | { ok: true; generation: number }
-  | { ok: false; reason: "invalid" | "auth" | "rejected" | "rate_limited" | "network" | "unexpected" };
+  | { ok: false; reason: "invalid" | "auth" | "rejected" | "rate_limited" | "network" | "timeout" | "aborted" | "unexpected" };
+
+const TIMED_OUT = Symbol("timeout");
 
 /**
- * Upload the picked file with the user's Bearer token. The caller keeps its
- * own file/caption/date state on any failure; nothing is logged here. `ok`
- * is reported only for the server's association receipt, not a bare 2xx.
+ * Upload the picked file with the user's Bearer token. One finite deadline
+ * covers the request, the response headers AND the receipt body; a stalled
+ * stream or hung connection ends in `timeout` after aborting the request. The
+ * caller's own AbortSignal ends it as `aborted`. The caller keeps its file,
+ * caption and date on any failure; nothing is logged here. `ok` is reported
+ * only for the server's association receipt, not a bare 2xx.
  */
 export async function uploadSuppliedReel(
-  args: { siteUrl: string; token: string; query: UploadQuery; file: Blob & FileChoice },
+  args: { siteUrl: string; token: string; query: UploadQuery; file: Blob & FileChoice; timeoutMs?: number; signal?: AbortSignal },
   fetchImpl: typeof fetch = fetch,
 ): Promise<UploadOutcome> {
+  const timeoutMs = args.timeoutMs ?? DEFAULT_UPLOAD_TIMEOUT_MS;
   const declared = declaredTypeFor(args.file);
-  const url = buildUploadUrl(args.siteUrl, args.query);
-  if (!url || !declared || checkFileChoice(args.file) !== null || !args.token) return { ok: false, reason: "invalid" };
-  let response: Response;
+  const built = buildUploadRequest(args.siteUrl, args.query);
+  if (!built || !declared || checkFileChoice(args.file) !== null || !args.token) return { ok: false, reason: "invalid" };
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_UPLOAD_TIMEOUT_MS) return { ok: false, reason: "invalid" };
+  if (args.signal?.aborted) return { ok: false, reason: "aborted" };
+
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onAbort: (() => void) | undefined;
+  const deadline = new Promise<typeof TIMED_OUT>(resolve => { timer = setTimeout(() => resolve(TIMED_OUT), timeoutMs); });
+  const callerAborted = new Promise<"aborted">(resolve => {
+    onAbort = () => resolve("aborted");
+    args.signal?.addEventListener("abort", onAbort, { once: true });
+  });
+  const raced = <T,>(p: Promise<T>) => Promise.race([p, deadline, callerAborted]);
+  let response: Response | undefined;
   try {
-    response = await fetchImpl(url, {
+    const sent = await raced(fetchImpl(built.url, {
       method: "POST",
-      headers: { Authorization: `Bearer ${args.token}`, "Content-Type": declared },
+      headers: { Authorization: `Bearer ${args.token}`, "Content-Type": declared, ...(built.metaHeader ? { [META_HEADER]: built.metaHeader } : {}) },
       body: args.file,
-    });
-  } catch {
-    return { ok: false, reason: "network" };
-  }
-  if (response.status === 401) return { ok: false, reason: "auth" };
-  if (response.status === 429) return { ok: false, reason: "rate_limited" };
-  if (!response.ok) return { ok: false, reason: response.status >= 500 ? "unexpected" : "rejected" };
-  try {
-    const body: unknown = await response.json();
-    const b = body as { status?: unknown; generation?: unknown };
+      signal: controller.signal,
+    }));
+    if (sent === TIMED_OUT) return { ok: false, reason: "timeout" };
+    if (sent === "aborted") return { ok: false, reason: "aborted" };
+    response = sent as Response;
+    if (response.status === 401) return { ok: false, reason: "auth" };
+    if (response.status === 429) return { ok: false, reason: "rate_limited" };
+    if (!response.ok) return { ok: false, reason: response.status >= 500 ? "unexpected" : "rejected" };
+    const parsed = await raced(response.json().then((b: unknown) => b, () => null));
+    if (parsed === TIMED_OUT) return { ok: false, reason: "timeout" };
+    if (parsed === "aborted") return { ok: false, reason: "aborted" };
+    const b = parsed as { status?: unknown; generation?: unknown } | null;
     if (b && b.status === "attached" && typeof b.generation === "number" && Number.isSafeInteger(b.generation) && b.generation >= 0) {
       return { ok: true, generation: b.generation };
     }
-  } catch { /* fall through */ }
-  return { ok: false, reason: "unexpected" };
+    return { ok: false, reason: "unexpected" };
+  } catch {
+    return { ok: false, reason: "network" };
+  } finally {
+    clearTimeout(timer);
+    if (onAbort) args.signal?.removeEventListener("abort", onAbort);
+    controller.abort(); // tears down a stalled request or body; harmless after completion
+    void response?.body?.cancel().catch(() => {});
+  }
 }

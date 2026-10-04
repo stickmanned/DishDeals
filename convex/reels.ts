@@ -31,11 +31,19 @@ async function enqueue(ctx: MutationCtx, itemId: Id<"reelItems">, generation: nu
   const workflowId = await reelWorkflow.start(ctx, internal.reelWorkflow.process, { itemId, generation });
   await ctx.db.patch(itemId, { workflowId });
 }
-// Cancelling a workflow that already finished throws ("Workflow not running"); that is a normal state
-// (a failed item's workflow has completed), so it must not block retry, replacement or deletion.
+// Only an in-progress workflow can be cancelled. A completed, failed or already-canceled workflow (a
+// failed item's workflow has finished), or one already cleaned up, is a normal state and is skipped.
+// Any other failure (a bad id, a cancel error on a running workflow) is NOT swallowed.
 async function stopWorkflow(ctx: MutationCtx, workflowId: string | undefined) {
   if (!workflowId) return;
-  try { await reelWorkflow.cancel(ctx, workflowId as WorkflowId); } catch { /* already finished; cleanup below still runs */ }
+  let running: boolean;
+  try {
+    running = (await reelWorkflow.status(ctx, workflowId as WorkflowId)).type === "inProgress";
+  } catch (error) {
+    if (!/^Workflow not found:/.test(error instanceof Error ? error.message : "")) throw error;
+    running = false;
+  }
+  if (running) await reelWorkflow.cancel(ctx, workflowId as WorkflowId);
   // Cancellation prevents future steps. Running actions still use generation/existence guards.
   await ctx.scheduler.runAfter(60000, internal.reels.cleanupWorkflow, { workflowId });
 }
