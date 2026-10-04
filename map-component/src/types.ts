@@ -36,7 +36,11 @@ export interface DealMapProps {
   engine?: "auto"|MapEngine;
   tileUrl?: string;
   tileAttribution?: string;
+  /** Optional MapLibre style URL. Otherwise use the built-in vector streets, or tileUrl if supplied. */
+  mapStyleUrl?: string;
   showLocateControl?: boolean;
+  /** Disable when the host app provides its own selected-offer panel. */
+  showDealCard?: boolean;
   className?: string;
   style?: CSSProperties;
   ariaLabel?: string;
