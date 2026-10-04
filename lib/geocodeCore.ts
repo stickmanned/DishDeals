@@ -559,6 +559,25 @@ export function parseAndValidateProviderResponse(
 }
 
 /**
+ * Fire-and-forget cancellation for streams or readers with rejection handling.
+ *
+ * Ensures that if a cancel operation stalls or returns a rejected Promise,
+ * it cannot hang the execution thread or produce unhandled promise rejections.
+ */
+function safeFireAndForgetCancel(
+  target: { cancel?: (reason?: unknown) => Promise<unknown> } | null | undefined
+): void {
+  try {
+    const p = target?.cancel?.();
+    if (p && typeof p.catch === "function") {
+      p.catch(() => {});
+    }
+  } catch {
+    // Ignore synchronous cancellation errors
+  }
+}
+
+/**
  * Reads response body with strict byte-capping and active cancellation.
  */
 async function readCappedResponseBody(
@@ -570,13 +589,7 @@ async function readCappedResponseBody(
   if (contentLength) {
     const len = parseInt(contentLength, 10);
     if (Number.isFinite(len) && len > maxBytes) {
-      try {
-        if (response.body && typeof response.body.cancel === "function") {
-          await response.body.cancel();
-        }
-      } catch {
-        // ignore
-      }
+      safeFireAndForgetCancel(response.body);
       throw new GeocodeError(
         "INVALID_RESPONSE",
         `Response exceeded maximum size limit of ${maxBytes} bytes`
@@ -590,11 +603,7 @@ async function readCappedResponseBody(
     let receivedBytes = 0;
 
     const onAbort = () => {
-      try {
-        reader.cancel(new Error("The operation was aborted"));
-      } catch {
-        // ignore
-      }
+      safeFireAndForgetCancel(reader);
     };
 
     if (controller.signal.aborted) {
@@ -610,11 +619,7 @@ async function readCappedResponseBody(
         if (value) {
           receivedBytes += value.byteLength;
           if (receivedBytes > maxBytes) {
-            try {
-              await reader.cancel();
-            } catch {
-              // Reader cancellation best effort
-            }
+            safeFireAndForgetCancel(reader);
             throw new GeocodeError(
               "INVALID_RESPONSE",
               `Response exceeded maximum size limit of ${maxBytes} bytes`
@@ -688,7 +693,7 @@ async function readCappedResponseBody(
  * 3. On cache miss, attempts to reserve an application-wide slot via injected `reserveGlobalSlot`.
  *    If denied, throws an actionable GeocodeError("RATE_LIMITED", ..., retryAfterMs).
  * 4. Executes HTTP fetch with bounded timeout and policy-compliant headers, maintaining
- *    the finite deadline through full capped response read and parsing.
+ *    an explicit deadline Promise.race across full transport, stream reading, and parsing.
  * 5. Parses and double-validates coordinates against the search envelope.
  * 6. Stores valid results in the injected cache (if available).
  * 7. Returns 0..5 verified GeocodeResults.
@@ -736,19 +741,24 @@ export async function geocodeCore(
     );
   }
 
-  // 3. Network Transport Execution & Capped Body Reading with Single Timeout Deadline
+  // 3. Network Transport Execution & Capped Body Reading with Explicit Deadline Promise.race
   const transport = deps.transport ?? globalThis.fetch;
   const targetUrl = buildNominatimUrl(normalizedQuery, endpoint, bbox, maxResults);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  let response: Response;
-  let rawBodyText: string;
-  let rawJson: unknown;
+  let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutTimer = setTimeout(() => {
+      controller.abort();
+      const err = new Error("The operation was aborted");
+      err.name = "AbortError";
+      reject(err);
+    }, timeoutMs);
+  });
 
-  try {
-    response = await transport(targetUrl.toString(), {
+  const executionPromise = (async (): Promise<unknown> => {
+    const response = await transport(targetUrl.toString(), {
       method: "GET",
       headers: {
         "User-Agent": config.userAgent,
@@ -789,7 +799,7 @@ export async function geocodeCore(
     }
 
     // Read capped body with timeout STILL ACTIVE
-    rawBodyText = await readCappedResponseBody(
+    const rawBodyText = await readCappedResponseBody(
       response,
       controller,
       NOMINATIM_DEFAULTS.maxResponseBytes
@@ -797,13 +807,18 @@ export async function geocodeCore(
 
     // Parse JSON with timeout STILL ACTIVE
     try {
-      rawJson = JSON.parse(rawBodyText);
+      return JSON.parse(rawBodyText);
     } catch {
       throw new GeocodeError(
         "INVALID_RESPONSE",
         "Failed to parse JSON response from geocoding provider"
       );
     }
+  })();
+
+  let rawJson: unknown;
+  try {
+    rawJson = await Promise.race([executionPromise, timeoutPromise]);
   } catch (err: unknown) {
     if (err instanceof GeocodeError) {
       throw err;
@@ -820,7 +835,9 @@ export async function geocodeCore(
       "Network error communicating with geocoding provider"
     );
   } finally {
-    clearTimeout(timer);
+    if (timeoutTimer) {
+      clearTimeout(timeoutTimer);
+    }
   }
 
   const results = parseAndValidateProviderResponse(rawJson, bbox, maxResults);

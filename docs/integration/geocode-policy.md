@@ -119,8 +119,9 @@ export const METRO_VANCOUVER_BBOX: BoundingBox = {
 
 To protect memory, CPU, and network resources:
 - **Query Bounds:** 2–120 characters, alphanumeric requirement, rejects control characters, newlines, null bytes, URLs, and HTML tags.
-- **Response Size Capping:** Responses are strictly capped at 256 KB (`NOMINATIM_DEFAULTS.maxResponseBytes`). Oversized responses trigger active stream cancellation and throw `INVALID_RESPONSE`.
-- **Streaming Deadline:** A single finite timeout (`timeoutMs`, bounded between 100ms and 60,000ms) governs both initial network connection AND response body streaming/parsing. If the upstream provider stalls mid-stream, the connection is aborted cleanly.
+- **Response Size Capping:** Responses are strictly capped at 256 KB (`NOMINATIM_DEFAULTS.maxResponseBytes`). Oversized responses trigger fire-and-forget stream cancellation (`safeFireAndForgetCancel`) with rejection handling and throw `INVALID_RESPONSE`.
+- **Streaming Deadline & Promise.race:** An explicit deadline `Promise.race` (`timeoutMs`, bounded between 100ms and 60,000ms) governs the full pipeline—transport, body stream reading, fallback `.text()`, and parsing. Even if an injected transport or body stream reader ignores `AbortSignal` or stalls indefinitely, the function is guaranteed to return or reject within `timeoutMs`.
+- **Fire-and-Forget Stream Cancellation:** Stream reader cancellation is executed asynchronously without `await` and attaches rejection handlers, ensuring that a slow, non-settling, or rejecting `cancel()` method cannot stall execution or cause unhandled promise rejections.
 - **Provider Record Capping:** Capped to processing a maximum of 50 records from upstream arrays.
 - **Label Sanitization:** Candidate labels strip control characters (ASCII 0x00–0x1F, 0x7F–0x9F) and null bytes, collapse repeated internal spaces, and are bounded to a maximum length of 300 characters.
 - **Privacy-Preserving Errors:** Error messages for network failures or unavailable providers use generic safe messages (`"Network error communicating with geocoding provider"`) to prevent sensitive place queries or user street addresses from leaking into server logs or exception causes.

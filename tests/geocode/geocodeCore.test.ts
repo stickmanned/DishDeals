@@ -467,6 +467,128 @@ describe("geocodeCore: Policy & Transport Unit Tests", () => {
         expect((err as GeocodeError).code).toBe("INVALID_RESPONSE");
       }
     });
+
+    it("handles non-settling injected transport via explicit deadline Promise.race", async () => {
+      const reserveGlobalSlot = vi.fn().mockResolvedValue({ granted: true });
+      // Transport that ignores abort signal and never settles
+      const transport = vi.fn().mockImplementation(() => new Promise(() => {}));
+
+      const deps: GeocodeDeps = { reserveGlobalSlot, transport };
+
+      try {
+        await geocodeCore(
+          { query: "Tenen Restaurant" },
+          { ...VALID_CONFIG, timeoutMs: 120 },
+          deps
+        );
+        expect.unreachable("Should have timed out via deadline Promise.race");
+      } catch (err) {
+        expect(err).toBeInstanceOf(GeocodeError);
+        expect((err as GeocodeError).code).toBe("PROVIDER_TIMEOUT");
+        expect((err as GeocodeError).message).toContain("timed out after 120ms");
+      }
+    });
+
+    it("handles slow or stalled reader.cancel() on oversized response without blocking", async () => {
+      const reserveGlobalSlot = vi.fn().mockResolvedValue({ granted: true });
+
+      // Create a stream with a cancel method that never settles
+      const oversizedChunk = new Uint8Array(300 * 1024);
+      let chunkServed = false;
+      const streamWithStalledCancel = new ReadableStream({
+        pull(controller) {
+          if (!chunkServed) {
+            chunkServed = true;
+            controller.enqueue(oversizedChunk);
+          }
+        },
+        cancel() {
+          // Never settles (would hang if awaited)
+          return new Promise(() => {});
+        },
+      });
+
+      const transport = vi.fn().mockResolvedValue(
+        new Response(streamWithStalledCancel, {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+
+      const deps: GeocodeDeps = { reserveGlobalSlot, transport };
+
+      try {
+        await geocodeCore({ query: "Tenen Restaurant" }, VALID_CONFIG, deps);
+        expect.unreachable("Should have thrown INVALID_RESPONSE without hanging on cancel");
+      } catch (err) {
+        expect(err).toBeInstanceOf(GeocodeError);
+        expect((err as GeocodeError).code).toBe("INVALID_RESPONSE");
+        expect((err as GeocodeError).message).toContain("exceeded maximum size limit");
+      }
+    });
+
+    it("handles reader.cancel() that returns a rejected Promise without unhandled rejection", async () => {
+      const reserveGlobalSlot = vi.fn().mockResolvedValue({ granted: true });
+
+      const oversizedChunk = new Uint8Array(300 * 1024);
+      let chunkServed = false;
+      const streamWithRejectingCancel = new ReadableStream({
+        pull(controller) {
+          if (!chunkServed) {
+            chunkServed = true;
+            controller.enqueue(oversizedChunk);
+          }
+        },
+        cancel() {
+          return Promise.reject(new Error("Underlying stream cancel failed"));
+        },
+      });
+
+      const transport = vi.fn().mockResolvedValue(
+        new Response(streamWithRejectingCancel, {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+
+      const deps: GeocodeDeps = { reserveGlobalSlot, transport };
+
+      try {
+        await geocodeCore({ query: "Tenen Restaurant" }, VALID_CONFIG, deps);
+        expect.unreachable("Should have caught INVALID_RESPONSE");
+      } catch (err) {
+        expect(err).toBeInstanceOf(GeocodeError);
+        expect((err as GeocodeError).code).toBe("INVALID_RESPONSE");
+      }
+    });
+
+    it("handles fallback response.text() that never settles via deadline Promise.race", async () => {
+      const reserveGlobalSlot = vi.fn().mockResolvedValue({ granted: true });
+
+      const mockResponse = {
+        status: 200,
+        headers: new Headers({ "Content-Type": "application/json" }),
+        // Body is not a readable stream, text never settles
+        body: null,
+        text: () => new Promise<string>(() => {}),
+      } as unknown as Response;
+
+      const transport = vi.fn().mockResolvedValue(mockResponse);
+      const deps: GeocodeDeps = { reserveGlobalSlot, transport };
+
+      try {
+        await geocodeCore(
+          { query: "Tenen Restaurant" },
+          { ...VALID_CONFIG, timeoutMs: 120 },
+          deps
+        );
+        expect.unreachable("Should have timed out on stalled text fallback");
+      } catch (err) {
+        expect(err).toBeInstanceOf(GeocodeError);
+        expect((err as GeocodeError).code).toBe("PROVIDER_TIMEOUT");
+        expect((err as GeocodeError).message).toContain("timed out after 120ms");
+      }
+    });
   });
 
   describe("7. Provider Output Parsing, Numeric Coords, and Label Sanitization", () => {
