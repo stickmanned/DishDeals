@@ -10,6 +10,7 @@ import {
   checkRecordingFile,
   namedFrames,
   prepareRecordingFrames,
+  recordingSelectionLine,
   RecordingFrameError,
   RECORDING_FRAME_COUNT,
 } from "../../lib/recordingFrameFlow";
@@ -99,6 +100,25 @@ describe("checkRecordingFile", () => {
     expect(checkRecordingFile({ name: "a.png", type: "image/png", size: 10 })).toMatchObject({ ok: false, code: "unsupported" });
     expect(checkRecordingFile({ name: "a.xyz", type: "", size: 10 })).toMatchObject({ ok: false, code: "unsupported" });
     expect(checkRecordingFile(null)).toMatchObject({ ok: false, code: "empty" });
+  });
+});
+
+describe("recordingSelectionLine", () => {
+  it("claims nothing is produced until the controller has all four receipts", async () => {
+    const before = recordingSelectionLine("clip.mov", 1048576, false);
+    expect(before).toMatch(/recording selected/);
+    expect(before).toMatch(/will be taken/);
+    expect(before).not.toMatch(/uploaded/);
+    expect(recordingSelectionLine("clip.mov", 1048576, true)).toMatch(/4 frames taken and uploaded/);
+
+    // The flag the UI passes is the controller's: false after picking, after a failed decode, true only after receipts.
+    const bad = withRecording({ prepareFrames: vi.fn(async () => frames(3)) as unknown as FlowDeps["prepareFrames"] });
+    expect(bad.flow.getSnapshot().uploaded).toBe(false);
+    await bad.flow.analyze();
+    expect(bad.flow.getSnapshot().uploaded).toBe(false);
+    const good = withRecording();
+    await good.flow.analyze();
+    expect(good.flow.getSnapshot().uploaded).toBe(true);
   });
 });
 

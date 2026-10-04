@@ -9,7 +9,7 @@
 
 import type { ChangeEvent } from "react";
 import { isRunning, type FlowSnapshot, type ImageDraftFlow } from "@/lib/imageDraftFlow";
-import { RECORDING_COPY, RECORDING_FRAME_COUNT } from "@/lib/recordingFrameFlow";
+import { RECORDING_COPY, recordingSelectionLine } from "@/lib/recordingFrameFlow";
 
 export function RecordingPicker({ flow, snap }: { flow: ImageDraftFlow; snap: FlowSnapshot }) {
   const running = isRunning(snap.phase);
@@ -45,7 +45,7 @@ export function RecordingPicker({ flow, snap }: { flow: ImageDraftFlow; snap: Fl
       )}
       {recording && (
         <p role="status">
-          {recording.name} · {(recording.size / 1048576).toFixed(1)} MB · {RECORDING_FRAME_COUNT} frames{snap.uploaded ? " · uploaded" : ""}{" "}
+          {recordingSelectionLine(recording.name, recording.size, snap.uploaded)}{" "}
           <button type="button" className="text-button" disabled={running} onClick={() => flow.selectRecording(null)}>
             Remove
           </button>

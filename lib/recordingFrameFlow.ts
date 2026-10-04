@@ -62,10 +62,22 @@ export async function prepareRecordingFrames(
   return namedFrames(await grab(file, RECORDING_FRAME_COUNT, { signal }));
 }
 
+/**
+ * What the chooser says about the selected recording. Claims about frames are made only for work that has
+ * happened: before analysis it is only "selected"; "four frames uploaded" needs all four real receipts
+ * (`uploaded` is the controller's receipt flag, never set by picking a file).
+ */
+export function recordingSelectionLine(name: string, sizeBytes: number, uploaded: boolean): string {
+  const base = `${name} · ${(sizeBytes / 1048576).toFixed(1)} MB · recording selected`;
+  return uploaded
+    ? `${base} · ${RECORDING_FRAME_COUNT} frames taken and uploaded`
+    : `${base} · ${RECORDING_FRAME_COUNT} frames will be taken when you ask for suggestions`;
+}
+
 export const RECORDING_COPY = {
   heading: "Or a screen recording (optional)",
   explain:
-    "Four still frames are taken from the recording on your device, uploaded to your account, and read together as images. Audio is not analyzed here: add anything that was said in the extra text box. This is not the Reel video analysis.",
+    "When you ask for suggestions, four still frames are taken from the recording on your device, uploaded to your account, and read together as images. Audio is not analyzed here: add anything that was said in the extra text box. This is not the Reel video analysis.",
   decoding: "Taking four frames from your recording…",
   uploading: (done: number, total: number) => `Uploading frame ${Math.min(done + 1, total)} of ${total}…`,
   extracting: "Reading the four frames. This can take a little while.",

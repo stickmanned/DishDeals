@@ -19,6 +19,17 @@ Run generations, cancel, source-switch/unmount invalidation, late-result ignore,
 - This is the **screenshot path fed by a recording**. The primary Reel video/audio analysis stays `/reels` with the actual video; nothing here can establish its acceptance.
 - Native/primary video and audio paths are untouched.
 
+## Next.js guide compliance (AGENTS.md requires reading the installed guides first)
+Read in `node_modules/next/dist/docs/01-app/`: `03-api-reference/01-directives/use-client.md`, `02-guides/lazy-loading.md`, `01-getting-started/05-server-and-client-components.md`. Findings checked against this change:
+- `'use client'` must be the first line, before imports: true for `CanonicalPost.tsx` and `RecordingFrames.tsx`.
+- Props crossing from a Server Component must be serializable: `app/post/page.tsx` (a Server Component) renders `<CanonicalPost />` with no props. `RecordingPicker` takes the controller object and snapshot, but it is only rendered inside the client `CanonicalPost`, never from a server component, so nothing non-serializable crosses the boundary.
+- Browser-only code must not run during prerender: `lib/recordingFrameFlow.ts` and `lib/image.ts` touch `window`/`document`/`File` only inside functions (image.ts documents "safe for SSR"; `grabFrames` throws outside a browser by design), and the decoder runs only from a click via `analyze()`. A static import is therefore fine.
+- Lazy loading is optional performance guidance. `next/dynamic` with `ssr: false` is not allowed in Server Components and is not needed here, so none was added.
+- Not run: `next build`/a browser mount (needs the map build and a browser). Mounted behavior is verified by imports/typecheck/lint and the controller tests only.
+
+## Copy honesty
+The chooser says "recording selected ... frames will be taken when you ask for suggestions" until the controller's `uploaded` flag (all four real receipts) is true; only then "4 frames taken and uploaded" (`recordingSelectionLine`, tested). Picking a file never claims frames exist.
+
 ## Pending (not claimed)
 - Real 10 s browser/native decode of a genuine local recording, real upload and model reading of real frames: not run; no clip was invented. Only injected fakes were exercised.
 - **Missing human interface: frame reveal.** The repo has no existing Harry frame-reveal mechanism, so none was used or built. The frontend owners need to define where the four frames are shown and any animation; the controller exposes `progress {done,total}` and `offers[].imageIds` for it.
