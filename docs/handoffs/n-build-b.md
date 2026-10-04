@@ -62,9 +62,9 @@
     - `NSExtensionActivationRule`: `NSExtensionActivationSupportsText: true`, `NSExtensionActivationSupportsWebURLWithMaxCount: 1`
     - `UIAppFonts`: `[ "figtree.ttf" ]`
 - Truthful boundary statement & distinct pending gates:
-  1. **Unsigned Simulator Build Only**: Passing generic iOS Simulator SDK compilation confirms that Harry's Swift sources, asset references, and extension embedding configurations compile and link without errors under Xcode 27.
+  1. **Unsigned Simulator Build Only**: Passing generic iOS Simulator SDK compilation confirms that Harry's Swift sources, asset references, and extension embedding configurations compile and link without errors under Xcode 27. The native build is an actual PASS for unsigned SDK compilation only.
   2. **Simulator Runtime Execution Gate**: This build did NOT execute the application in an iOS Simulator runtime. iOS simulator runtimes are currently absent (`xcrun simctl list runtimes` is empty) and downloading in the background under William.
-  3. **Physical Device & Code Signing Gate**: Real physical iPhone installation requires code signing with William's Apple account. Free Apple Personal Teams may not support the App Group entitlement (`group.dev.dishdeals`) or Keychain Sharing, which are required for authenticated token handoff and background queue processing.
+  3. **Physical iPhone & Code Signing Gate**: Physical iPhone installation and on-device testing are independent of simulator runtime downloads. Per official Apple documentation ([Supported Capabilities](https://developer.apple.com/help/account/reference/supported-capabilities/)), both App Groups and Keychain Sharing are supported across all account tiers, including free Apple Developer accounts (Personal Team), and are not paid-only. However, automatic signing with William's Apple ID remains unconfigured and unverified on this Mac.
   4. **Live E2E Verification Gate**: Actual Instagram share sheet receipt, ScrapeCreators media download, and Gemini video/caption extraction remain unverified on hardware.
 - Checks actually run (command, exit code, evidence):
   - `xcodegen generate`: exit code 0; generated project cleanly.
@@ -78,4 +78,4 @@
   - None published per active local packet instructions ("Direct local doc commit handoff then stop; no askback/push/provider/cloud").
 - Stop condition met; next proposed task (not dispatched):
   - N-BUILD-B complete; stopping per packet rule.
-  - Next proposed task: Northstar review / integration of N-BUILD-B, or physical iPhone signing and device testing once William's runtime download completes.
+  - Next proposed task: Northstar review / integration of N-BUILD-B, or configuring William's Apple ID signing in `Dinedeals.xcodeproj` for physical iPhone testing (independent of simulator runtime download).
