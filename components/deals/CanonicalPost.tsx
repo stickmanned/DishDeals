@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore, type ChangeEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type ChangeEvent, type ReactNode } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useConvexAuth as useSession } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
@@ -33,6 +33,7 @@ import {
   type Offer,
 } from "@/lib/imageDraftFlow";
 import { isValidDealId } from "@/lib/mapPage";
+import { AndroidShareImport } from "./AndroidShareImport";
 import { RecordingPicker } from "./RecordingFrames";
 import { prepareRecordingFrames } from "@/lib/recordingFrameFlow";
 import { browserDemoCache, CACHED_COPY, cachedOfferNote } from "@/lib/demoCacheFlow";
@@ -109,7 +110,13 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
   const notice = sessionNotice({ isLoading: session.isLoading, isAuthenticated: session.isAuthenticated, profile: me === undefined ? undefined : me !== null });
 
   // Once there is work on the page it stays mounted even if the session blips; only publishing needs a session.
-  if (!ready && !hasWork) return <Gate loading={session.isLoading || (session.isAuthenticated && me === undefined)} signedIn={session.isAuthenticated} />;
+  if (!ready && !hasWork) {
+    return (
+      <Gate loading={session.isLoading || (session.isAuthenticated && me === undefined)} signedIn={session.isAuthenticated}>
+        <AndroidShareImport flow={flow} ready={ready} signedIn={session.isAuthenticated} />
+      </Gate>
+    );
+  }
 
   return (
     <div className="narrow-page post-canonical">
@@ -132,6 +139,7 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
           , then publish.
         </p>
       )}
+      <AndroidShareImport flow={flow} ready={ready} signedIn={session.isAuthenticated} />
       <SourcePanel flow={flow} snap={snap} />
       <OffersPanel flow={flow} snap={snap} />
       <FormsPanel
@@ -165,10 +173,11 @@ function Header() {
   );
 }
 
-function Gate({ loading, signedIn }: { loading: boolean; signedIn: boolean }) {
+function Gate({ loading, signedIn, children }: { loading: boolean; signedIn: boolean; children?: ReactNode }) {
   return (
     <div className="narrow-page">
       <Header />
+      {children}
       <div className="panel form-stack">
         {loading ? (
           <p role="status">Checking your session…</p>
