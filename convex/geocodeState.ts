@@ -14,8 +14,9 @@ const candidate = v.object({ lat: v.number(), lng: v.number(), label: v.string()
 /**
  * Reserve the single application-wide provider slot. The grant time lives in one durable row; mutations
  * serialize, so concurrent users and actions can never both win inside the same second. A request is
- * granted when at least 1000 ms have passed since the last grant (exactly 1000 ms is allowed).
- * A clock that moved backwards is treated as a fresh start rather than blocking indefinitely.
+ * granted when at least 1000 ms have passed since the last grant (exactly 1000 ms is allowed). A clock that
+ * reads earlier than the last grant fails closed: nothing is granted, the stored time is not changed, and the
+ * caller is told to retry in at most 1000 ms, so a backwards clock can never bypass the one-per-second limit.
  */
 export const reserveSlot = internalMutation({
   args: {},
@@ -27,8 +28,8 @@ export const reserveSlot = internalMutation({
       await ctx.db.insert("geocodeGate", { key: GATE_KEY, lastGrantedAt: now });
       return { granted: true as const };
     }
-    const elapsed = now - row.lastGrantedAt;
-    if (elapsed >= 0 && elapsed < MIN_INTERVAL_MS) return { granted: false as const, retryAfterMs: MIN_INTERVAL_MS - elapsed };
+    const elapsed = now - row.lastGrantedAt; // negative when the clock went backwards
+    if (elapsed < MIN_INTERVAL_MS) return { granted: false as const, retryAfterMs: Math.min(MIN_INTERVAL_MS, Math.max(1, MIN_INTERVAL_MS - elapsed)) };
     await ctx.db.patch(row._id, { lastGrantedAt: now });
     return { granted: true as const };
   },

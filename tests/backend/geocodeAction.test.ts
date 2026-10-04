@@ -185,7 +185,7 @@ describe("the durable application-wide gate", () => {
     expect(gate).toHaveLength(1); // a single singleton row
     expect(gate[0]).toMatchObject({ key: "nominatim", lastGrantedAt: T0 });
   });
-  it("direct reservation: exactly one grant among concurrent calls, a singleton row, boundary and clock-skew behaviour", async () => {
+  it("direct reservation: exactly one grant among concurrent calls and a singleton row", async () => {
     const s = await setup();
     const results = await Promise.all(Array.from({ length: 10 }, () => s.t.mutation(internal.geocodeState.reserveSlot, {})));
     expect(results.filter(r => r.granted)).toHaveLength(1);
@@ -194,9 +194,39 @@ describe("the durable application-wide gate", () => {
     expect(await s.t.mutation(internal.geocodeState.reserveSlot, {})).toEqual({ granted: false, retryAfterMs: 1 });
     vi.setSystemTime(T0 + 1000);
     expect(await s.t.mutation(internal.geocodeState.reserveSlot, {})).toEqual({ granted: true });
-    vi.setSystemTime(T0 - 60_000); // the clock moved backwards: start fresh rather than block for a minute
+  });
+  it("a backwards clock fails closed: no grant, lastGrantedAt untouched, bounded retry, recovery only at the real boundary", async () => {
+    const s = await setup();
     expect(await s.t.mutation(internal.geocodeState.reserveSlot, {})).toEqual({ granted: true });
-    expect(await s.t.mutation(internal.geocodeState.reserveSlot, {})).toMatchObject({ granted: false });
+    const granted = (await s.gate())[0];
+    expect(granted.lastGrantedAt).toBe(T0);
+    for (const back of [1, 500, 60_000, 3_600_000]) {
+      vi.setSystemTime(T0 - back);
+      expect(await s.t.mutation(internal.geocodeState.reserveSlot, {})).toEqual({ granted: false, retryAfterMs: 1000 }); // bounded and actionable, never huge
+      expect(await s.gate()).toEqual([granted]); // the row did not advance or move backwards
+    }
+    vi.setSystemTime(T0); // the clock is back at the grant time: still inside the second
+    expect(await s.t.mutation(internal.geocodeState.reserveSlot, {})).toEqual({ granted: false, retryAfterMs: 1000 });
+    vi.setSystemTime(T0 + 999);
+    expect(await s.t.mutation(internal.geocodeState.reserveSlot, {})).toEqual({ granted: false, retryAfterMs: 1 });
+    expect(await s.gate()).toEqual([granted]);
+    vi.setSystemTime(T0 + 1000);
+    expect(await s.t.mutation(internal.geocodeState.reserveSlot, {})).toEqual({ granted: true });
+    expect((await s.gate())[0].lastGrantedAt).toBe(T0 + 1000);
+  });
+  it("a backwards clock cannot bring a second provider request through the action", async () => {
+    const s = await setup(); enable(); const net = network([answer([hit("A")]), answer([hit("B")])]);
+    await find(s, "first query", 0);
+    const granted = await s.gate();
+    vi.setSystemTime(T0 - 30_000);
+    const denied = await failure(find(s, "second query", 1));
+    expect(denied).toMatchObject({ code: "RATE_LIMITED", retryAfterMs: 1000 });
+    expect(net.calls).toHaveLength(1);
+    expect(await s.gate()).toEqual(granted);
+    expect(await s.cache()).toHaveLength(1); // nothing new was cached
+    vi.setSystemTime(T0 + 1000);
+    await find(s, "second query", 1);
+    expect(net.calls).toHaveLength(2);
   });
   it("a failed provider request still consumed its slot", async () => {
     const s = await setup(); enable(); const net = network([new Response("", { status: 503 })]);
