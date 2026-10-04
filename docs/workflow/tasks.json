@@ -670,9 +670,10 @@
       "packet": "docs/tasks/N-SOURCE-A.md",
       "pinnedBaseSha": "5190dfaf2695a75e5f211809cae33e35a10394c6",
       "backendTarget": "local synthetic tests only; cloud/provider authorization pending",
-      "implementationState": "830063a reviewed; finite upload/body timeout and bounded metadata corrections requested; not yet integrated",
+      "implementationState": "83629a4 corrections reviewed and locally integrated7535260",
       "nativeChecks": "pending real WKWebView file picker",
-      "phoneAcceptance": "pending real native receipt/recording/VLM"
+      "phoneAcceptance": "pending real native receipt/recording/VLM",
+      "localChecks": "Northstar combined npmruncheck PASS821tests/23workflow/typecheck/lint/build; no live source/provider"
     },
     {
       "id": "T-14A",
@@ -696,6 +697,72 @@
       "implementationState": "ee1ca52 reviewed; cleanup/late-event/encoder-deadline corrections requested; not integrated",
       "nativeChecks": "pending actual WKWebView media decoding",
       "phoneAcceptance": "pending real10second recording and Harry reveal"
+    },
+    {
+      "id": "N-MAP-B",
+      "owner": "Cinder",
+      "branch": "t-21-saved-deal-map",
+      "worktree": "map-route-bindings",
+      "status": "prepared",
+      "dependencies": [
+        "N-MAP-A",
+        "T-09B",
+        "T-10A",
+        "T-11A"
+      ],
+      "allowedPaths": [
+        "app/map/",
+        "app/deal/[id]/page.tsx",
+        "components/maps/CanonicalDealMapPage.tsx",
+        "components/deals/CanonicalDealDetails.tsx",
+        "components/frontend/Shell.tsx",
+        "lib/mapPage.ts",
+        "tests/map/mapPage.test.ts",
+        "map-component/vite.config.ts",
+        "map-component/src/MapLibreView.tsx",
+        "scripts/map-assets.mjs",
+        "docs/integration/map-route.md",
+        "docs/handoffs/n-map-b.md"
+      ],
+      "packet": "docs/tasks/N-MAP-B.md",
+      "pinnedBaseSha": "44133042340c5d4a140453a63aa445edc163e637",
+      "backendTarget": "local source/tests only; no cloud",
+      "implementationState": "dispatched to Cinder; new cpy source reconciliation required",
+      "nativeChecks": "pending runtime/WKWebView",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-09C",
+      "owner": "Loom",
+      "branch": "t-09-canonical-deal-writes",
+      "worktree": "canonical-deal-writes",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-03",
+        "T-09B",
+        "T-10A",
+        "N-SOURCE-A"
+      ],
+      "allowedPaths": [
+        "convex/deals.ts",
+        "convex/schema.ts",
+        "convex/convex.config.ts",
+        "convex/_generated/api.d.ts",
+        "lib/dealWrite.ts",
+        "tests/backend/dealWrites.test.ts",
+        "tests/backend/dealNearby.test.ts",
+        "package.json",
+        "package-lock.json",
+        "docs/integration/canonical-deal-writes.md",
+        "docs/handoffs/t-09c.md"
+      ],
+      "packet": "docs/tasks/T-09C.md",
+      "pinnedBaseSha": "75352608f1cbd8b8a573996efa4745d76ee5f451",
+      "backendTarget": "actual in-memory component tests only; no cloud",
+      "implementationState": "dispatched to Loom sole canonical schema/package/API/deals writer",
+      "nativeChecks": "pending native form/map",
+      "phoneAcceptance": "pending"
     }
   ],
   "completedDependencies": {
