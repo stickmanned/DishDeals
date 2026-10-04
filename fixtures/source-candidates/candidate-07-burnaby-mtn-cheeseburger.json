@@ -4,28 +4,30 @@
     "restaurant": "Burnaby Mountain Restaurant",
     "address": "7600 Halifax St, Burnaby, BC V5A 4M8",
     "dealText": "Happy Hour: Classic Cheeseburger (all-beef patty, brioche bun, cheddar, lettuce, tomato, pickles, BMC sauce)",
-    "priceCad": 15.0,
+    "priceCad": null,
     "validDays": ["wed", "thu", "fri", "sat", "sun"],
     "validStart": "14:30",
     "validEnd": "16:30",
     "expiresOn": null,
     "conditions": [
-      "Happy Hour pricing Wednesday to Sunday 2:30pm - 4:30pm",
-      "Dine-in only",
-      "Add-on bacon +$2 or mushrooms +$2 optional"
+      "Happy Hour menu item (Wednesday to Sunday 2:30pm - 4:30pm)",
+      "Optional add-ons (bacon +$2, mushroom medley +$2)"
     ],
     "sourceUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour"
   },
   "provenance": {
-    "sourceUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour",
+    "offerUrl": "https://burnabyhospitality.ca/burnaby-mountain-happy-hour",
+    "addressUrl": "https://burnabyhospitality.ca/restaurants/burnaby-mountain-restaurant",
     "accessDate": "2026-10-03",
-    "adImageUrl": "https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg",
-    "currencyEvidence": "$15.00 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+    "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+    "statedAmount": 15.0,
+    "statedCurrency": "$15.00 displayed on menu; ISO currency unstated (pending CAD confirmation)",
     "coordinatesStatus": "omitted_pending_pinyuan_pin",
-    "expiryStatus": "ongoing_happy_hour_no_sunset_date",
+    "adImageUrl": "https://burnabyhospitality.ca/sites/default/files/styles/food_menu_322x390_/public/2026-05/happy_hour_sliderbox.jpg",
     "missingFields": [
       "lat",
       "lng",
+      "priceCad",
       "flyerPhoto"
     ]
   }

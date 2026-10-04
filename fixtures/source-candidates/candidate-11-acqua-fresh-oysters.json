@@ -3,29 +3,38 @@
   "canonicalProposal": {
     "restaurant": "Acqua Restaurant & Bar",
     "address": "4201 Lougheed Hwy, Burnaby, BC V5C 3Y6",
-    "dealText": "Happy Hour: Fresh Oysters ($1.50 each)",
-    "priceCad": 1.5,
-    "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-    "validStart": "16:00",
-    "validEnd": "18:00",
+    "dealText": "Happy Hour: Fresh Oysters (minimum order of 6)",
+    "priceCad": null,
+    "validDays": [],
+    "validStart": null,
+    "validEnd": null,
     "expiresOn": null,
     "conditions": [
-      "Happy Hour pricing: Sun-Mon 4pm-6pm, Tue-Sat 4pm-6pm & 9pm-10pm",
-      "Dine-in bar/patio",
+      "Minimum order of 6 pieces",
+      "Price varies by dining area: patio $1.50/pc vs bar/lounge $1.75/pc",
       "Located at Executive Suites Hotel Burnaby"
     ],
-    "sourceUrl": "https://acquarestaurantandbar.com/"
+    "sourceUrl": "https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf"
   },
   "provenance": {
-    "sourceUrl": "https://acquarestaurantandbar.com/",
+    "offerUrl": "https://acquarestaurantandbar.com/pdf/Acqua-HH-Menu-05-2026.pdf",
+    "addressUrl": "https://acquarestaurantandbar.com/",
     "accessDate": "2026-10-03",
-    "adImageUrl": null,
-    "currencyEvidence": "$1.50 each displayed on Happy Hour food menu; ISO currency unstated (pending CAD confirmation)",
+    "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+    "statedAmount": null,
+    "statedCurrency": "Conflicting stated prices: $1.50 each on patio menu vs $1.75 each on bar/lounge menu (minimum 6 pieces); ISO currency unstated (pending CAD confirmation)",
+    "priceConflict": "PDF Page 1 lists $1.75 each (min 6); PDF Page 3 lists $1.50 each (min 6). Minimum order of 6 pieces applies to both.",
     "coordinatesStatus": "omitted_pending_pinyuan_pin",
-    "expiryStatus": "ongoing_happy_hour_no_sunset_date",
+    "adImageUrl": null,
+    "fullSchedule": "Sunday-Monday 16:00-18:00; Tuesday-Saturday 16:00-18:00 and 21:00-22:00 (homepage banner also displays 'Daily from 4–6 PM')",
+    "representationalLimitation": "DishDeals schema only supports a single contiguous validStart/validEnd window per record; cannot combine afternoon 16:00-18:00 and late-night 21:00-22:00 without multiple records. Hours left pending to avoid silently discarding late-night window.",
     "missingFields": [
       "lat",
       "lng",
+      "priceCad",
+      "validDays",
+      "validStart",
+      "validEnd",
       "flyerPhoto"
     ]
   }

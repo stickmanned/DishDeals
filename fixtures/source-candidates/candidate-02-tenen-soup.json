@@ -4,27 +4,32 @@
     "restaurant": "Tenen Restaurant",
     "address": "7569 Royal Oak Ave, Burnaby, BC V5J 4J8",
     "dealText": "Lunch Special: Soup of the Day (cup of choice daily soup)",
-    "priceCad": 7.95,
-    "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-    "validStart": "10:30",
+    "priceCad": null,
+    "validDays": [],
+    "validStart": null,
     "validEnd": null,
     "expiresOn": null,
     "conditions": [
-      "Lunch special menu item",
-      "Daily soup selection"
+      "Lunch special menu item"
     ],
     "sourceUrl": "https://www.tenenrestaurant.com/lunchspecials"
   },
   "provenance": {
-    "sourceUrl": "https://www.tenenrestaurant.com/lunchspecials",
+    "offerUrl": "https://www.tenenrestaurant.com/lunchspecials",
+    "addressUrl": "https://www.tenenrestaurant.com/contact",
     "accessDate": "2026-10-03",
-    "adImageUrl": null,
-    "currencyEvidence": "7.95 $ displayed on website; ISO currency unstated (pending CAD confirmation)",
+    "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+    "statedAmount": 7.95,
+    "statedCurrency": "7.95 $ displayed on website; ISO currency unstated (pending CAD confirmation)",
     "coordinatesStatus": "omitted_pending_pinyuan_pin",
-    "expiryStatus": "ongoing_lunch_special_no_sunset_date",
+    "adImageUrl": null,
+    "hoursAndDaysPending": "Footer displays general restaurant business hours 10:30am-10:30pm daily, not verified lunch special offer validity. Specific lunch validity days and start/end hours are unstated on the page and remain pending.",
     "missingFields": [
       "lat",
       "lng",
+      "priceCad",
+      "validDays",
+      "validStart",
       "validEnd",
       "flyerPhoto"
     ]

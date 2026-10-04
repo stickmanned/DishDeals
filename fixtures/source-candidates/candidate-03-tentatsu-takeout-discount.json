@@ -5,27 +5,35 @@
     "address": "4266 Hastings St, Burnaby, BC",
     "dealText": "10% off all Take Out orders of $30 & up (before taxes) - phone call orders only",
     "priceCad": null,
-    "validDays": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-    "validStart": "11:00",
-    "validEnd": "21:30",
+    "validDays": [],
+    "validStart": null,
+    "validEnd": null,
     "expiresOn": null,
     "conditions": [
       "Take Out orders of $30 & up before taxes",
       "Phone call orders only",
-      "Not valid for online order or delivery platforms"
+      "Excludes lunch specials, combos, and other special items"
     ],
     "sourceUrl": "https://www.tentatsusushi.com/"
   },
   "provenance": {
-    "sourceUrl": "https://www.tentatsusushi.com/",
+    "offerUrl": "https://www.tentatsusushi.com/",
+    "addressUrl": "https://www.tentatsusushi.com/tentatsuburnaby.html",
     "accessDate": "2026-10-03",
-    "adImageUrl": null,
-    "currencyEvidence": "$ symbol displayed in minimum spend ($30&up); percentage discount offer",
+    "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+    "statedAmount": null,
+    "statedCurrency": "10% off take-out orders of $30 & up before taxes; ISO currency unstated (pending CAD confirmation)",
     "coordinatesStatus": "omitted_pending_pinyuan_pin",
-    "expiryStatus": "ongoing_promotion_no_sunset_date",
+    "adImageUrl": null,
+    "hoursAndDaysPending": "Store business hours 11:00am-9:30pm daily are general operating hours; specific promotion offer hours and valid days are not independently confirmed and remain pending.",
+    "exclusions": "Excludes lunch specials, combos, and other special items",
     "missingFields": [
       "lat",
       "lng",
+      "priceCad",
+      "validDays",
+      "validStart",
+      "validEnd",
       "flyerPhoto"
     ]
   }
