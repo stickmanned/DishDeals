@@ -1,0 +1,21 @@
+# N-RELEASE-A handoff
+
+- Status: review corrections applied; ready for re-review
+- Owner, branch, worktree, base SHA, head SHA: Mica (Claude Code Sonnet 5.5, medium); `t-19-native-release-preparation`; `/Users/william/Code/DishDeals-worktrees/native-release-preparation`; base `25cc20b`; first commit `e034239`; correction commit is this branch's head (`git log -1`; a commit cannot contain its own SHA)
+- Scope and writable paths: `docs/release/native-release-plan.md`, `scripts/check-release-config.mjs`, `tests/setup/releaseConfig.test.ts`, this handoff. No central status file edited.
+- Dependencies and contract changes: none. Env names are read from `convex/convex.config.ts`; no code changed outside owned paths.
+- Changed files: the four paths above.
+- Checks actually run (all local, no network to any service):
+  - `npm ci --prefer-offline --ignore-scripts --no-audit --no-fund`: 498 packages, exit 0 (needed because the checkout had no `node_modules`; git-ignored).
+  - `node scripts/check-release-config.mjs` valid origins: exit 0; invalid input: exit 1 with `FAIL` lines.
+  - `vitest run tests/setup`: 20/20 pass (first run had 2 fixture failures: the fixture host contained `example`, which the validator rejects as placeholder; fixture fixed, validator unchanged). The added test asserts every group D name exists in `convex.config.ts` and the plan, and that `--include-file-storage` is documented.
+  - `eslint` on the two code files: clean.
+  - `tsc --noEmit`: only `@restaurant-deals/map` resolution errors (`map-component` not built here, human-owned); no other errors.
+  - `convex dev --help`, `convex deploy --help`, `convex export --help`, `convex function-spec --help`: read only. Findings: `dev` has no dry-run/diff; `deploy --dry-run` targets production or a deploy key; `export --include-file-storage` exists.
+- Corrections in this round: group D now has reel (`GEMINI_REEL_MODEL`, `REEL_PROVIDER_USAGE_AUTHORIZED`, `REEL_MEDIA_USAGE_AUTHORIZED`), image (`GEMINI_IMAGE_MODEL`, `GEMINI_IMAGE_FALLBACK_MODEL`, `IMAGE_PROVIDER_USAGE_AUTHORIZED`), geocode (`GEOCODE_USAGE_AUTHORIZED`, `GEOCODE_USER_AGENT`, `GEOCODE_ENDPOINT`) and the preserved workflow gates, all off unless separately approved; group A uses `--include-file-storage` and a `0700` `mktemp` directory outside Git; blanket import rollback wording removed (restore is destructive, separate approval, never automatic); group B uses a new isolated release worktree (never root/human checkout, no reset), states that `dev --once` applies rather than previews, and requires a source-versus-cloud table comparison with a halt on any cloud table missing from source; A/B/C/D defined as user external approval boundaries.
+- Quota evidence: none recorded. I have no access to a usage or quota readout in this session and made no attempt to read one. I can only state that this round made no provider, cloud or hosting requests, so it cannot have consumed provider quota. Model state at start of round: Claude Code Sonnet 5.5, medium effort (as shown by `/effort medium`). Before/after quota figures must come from William or Northstar.
+- Unrun live/phone checks and why: all of groups A-D, host reachability, TLS, Xcode build, iPhone; none authorized. Current Google model identifier support is unverified because no network or provider call was made.
+- Draft PR: none; branch not pushed.
+- Review findings and resolution: Northstar review of `e034239` addressed above.
+- Remaining risks / human setup: HOST missing (William asked which owned account); target source SHA to be chosen after Loom context and native review; cloud schema may include tables absent from published source, so inspect before sync.
+- Stop condition met; next proposed task (not dispatched): none.

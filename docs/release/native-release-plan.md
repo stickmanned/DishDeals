@@ -29,28 +29,43 @@ Convex help facts (1.46.0, none executed beyond `--help`):
 Checks syntax only: strict https URL, no credentials/query/fragment/port/path/trailing slash, no placeholder/localhost/IP, backend host `<deployment>.convex.cloud`, site host `<deployment>.convex.site`, website not a Convex host. Takes no files or secrets, makes no calls or writes. It cannot prove ownership, reachability or TLS.
 
 ## Authorization groups to request (none granted yet)
-Each group is a separate approval; approval of one never implies another.
+A, B, C and D are **explicit external approval boundaries given by the user (William)**, not file or tool permission prompts. Each is a separate approval; approval of one never implies another. Nothing below has been run.
 
-**A. Inspect + backup of `proper-marmot-82`.** Needs: confirmation the CLI login is the owning account, and a private backup path outside Git (for example a `0700` directory in the home folder; never under the repo).
+**A. Inspect + backup of `proper-marmot-82`.** Needs: confirmation that the CLI login is the owning account, and a private archive directory outside Git. Do not assume the home folder is writable; create and verify a private directory first (not under the repo):
 ```
+umask 077
+BACKUP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/dishdeals-backup.XXXXXX")"   # mode 0700; check with ls -ld; move to durable private storage afterwards (tmp can be cleared)
 npx convex env list --names-only --deployment proper-marmot-82      # names only, no values
 npx convex data --deployment proper-marmot-82                        # table list; confirm flags with --help first
-npx convex export --deployment proper-marmot-82 --path <PRIVATE_DIR>/proper-marmot-82-<date>.zip
+npx convex export --include-file-storage --deployment proper-marmot-82 --path "$BACKUP_DIR/proper-marmot-82-<date>.zip"
 ```
-Do not paste output containing document data into chat or Git.
+`--include-file-storage` is required for owned uploads. An export without it is **not** a complete media backup and must not be reported as one. Send output to the terminal only; write no logs and paste no document data into chat or Git.
 
-**B. Additive dev sync from the reviewed SHA, then codegen and rechecks.** Needs: the integrated review SHA, group A done, and an env file with `CONVEX_DEPLOYMENT=dev:proper-marmot-82` kept outside the repo (value to be confirmed by the human; do not guess the exact string form).
+**B. Additive dev sync from the reviewed SHA, then codegen and rechecks.** Needs: the target source SHA (to be chosen later, after the Loom context work and native review), group A done, and an env file outside the repo containing `CONVEX_DEPLOYMENT=dev:proper-marmot-82` (exact string form to be confirmed by the human).
+- Use a **new isolated release worktree**, never the human/root checkout, and no `git reset`:
 ```
-git checkout <REVIEW_SHA>            # clean tree
-npx convex dev --once --env-file <PRIVATE_ENV_FILE>
-npx convex codegen --dry-run          # then without --dry-run only if generated files must change
+git worktree add <NEW_PATH>/dishdeals-release-<sha> --detach <REVIEW_SHA>   # then npm ci there
+cd <NEW_PATH>/dishdeals-release-<sha>
+```
+- **Pre-apply review of cloud versus source.** Convex 1.46.0 has no diff/dry-run for `dev` (verified in `convex dev --help`: only `-v`, `--once`, `--env-file`, `--codegen`, `--typecheck`). `convex deploy --dry-run` exists but targets the production deployment or a deploy key, so it must not be used for `proper-marmot-82`. `convex dev --once` **applies** the sync; `-v` only prints the changes as they are applied and is not a review step. Therefore review before applying, from group A output: compare the cloud table list (and `convex function-spec --deployment proper-marmot-82` if its help confirms it) with `convex/schema.ts`. The cloud schema may hold tables that the published source does not define. If any cloud table or index is missing from source, or anything would be deleted, **halt** and ask.
+```
+npx convex dev --once --env-file <PRIVATE_ENV_FILE> -v     # applies; only after the comparison above is clean
+npx convex codegen --dry-run                                # then without --dry-run only if generated files must change
 npm run typecheck && npm run lint && npm test
 ```
-Sync is expected to be additive (new tables/indexes/functions); review the `-v` diff listing for deletions before accepting. Rollback is restoring the group A export.
+- **Rollback.** There is no automatic rollback. A data import restores data only, not source, config or env. Restoring a backup into the deployment is destructive (it replaces data), needs its **own separate approval**, and is never run automatically.
 
-**C. Owned Next HTTPS preview host.** UNRESOLVED: host/provider not chosen, no new accounts or domain. Needs: a host the human already owns that runs a Node server (or Docker), and approval for its usage/pricing. Procedure: `npm run build`; run `npm run start` on that host; set `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` (and `NEXT_PUBLIC_WORKFLOW_CONVEX_URL` if used) to the group B values at **build** time (`NEXT_PUBLIC_*` is inlined). Then run the validator with the real host and check dynamic routes load over HTTPS.
+**C. Owned Next HTTPS preview host.** UNRESOLVED: the host is still missing, and William has been asked which owned account to use. No new accounts or domain. Needs: a host the human already owns that runs a Node server (or Docker), and approval for its usage/pricing. Procedure: `npm run build`; `npm run start` on that host; set `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL` (and `NEXT_PUBLIC_WORKFLOW_CONVEX_URL` if used) to the group B values at **build** time (`NEXT_PUBLIC_*` is inlined). Then run the validator with the real host and check dynamic routes load over HTTPS.
 
-**D. Provider/model usage.** UNRESOLVED pricing/authorization. Needs: named models for each of `GEMINI_MODEL`, `GEMINI_SEARCH_MODEL`, `GEMINI_WEB_SEARCH_MODEL`, `GEMINI_COMPARISON_MODEL` as approved, existing keys only, set server-side with `npx convex env set NAME` using interactive entry (value never in shell history or logs), and a spend ceiling. `WORKFLOW_PROVIDER_USAGE_AUTHORIZED` stays off until this approval is given. No overages.
+**D. Provider, model and geocoding usage.** UNRESOLVED pricing and authorization. Every flag stays unset or not `"true"` until it is separately approved, and each is its own decision. Names are taken from `convex/convex.config.ts`:
+| area | model / config names | separate gate | state |
+| --- | --- | --- | --- |
+| Reel analysis | `GEMINI_REEL_MODEL` (primary), `REEL_WEB_ORIGIN` | `REEL_PROVIDER_USAGE_AUTHORIZED` (reel fetch; also needs `SCRAPECREATORS_API_KEY`) and `REEL_MEDIA_USAGE_AUTHORIZED` (video analysis) | off |
+| Image extraction | `GEMINI_IMAGE_MODEL` (primary), `GEMINI_IMAGE_FALLBACK_MODEL` (optional) | `IMAGE_PROVIDER_USAGE_AUTHORIZED` | off |
+| Geocoding | `GEOCODE_USER_AGENT` (contact; required by code), `GEOCODE_ENDPOINT` (optional) | `GEOCODE_USAGE_AUTHORIZED` | off |
+| Preserved teammate workflow | `GEMINI_MODEL`, `GEMINI_FALLBACK_MODEL`, `GEMINI_SEARCH_MODEL`, `GEMINI_WEB_SEARCH_MODEL`, `GEMINI_COMPARISON_MODEL` | `WORKFLOW_PROVIDER_USAGE_AUTHORIZED` | off unless separately approved; there is no resolver |
+
+Model identifiers must be checked against Google's current official model list/docs at approval time. That was **not** done here (no network or provider call), so no identifier in this repo is verified as currently supported. Use existing keys only, set server-side with `npx convex env set NAME` using interactive entry (value never in shell history or logs), set a spend ceiling, and allow no overages. The geocode contact/endpoint must be one the human is willing to identify to the geocoding service.
 
 ## Human Xcode steps (after A–C; no xcodegen)
 1. Open the existing project. Do not regenerate it; keep the working Team on both targets (Dinedeals, ReelShare).
@@ -73,8 +88,4 @@ App and extension `BackendURL` must be identical, and the two URLs must pass the
 ## Log hygiene
 Redirect nothing that prints env values. Use `--names-only`; never run `env list/get` without it; do not `cat` env or backup files; keep export zips and env files out of the repo and out of chat.
 
-## Handoff / checks (N-RELEASE-A)
-- `npm ci --prefer-offline --ignore-scripts` (lockfile-consistent, local `node_modules`, git-ignored); no other install or global config.
-- `vitest run tests/setup`: 19/19 pass. ESLint clean on the two new files. CLI smoke: valid origins exit 0, bad input exits 1 with `FAIL` lines.
-- Full `tsc --noEmit` reports only `@restaurant-deals/map` resolution errors because `map-component` is not built in this checkout (human-owned map area, untouched). Root full checks were not rerun here.
-- Unresolved before any cloud step: host/provider for group C, spend ceiling and models for D, confirmation of owning CLI account for A.
+Handoff, commands and results: [`docs/handoffs/n-release-a.md`](../handoffs/n-release-a.md).

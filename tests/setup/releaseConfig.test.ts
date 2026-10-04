@@ -57,3 +57,27 @@ describe("release URL validator (synthetic, no network)", () => {
     expect(parseArgs(["--site", "https://a.dev", "--site", "https://b.dev"]).errors.join()).toContain("given twice");
   });
 });
+
+describe("release plan group D names", () => {
+  it("lists only env names declared in convex.config.ts and keeps every gate documented", async () => {
+    const { readFileSync } = await import("node:fs");
+    const config = readFileSync("convex/convex.config.ts", "utf8");
+    const plan = readFileSync("docs/release/native-release-plan.md", "utf8");
+    for (const name of [
+      "GEMINI_REEL_MODEL",
+      "GEMINI_IMAGE_MODEL",
+      "GEMINI_IMAGE_FALLBACK_MODEL",
+      "REEL_PROVIDER_USAGE_AUTHORIZED",
+      "REEL_MEDIA_USAGE_AUTHORIZED",
+      "IMAGE_PROVIDER_USAGE_AUTHORIZED",
+      "GEOCODE_USAGE_AUTHORIZED",
+      "GEOCODE_USER_AGENT",
+      "GEOCODE_ENDPOINT",
+      "WORKFLOW_PROVIDER_USAGE_AUTHORIZED",
+    ]) {
+      expect(config).toContain(`${name}:`);
+      expect(plan).toContain(name);
+    }
+    expect(plan).toContain("--include-file-storage");
+  });
+});
