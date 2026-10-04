@@ -951,9 +951,10 @@
       "packet": "docs/tasks/T-07C.md",
       "pinnedBaseSha": "2c97c07aecfb5055769724d83f01eb8482da388a",
       "backendTarget": "local tests only; no deployment/provider authorized",
-      "implementationState": "assigned canonical image/form/publish binding",
+      "implementationState": "reviewed and locally integrated; original live acceptance pending",
       "nativeChecks": "pending WKWebView",
-      "phoneAcceptance": "pending William iPhone"
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Northstar combined1451Vitest/23workflow/typecheck/lint/build PASS; synthetic/in-memory, no native/provider/phone proof"
     },
     {
       "id": "T-10B",
@@ -978,9 +979,10 @@
       "packet": "docs/tasks/T-10B.md",
       "pinnedBaseSha": "2c97c07aecfb5055769724d83f01eb8482da388a",
       "backendTarget": "local tests only; no cloud target authorized",
-      "implementationState": "assigned canonical author controls",
+      "implementationState": "reviewed and locally integrated; original live acceptance pending",
       "nativeChecks": "pending",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined1451Vitest/23workflow/typecheck/lint/build PASS; synthetic/in-memory, no native/provider/phone proof"
     },
     {
       "id": "N-REMOTE-A",
@@ -1000,9 +1002,10 @@
       "packet": "docs/tasks/N-REMOTE-A.md",
       "pinnedBaseSha": "2c97c07aecfb5055769724d83f01eb8482da388a",
       "backendTarget": "read-only published source review only; no cloud commands",
-      "implementationState": "assigned concrete preservation/release artifact",
+      "implementationState": "reviewed and locally integrated; original live acceptance pending",
       "nativeChecks": "pending",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined1451Vitest/23workflow/typecheck/lint/build PASS; synthetic/in-memory, no native/provider/phone proof"
     },
     {
       "id": "N-FORM-C",
@@ -1027,9 +1030,10 @@
       "packet": "docs/tasks/N-FORM-C.md",
       "pinnedBaseSha": "92ccdfc0f0d5df8f5da314c7c1f1ac950f509e89",
       "backendTarget": "local checks only; cloud/provider not authorized",
-      "implementationState": "assigned actual reel publish/geocode UI binding",
+      "implementationState": "reviewed and locally integrated; original live acceptance pending",
       "nativeChecks": "pending",
-      "phoneAcceptance": "pending"
+      "phoneAcceptance": "pending",
+      "localChecks": "Northstar combined1451Vitest/23workflow/typecheck/lint/build PASS; synthetic/in-memory, no native/provider/phone proof"
     },
     {
       "id": "N-REMOTE-B",
@@ -1074,5 +1078,6 @@
     "T-02": "DONE \u2014 William confirmation"
   },
   "localIntegrationBase": "83035c1eeed1c17915764ae0321594315fd5a81b",
-  "authority": "local implementation/tests/commits/reviewed integration; no remote or cloud writes"
+  "authority": "local implementation/tests/commits/reviewed integration; no remote or cloud writes",
+  "workerRouting": "Claude Code shared quota reached; William authorized same-node Antigravity Claude Sonnet 5.5 until exhausted; no paid overages; Northstar unchanged"
 }
