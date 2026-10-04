@@ -1341,7 +1341,7 @@
       "owner": "Loom",
       "branch": "t-16-demo-cache-bindings",
       "worktree": "demo-cache-bindings",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-16A",
         "T-14B"
@@ -1358,7 +1358,7 @@
         "docs/handoffs/t-16b.md"
       ],
       "packet": "docs/tasks/T-16B.md",
-      "pinnedBaseSha": "45db5af6e95f796c03e9f1a9ffb9ee874918fa29",
+      "pinnedBaseSha": "896e55dd19b8d42e09d9e0bc38c145593a92edd7",
       "backendTarget": "NONE; local source/tests only",
       "implementationState": "dependency-ready bounded packet",
       "nativeChecks": "relevant integrated runtime pending",
@@ -1369,7 +1369,7 @@
       "owner": "Cinder",
       "branch": "t-03-auth-return-path",
       "worktree": "auth-return-path",
-      "status": "ready",
+      "status": "prepared",
       "dependencies": [
         "T-03"
       ],
@@ -1382,7 +1382,7 @@
         "docs/handoffs/t-03d.md"
       ],
       "packet": "docs/tasks/T-03D.md",
-      "pinnedBaseSha": "45db5af6e95f796c03e9f1a9ffb9ee874918fa29",
+      "pinnedBaseSha": "896e55dd19b8d42e09d9e0bc38c145593a92edd7",
       "backendTarget": "NONE; local source/tests only",
       "implementationState": "dependency-ready bounded packet",
       "nativeChecks": "relevant integrated runtime pending",
