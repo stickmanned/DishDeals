@@ -12,7 +12,7 @@ Rules:
 - restaurant: the restaurant named in the offer, not the social account or author. Use "" when it is not shown.
 - address: only text address or location shown in the source; never coordinates, never a guessed street.
 - dealText: the offer in a short plain sentence.
-- priceCad: a number only when the source explicitly shows the price is Canadian dollars (for example "CAD", "C$", "CA$"). A dollar sign alone, the city, or a Vancouver context does not prove CAD. Otherwise null. Put the exact supporting text in cadEvidence, else null.
+- statedPrice: the price number exactly as the source shows it, in whatever currency, or null. Do not convert currencies. cadEvidence: the exact text from the source that shows the price is Canadian dollars (for example "CAD", "C$", "CA$"), else null. A dollar sign alone, the city, or a Vancouver context is not CAD evidence; leave cadEvidence null then.
 - validDays: weekdays the offer applies to as lowercase mon, tue, wed, thu, fri, sat, sun. Empty array means every day or not stated.
 - validStart / validEnd: 24-hour HH:MM wall-clock times (00:00 to 23:59) in the restaurant's local time. null means not stated. An overnight range may end earlier than it starts.
 - expiresOn: last valid date as YYYY-MM-DD, or null. Resolve relative dates ("this Friday", "until the 30th") ONLY when a publication date is supplied in the context or the source itself states the full date. Today's date is never the publication date.
@@ -39,7 +39,7 @@ export const RESPONSE_JSON_SCHEMA = {
           restaurant: { type: "string" },
           address: nullable("string"),
           dealText: { type: "string" },
-          priceCad: nullable("number"),
+          statedPrice: nullable("number"),
           cadEvidence: nullable("string"),
           validDays: {
             type: "array",
@@ -70,7 +70,7 @@ export const RESPONSE_JSON_SCHEMA = {
           "restaurant",
           "address",
           "dealText",
-          "priceCad",
+          "statedPrice",
           "cadEvidence",
           "validDays",
           "validStart",

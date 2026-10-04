@@ -21,13 +21,21 @@ const png = (n = 32) => {
   b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   return b;
 };
+const box = (size: number, major: string, compat: string[]) => {
+  const b = new Uint8Array(Math.max(size, 16));
+  new DataView(b.buffer).setUint32(0, size);
+  b.set([..."ftyp"].map((c) => c.charCodeAt(0)), 4);
+  b.set([...major].map((c) => c.charCodeAt(0)), 8);
+  compat.forEach((c, i) => b.set([...c].map((x) => x.charCodeAt(0)), 16 + i * 4));
+  return b;
+};
 const jpeg = () => new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
 
 const goodDeal = (over: Record<string, unknown> = {}) => ({
   restaurant: "Pho Hoa",
   address: null,
   dealText: "2-for-1 pho",
-  priceCad: null,
+  statedPrice: null,
   cadEvidence: null,
   validDays: ["tue"],
   validStart: "17:00",
@@ -198,6 +206,104 @@ describe("source and input errors (no provider call)", () => {
   });
 });
 
+describe("image signature validation", () => {
+  const run = (mimeType: string, bytes: Uint8Array) =>
+    extractDealCore({ images: [{ mimeType, bytes }] }, cfg(transport([ok(goodPayload)]).fetchFn));
+  it.each([
+    ["image/heic", box(24, "heic", ["mif1", "heic"])],
+    ["image/heif", box(24, "mif1", ["mif1", "heic"])],
+    ["image/heic", box(16, "heix", [])],
+  ])("accepts real HEIF brands (%s)", async (mime, bytes) => {
+    await expect(run(mime, bytes)).resolves.toBeDefined();
+  });
+  it.each([
+    ["MP4 isom", box(24, "isom", ["isom", "mp42"])],
+    ["MP4 declared as heif", box(24, "mp42", ["isom", "mp42"])],
+    ["AVIF", box(24, "avif", ["mif1", "avif"])],
+    ["mif1 without an HEVC image brand", box(24, "mif1", ["mif1", "miaf"])],
+    ["box size larger than file", (() => { const b = box(24, "heic", []); new DataView(b.buffer).setUint32(0, 400); return b; })()],
+    ["truncated ftyp", new Uint8Array([0, 0, 0, 12, 102, 116, 121, 112, 104, 101, 105, 99])],
+  ])("rejects %s declared as HEIC", async (_n, bytes) => {
+    const err = await failure(run("image/heic", bytes));
+    expect(err.code).toBe("INVALID_IMAGE");
+  });
+  it("requires the full 8-byte PNG signature, not a prefix", async () => {
+    const b = png();
+    b[4] = 0x00; // corrupt the CRLF-SUB part of the signature
+    expect((await failure(run("image/png", b))).code).toBe("INVALID_IMAGE");
+    const prefixOnly = new Uint8Array(32);
+    prefixOnly.set([0x89, 0x50, 0x4e, 0x47]);
+    expect((await failure(run("image/png", prefixOnly))).code).toBe("INVALID_IMAGE");
+  });
+});
+
+describe("deadline covers the response body", () => {
+  const stalledBody = () => {
+    let cancelled = false;
+    const stream = new ReadableStream({
+      start() {
+        /* headers delivered, body never produced or closed */
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    return { response: new Response(stream, { status: 200 }), wasCancelled: () => cancelled };
+  };
+
+  it("times out when headers arrive but the body hangs, then retries", async () => {
+    const signals: AbortSignal[] = [];
+    const stalled: Step = async (signal) => {
+      signals.push(signal);
+      return stalledBody().response;
+    };
+    const t = transport([stalled, ok(goodPayload)]);
+    const out = await extractDealCore({ caption: "c" }, cfg(t.fetchFn, { timeoutMs: 30 }));
+    expect(t.calls).toHaveLength(2);
+    expect(out.result.isDeal).toBe(true);
+    expect(signals[0].aborted).toBe(true); // real fetch tears the body down on abort
+  });
+
+  it("surfaces a sanitized PROVIDER_TIMEOUT when every body stalls", async () => {
+    const t = {
+      calls: 0,
+      fetchFn: (async () => {
+        t.calls++;
+        return stalledBody().response;
+      }) as unknown as typeof fetch,
+    };
+    const started = Date.now();
+    const err = await failure(extractDealCore({ caption: "c" }, cfg(t.fetchFn, { timeoutMs: 20 })));
+    expect(err.code).toBe("PROVIDER_TIMEOUT");
+    expect(t.calls).toBe(3);
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(err.message).not.toContain(KEY);
+  });
+
+  it("sanitizes a body read that errors out", async () => {
+    const stream = new ReadableStream({
+      start(c) {
+        c.error(new Error(`socket reset ${KEY} https://x`));
+      },
+    });
+    const t = transport([new Response(stream, { status: 200 })]);
+    const err = await failure(extractDealCore({ caption: "c" }, cfg(t.fetchFn)));
+    expect(err.code).toBe("INVALID_MODEL_OUTPUT");
+    expect(err.message).not.toContain(KEY);
+    expect(err.message).not.toContain("socket");
+  });
+
+  it.each([0, -1, NaN, Infinity, LIMITS.maxTimeoutMs + 1])(
+    "rejects timeoutMs %s before any call",
+    async (timeoutMs) => {
+      const t = transport([ok(goodPayload)]);
+      const err = await failure(extractDealCore({ caption: "c" }, cfg(t.fetchFn, { timeoutMs })));
+      expect(err.code).toBe("CONFIGURATION");
+      expect(t.calls).toHaveLength(0);
+    },
+  );
+});
+
 describe("retry, timeout and fallback", () => {
   it("retries the primary once, then succeeds", async () => {
     const t = transport([new Response("", { status: 503 }), ok(goodPayload)]);
@@ -312,8 +418,8 @@ describe("semantic validation of model output", () => {
     ["NaN-like score", { confidence: { restaurant: null, priceCad: 0.5, hours: 0.5, expiresOn: 0.5 } }],
     ["missing score key", { confidence: { restaurant: 0.5, priceCad: 0.5, hours: 0.5 } }],
     ["scalar confidence", { confidence: 0.9 }],
-    ["negative price", { priceCad: -1 }],
-    ["string price", { priceCad: "12" }],
+    ["negative price", { statedPrice: -1 }],
+    ["string price", { statedPrice: "12" }],
     ["bad start time", { validStart: "25:00" }],
     ["bad end time", { validEnd: "9:5" }],
     ["12h time", { validStart: "5:00 PM" }],
@@ -327,7 +433,7 @@ describe("semantic validation of model output", () => {
 
   it("rejects non-finite price and scores (Infinity)", () => {
     const parsed = JSON.parse(JSON.stringify(withDeal({}))) as { deals: Record<string, unknown>[] };
-    parsed.deals[0].priceCad = Infinity;
+    parsed.deals[0].statedPrice = Infinity;
     reject(parsed);
     const conf = { restaurant: Infinity, priceCad: 0.5, hours: 0.5, expiresOn: 0.5 };
     reject(withDeal({ confidence: conf }));
@@ -360,7 +466,7 @@ describe("semantic validation of model output", () => {
   it("flags a future startDate for manual review instead of dropping it", () => {
     const { result, manualReview } = validateModelOutput(withDeal({ startDate: "2026-10-10" }), TODAY);
     expect(manualReview).toEqual([
-      expect.objectContaining({ dealIndex: 0, code: "FUTURE_START" }),
+      expect.objectContaining({ dealIndex: 0, code: "FUTURE_START", blocking: true }),
     ]);
     expect(manualReview[0].detail).toContain("2026-10-10");
     expect(result.deals[0].conditions).toEqual(["dine-in only"]); // not folded into conditions
@@ -377,18 +483,54 @@ describe("semantic validation of model output", () => {
       TODAY,
     );
     expect(manualReview).toEqual([
-      { dealIndex: 0, code: "UNSUPPORTED_CONSTRAINT", detail: "first 50 customers only" },
+      { dealIndex: 0, code: "UNSUPPORTED_CONSTRAINT", blocking: true, detail: "first 50 customers only" },
     ]);
     expect(result.deals[0].conditions).toEqual(["dine-in only"]);
   });
 
-  it("flags a price without CAD evidence but keeps CAD-evidenced prices clean", () => {
-    expect(validateModelOutput(withDeal({ priceCad: 12 }), TODAY).manualReview).toEqual([
-      expect.objectContaining({ code: "CURRENCY_UNVERIFIED" }),
+  it("nulls canonical priceCad without CAD evidence and keeps the original amount only in the note", () => {
+    const { result, manualReview } = validateModelOutput(withDeal({ statedPrice: 12 }), TODAY, "Pho $12 tonight");
+    expect(result.deals[0].priceCad).toBeNull();
+    expect(manualReview).toEqual([
+      expect.objectContaining({ code: "CURRENCY_UNVERIFIED", blocking: false, originalAmount: 12, dealIndex: 0 }),
     ]);
-    const ok2 = validateModelOutput(withDeal({ priceCad: 12, cadEvidence: "C$12" }), TODAY);
-    expect(ok2.manualReview).toEqual([]);
-    expect(ok2.result.deals[0].priceCad).toBe(12);
+  });
+
+  it("accepts CAD only when the quote is in the supplied text and names CAD", () => {
+    const supplied = "Pho special  C$12 on Tuesdays";
+    const good = validateModelOutput(withDeal({ statedPrice: 12, cadEvidence: "c$12" }), TODAY, supplied);
+    expect(good.manualReview).toEqual([]);
+    expect(good.result.deals[0].priceCad).toBe(12);
+  });
+
+  it.each([
+    ["invented quote not in the supplied text", "CAD 12", "Pho $12 tonight"],
+    ["quote in text but not naming CAD", "$12", "Pho $12 tonight"],
+    ["image-only claim with no supplied text", "C$12", ""],
+  ])("does not trust CAD evidence: %s", (_n, cadEvidence, supplied) => {
+    const { result, manualReview } = validateModelOutput(withDeal({ statedPrice: 12, cadEvidence }), TODAY, supplied);
+    expect(result.deals[0].priceCad).toBeNull();
+    expect(manualReview[0]).toMatchObject({ code: "CURRENCY_UNVERIFIED", originalAmount: 12 });
+  });
+
+  it("marks future start and unsupported constraints as blocking, unlike currency", () => {
+    const { manualReview } = validateModelOutput(
+      withDeal({ startDate: "2026-12-01", unsupportedConstraints: ["members only"], statedPrice: 5 }),
+      TODAY,
+    );
+    expect(manualReview.map((n) => [n.code, n.blocking])).toEqual([
+      ["FUTURE_START", true],
+      ["UNSUPPORTED_CONSTRAINT", true],
+      ["CURRENCY_UNVERIFIED", false],
+    ]);
+  });
+
+  it("rejects unknown fields instead of stripping them (unmodelled start constraint)", () => {
+    reject(withDeal({ startsAfter: "2026-12-01" }));
+    reject(withDeal({ warnings: ["first 50 only"] }));
+    reject({ isDeal: true, deals: [goodDeal()], rejectionReason: "x" });
+    reject(withDeal({ confidence: { restaurant: 1, priceCad: 1, hours: 1, expiresOn: 1, global: 0.9 } }));
+    reject(withDeal({ priceCad: 12 })); // old canonical key is not a model field
   });
 
   it("uses the Vancouver date for future-start comparison via the core", async () => {
@@ -399,12 +541,14 @@ describe("semantic validation of model output", () => {
       cfg(t.fetchFn, { now: () => new Date("2026-10-04T05:00:00Z") }),
     );
     expect(out.manualReview.map((m) => m.code)).toEqual(["FUTURE_START"]);
+    expect(out.requiresBlockingReview).toBe(true);
     const t2 = transport([ok(withDeal({ startDate: "2026-10-04" }))]);
     const out2 = await extractDealCore(
       { caption: "c" },
       cfg(t2.fetchFn, { now: () => new Date("2026-10-04T08:00:00Z") }),
     );
     expect(out2.manualReview).toEqual([]);
+    expect(out2.requiresBlockingReview).toBe(false);
   });
 });
 
@@ -415,7 +559,7 @@ describe("prompt and schema contract", () => {
     expect(conf.additionalProperties).toBe(false);
   });
   it("states the safety rules the contract depends on", () => {
-    for (const phrase of ["UNTRUSTED", "never instructions", "not probabilities", "never use a default", "Today's date is never the publication date", "explicitly shows the price is Canadian"]) {
+    for (const phrase of ["UNTRUSTED", "never instructions", "not probabilities", "never use a default", "Today's date is never the publication date", "shows the price is Canadian dollars"]) {
       expect(SYSTEM_PROMPT).toContain(phrase);
     }
   });

@@ -25,6 +25,7 @@ export const LIMITS = {
   maxTextChars: 20_000,
   maxDeals: 10,
   defaultTimeoutMs: 45_000,
+  maxTimeoutMs: 120_000, // timeoutMs must be finite, > 0 and <= this; covers headers AND body
 } as const;
 
 export const SUPPORTED_IMAGE_MIME = [
@@ -87,17 +88,34 @@ export type ExtractConfig = {
   sleep?: (ms: number) => Promise<void>;
 };
 
+/**
+ * Limits the canonical Deal cannot carry. `dealIndex` is the index into
+ * `result.deals`. `blocking: true` (FUTURE_START, UNSUPPORTED_CONSTRAINT)
+ * means the deal must not be presented as publishable/currently valid until a
+ * person resolves it. CURRENCY_UNVERIFIED is non-blocking: canonical priceCad
+ * is null and `originalAmount` is the unresolved amount the model read.
+ */
 export type ManualReviewNote = {
   dealIndex: number;
   code: "FUTURE_START" | "UNSUPPORTED_CONSTRAINT" | "CURRENCY_UNVERIFIED";
+  blocking: boolean;
   detail: string;
+  originalAmount?: number;
 };
 
+/**
+ * INTERNAL contract (no public action exists yet). `result` is canonical and
+ * every field is a suggestion for explicit user acceptance. `manualReview` is
+ * a sidecar the canonical shape cannot carry: a caller MUST carry blocking
+ * notes (FUTURE_START, UNSUPPORTED_CONSTRAINT) by deal index to the form and
+ * must never return or store `result` alone. The public `extract.extractDeal`
+ * stays unimplemented until an owner-agreed envelope carries this sidecar.
+ */
 export type ExtractOutcome = {
-  /** Canonical DealResult. Every field is a suggestion for explicit user acceptance. */
   result: DealResult;
-  /** Limits the canonical shape cannot carry. Non-empty = manual review before publish. */
   manualReview: ManualReviewNote[];
+  /** True when any note is blocking. */
+  requiresBlockingReview: boolean;
   model: string;
 };
 
@@ -119,13 +137,14 @@ const unit = z
   .number()
   .refine((n) => Number.isFinite(n) && n >= 0 && n <= 1, "score outside 0..1");
 
-// Model-side deal: canonical Deal fields plus extras the canonical shape
-// cannot carry. The extras are stripped from the returned DealResult.
-const ModelDeal = z.object({
+// Model-side deal: canonical fields plus explicitly named sidecar fields.
+// Strict everywhere: an unexpected key (for example an unmodelled constraint)
+// is rejected, never silently stripped.
+const ModelDeal = z.strictObject({
   restaurant: z.string(),
   address: z.string().nullable(),
   dealText: z.string(),
-  priceCad: z
+  statedPrice: z
     .number()
     .refine((n) => Number.isFinite(n) && n >= 0, "price must be finite and nonnegative")
     .nullable(),
@@ -137,14 +156,14 @@ const ModelDeal = z.object({
   startDate: z.string().refine(isRealIsoDate, "not a real ISO date").nullable(),
   conditions: z.array(z.string()),
   unsupportedConstraints: z.array(z.string()),
-  confidence: z.object({
+  confidence: z.strictObject({
     restaurant: unit,
     priceCad: unit,
     hours: unit,
     expiresOn: unit,
   }),
 });
-const ModelResult = z.object({
+const ModelResult = z.strictObject({
   isDeal: z.boolean(),
   deals: z.array(ModelDeal).max(LIMITS.maxDeals),
 });
@@ -158,10 +177,23 @@ export function vancouverToday(now: Date): string {
   }).format(now);
 }
 
+const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
+const CAD_MARKER = /\b(cad|ca\$|c\$|cdn|canadian)\b|ca\$|c\$/i;
+
+function cadEvidenceProblem(evidence: string | null, supplied: string): string | null {
+  const q = evidence ? norm(evidence) : "";
+  if (!q) return "no CAD evidence";
+  if (!CAD_MARKER.test(q)) return "quoted evidence does not name CAD";
+  if (!norm(supplied).includes(q)) return "quote not found in supplied text; image-only claims cannot be verified";
+  return null;
+}
+
 /** Strict semantic validation of raw model JSON into a canonical DealResult. */
 export function validateModelOutput(
   raw: unknown,
   today: string,
+  /** Caller-supplied caption/text; the only place CAD evidence can be verified. */
+  suppliedText = "",
 ): { result: DealResult; manualReview: ManualReviewNote[] } {
   const parsed = ModelResult.safeParse(raw);
   if (!parsed.success) {
@@ -193,26 +225,44 @@ export function validateModelOutput(
       manualReview.push({
         dealIndex,
         code: "FUTURE_START",
+        blocking: true,
         detail: `Offer starts on ${d.startDate}, which the canonical Deal cannot represent.`,
       });
     }
     for (const c of d.unsupportedConstraints) {
       if (c.trim()) {
-        manualReview.push({ dealIndex, code: "UNSUPPORTED_CONSTRAINT", detail: c.trim() });
+        manualReview.push({
+          dealIndex,
+          code: "UNSUPPORTED_CONSTRAINT",
+          blocking: true,
+          detail: c.trim(),
+        });
       }
     }
-    if (d.priceCad !== null && !d.cadEvidence?.trim()) {
-      manualReview.push({
-        dealIndex,
-        code: "CURRENCY_UNVERIFIED",
-        detail: "A price was suggested without explicit CAD evidence in the source.",
-      });
+    // Canonical priceCad is set only when the quote is found in the supplied
+    // text and itself names CAD. A quote not in the supplied text (including
+    // anything claimed from an image) is model-reported and not verifiable
+    // here, so it is never treated as proof.
+    let priceCad: number | null = null;
+    if (d.statedPrice !== null) {
+      const reason = cadEvidenceProblem(d.cadEvidence, suppliedText);
+      if (reason === null) {
+        priceCad = d.statedPrice;
+      } else {
+        manualReview.push({
+          dealIndex,
+          code: "CURRENCY_UNVERIFIED",
+          blocking: false,
+          detail: `Price ${d.statedPrice} is not confirmed as CAD (${reason}). Choose the currency manually.`,
+          originalAmount: d.statedPrice,
+        });
+      }
     }
     return {
       restaurant: d.restaurant.trim(),
       address: d.address?.trim() || null,
       dealText,
-      priceCad: d.priceCad,
+      priceCad,
       validDays: d.validDays,
       validStart: d.validStart,
       validEnd: d.validEnd,
@@ -226,19 +276,40 @@ export function validateModelOutput(
 
 // ----------------------------------------------------------- input / request
 
+// Signature validation only: it rejects obvious wrong containers (for example
+// MP4 or AVIF declared as HEIC) but is NOT proof the file decodes or that the
+// provider accepts it. Genuine decode evidence needs a live provider call.
+const HEIC_BRANDS = ["heic", "heix", "hevc", "hevx", "heim", "heis", "hevm", "hevs"];
+const GENERIC_HEIF_BRANDS = ["mif1", "msf1"];
+
 function matchesMagic(mime: ImageMime, b: Uint8Array): boolean {
-  const at = (i: number, s: string) =>
-    [...s].every((c, k) => b[i + k] === c.charCodeAt(0));
+  const ascii = (i: number, n: number) =>
+    String.fromCharCode(...b.subarray(i, i + n));
   switch (mime) {
     case "image/png":
-      return b.length > 8 && b[0] === 0x89 && at(1, "PNG");
+      return (
+        b.length > 8 &&
+        [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((v, i) => b[i] === v)
+      );
     case "image/jpeg":
       return b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
     case "image/webp":
-      return b.length > 12 && at(0, "RIFF") && at(8, "WEBP");
+      return b.length > 12 && ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP";
     case "image/heic":
-    case "image/heif":
-      return b.length > 12 && at(4, "ftyp");
+    case "image/heif": {
+      if (b.length < 16 || ascii(4, 4) !== "ftyp") return false;
+      const size = ((b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3]) >>> 0;
+      if (size < 16 || size > b.length) return false;
+      const major = ascii(8, 4);
+      const compatible: string[] = [];
+      for (let i = 16; i + 4 <= size; i += 4) compatible.push(ascii(i, 4));
+      if (HEIC_BRANDS.includes(major)) return true;
+      // Generic HEIF majors must also list an HEVC-image brand (excludes AVIF/MP4).
+      return (
+        GENERIC_HEIF_BRANDS.includes(major) &&
+        compatible.some((c) => HEIC_BRANDS.includes(c))
+      );
+    }
   }
 }
 
@@ -346,46 +417,60 @@ const ProviderResponse = z.object({
     .optional(),
 });
 
+// One deadline covers connect, headers AND the body read: a response whose
+// headers arrive but whose body stalls is aborted too. Errors are sanitized;
+// the underlying error (which can embed the URL or request) is never exposed.
 async function callModel(
   model: string,
   body: object,
-  cfg: Required<Pick<ExtractConfig, "fetch" | "timeoutMs">> & { apiKey: string },
+  cfg: { fetch: typeof fetch; timeoutMs: number; apiKey: string },
 ): Promise<unknown> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
-  let response: Response;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new ExtractError("PROVIDER_TIMEOUT", "The model request timed out.", true));
+    }, cfg.timeoutMs);
+  });
+  deadline.catch(() => {}); // avoid an unhandled rejection after an early return
+  const raced = <T,>(p: Promise<T>): Promise<T> => Promise.race([p, deadline]);
+  let response: Response | undefined;
   try {
-    response = await cfg.fetch(`${API_BASE}${model}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": cfg.apiKey },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-  } catch {
-    // Never surface the underlying error: it can embed the URL or request.
-    throw controller.signal.aborted
-      ? new ExtractError("PROVIDER_TIMEOUT", "The model request timed out.", true)
-      : new ExtractError("PROVIDER_UNAVAILABLE", "The model service could not be reached.", true);
+    try {
+      response = await raced(
+        cfg.fetch(`${API_BASE}${model}:generateContent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": cfg.apiKey },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        }),
+      );
+    } catch (e) {
+      if (e instanceof ExtractError) throw e;
+      throw new ExtractError("PROVIDER_UNAVAILABLE", "The model service could not be reached.", true);
+    }
+    if (!response.ok) {
+      const s = response.status;
+      void response.body?.cancel().catch(() => {});
+      if (s === 401 || s === 403) {
+        throw new ExtractError("PROVIDER_AUTH", "Check the server-side Gemini API key and permissions.");
+      }
+      if (s === 429 || (s >= 500 && s <= 599)) {
+        throw new ExtractError("PROVIDER_BUSY", "The model service is busy or unavailable.", true);
+      }
+      throw new ExtractError("PROVIDER_REQUEST", `The model service rejected the request (HTTP ${s}).`);
+    }
+    try {
+      return await raced(response.json());
+    } catch (e) {
+      if (e instanceof ExtractError) throw e;
+      throw new ExtractError("INVALID_MODEL_OUTPUT", "The model service returned an unreadable body.", true);
+    }
   } finally {
     clearTimeout(timer);
+    if (controller.signal.aborted) void response?.body?.cancel().catch(() => {});
   }
-  if (!response.ok) {
-    const s = response.status;
-    if (s === 401 || s === 403) {
-      throw new ExtractError("PROVIDER_AUTH", "Check the server-side Gemini API key and permissions.");
-    }
-    if (s === 429 || (s >= 500 && s <= 599)) {
-      throw new ExtractError("PROVIDER_BUSY", "The model service is busy or unavailable.", true);
-    }
-    throw new ExtractError("PROVIDER_REQUEST", `The model service rejected the request (HTTP ${s}).`);
-  }
-  let json: unknown;
-  try {
-    json = await response.json();
-  } catch {
-    throw new ExtractError("INVALID_MODEL_OUTPUT", "The model service returned invalid JSON.", true);
-  }
-  return json;
 }
 
 function textFromResponse(json: unknown): string {
@@ -433,6 +518,10 @@ export async function extractDealCore(
   for (const m of [primary, fallback]) {
     if (!MODEL_NAME.test(m)) throw new ExtractError("CONFIGURATION", "Invalid model name.");
   }
+  const timeoutMs = config.timeoutMs ?? LIMITS.defaultTimeoutMs;
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > LIMITS.maxTimeoutMs) {
+    throw new ExtractError("CONFIGURATION", "timeoutMs must be a finite positive number within the documented bound.");
+  }
   const fetchImpl = config.fetch ?? globalThis.fetch;
   if (!fetchImpl) throw new ExtractError("CONFIGURATION", "No fetch implementation available.");
   const sleep = config.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
@@ -442,7 +531,7 @@ export async function extractDealCore(
   const today = vancouverToday((config.now ?? (() => new Date()))());
   const call = {
     fetch: fetchImpl,
-    timeoutMs: config.timeoutMs ?? LIMITS.defaultTimeoutMs,
+    timeoutMs,
     apiKey,
   };
 
@@ -458,7 +547,13 @@ export async function extractDealCore(
       } catch {
         throw new ExtractError("INVALID_MODEL_OUTPUT", "The model returned malformed JSON.", true);
       }
-      return { ...validateModelOutput(raw, today), model: plan[i] };
+      const suppliedText = [input.caption, input.text].filter(Boolean).join("\n");
+      const checked = validateModelOutput(raw, today, suppliedText);
+      return {
+        ...checked,
+        requiresBlockingReview: checked.manualReview.some((n) => n.blocking),
+        model: plan[i],
+      };
     } catch (e) {
       if (!(e instanceof ExtractError)) {
         throw new ExtractError("INVALID_MODEL_OUTPUT", "Extraction failed unexpectedly.", true);
