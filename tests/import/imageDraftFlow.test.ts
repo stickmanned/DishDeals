@@ -274,15 +274,164 @@ describe("analyze: owned upload then extraction", () => {
     expect(snap.forms).toHaveLength(1);
   });
 
-  it("text-only (no image) never calls the backend or claims success", async () => {
+  it("blocks analysis when no file and text is empty, whitespace-only, or URL-only (no backend calls)", async () => {
     const { deps } = makeDeps();
     const flow = new ImageDraftFlow(deps);
-    flow.setContext({ caption: "Half price ramen", text: "Mondays" });
+
+    // 1. Completely empty
     await flow.analyze();
     expect(flow.getSnapshot().phase).toBe("failed");
-    expect(flow.getSnapshot().error?.code).toBe("NO_IMAGE");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 2. Whitespace only
+    flow.setContext({ caption: "   \n\t  ", text: "   " });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 3. URL only in caption
+    flow.setContext({ caption: "https://www.instagram.com/reel/C9_deal123/", text: "" });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 4. URL only in text
+    flow.setContext({ caption: "", text: "http://example.com/some/deal" });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 5. Bare domain only
+    flow.setContext({ caption: "instagram.com/p/ABC/", text: "instagram.com" });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 6. Scheme-relative link only
+    flow.setContext({ caption: "//www.instagram.com/p/ABC/", text: "" });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 7. Quoted or parenthesized link only
+    flow.setContext({ caption: "(https://www.instagram.com/p/ABC/)", text: "“https://example.org”" });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 8. Punctuation only
+    flow.setContext({ caption: "...!", text: "  ---  " });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // 9. Only provenanceUrl set, no caption or text
+    flow.setContext({ caption: "", text: "", provenanceUrl: "https://www.instagram.com/reel/C9_deal123/" });
+    await flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("failed");
+    expect(flow.getSnapshot().error?.code).toBe("NO_SOURCE");
+
+    // Verify ZERO backend calls were made across all above attempts
+    for (const fn of [deps.prepareImage, deps.getToken, deps.generateUploadUrl, deps.upload, deps.extract]) {
+      expect(fn).not.toHaveBeenCalled();
+    }
+  });
+
+  it("analyzes text-only source without image: no prepare/upload/token/cache calls, passes imageIds: [] to extract", async () => {
+    const outcome = anOutcome();
+    const loadDemo = vi.fn();
+    const demoPromptVersion = vi.fn(async () => "v1");
+    const { deps } = makeDeps({
+      extract: vi.fn(async () => outcome),
+      loadDemo,
+      demoPromptVersion,
+    });
+    const flow = new ImageDraftFlow(deps);
+    flow.setDemoReplay(true); // even with demo replay opted-in
+    flow.setContext({
+      caption: "Half price appetizers every Tuesday 3-6pm",
+      text: "Dine-in only",
+      provenanceUrl: "https://www.instagram.com/reel/C9_deal123/",
+    });
+
+    await flow.analyze();
+
+    const snap = flow.getSnapshot();
+    expect(snap.phase).toBe("done");
+    expect(snap.error).toBeNull();
+
+    // Verified: NO prepare, token, uploadUrl, upload, or demo cache calls
+    expect(deps.prepareImage).not.toHaveBeenCalled();
+    expect(deps.getToken).not.toHaveBeenCalled();
+    expect(deps.generateUploadUrl).not.toHaveBeenCalled();
+    expect(deps.upload).not.toHaveBeenCalled();
+    expect(loadDemo).not.toHaveBeenCalled();
+    expect(demoPromptVersion).not.toHaveBeenCalled();
+
+    // Verified: extract called with imageIds: [] and context args
+    expect(deps.extract).toHaveBeenCalledTimes(1);
+    expect(deps.extract).toHaveBeenCalledWith({
+      imageIds: [],
+      caption: "Half price appetizers every Tuesday 3-6pm",
+      text: "Dine-in only",
+      provenanceUrl: "https://www.instagram.com/reel/C9_deal123/",
+    });
+
+    // Offer created with source: "text", imageId: null, imageIds: []
+    expect(snap.offers).toHaveLength(1);
+    const offer = snap.offers[0];
+    expect(offer.source).toBe("text");
+    expect(offer.imageId).toBeNull();
+    expect(offer.imageIds).toEqual([]);
+    expect(offer.cached).toBeUndefined();
+    expect(offer.drafts).toHaveLength(1);
+
+    // Form is NOT automatically overwritten
+    expect(snap.forms[0].draft.fields.restaurant.value).toBeNull();
+
+    // Explicitly apply offer
+    const applyRes = flow.applyOffer(offer.id, 0, { kind: "replace", formKey: "form-1" });
+    expect(applyRes).toEqual({ ok: true, formKey: "form-1" });
+    expect(snap.forms[0].draft.imageId).toBeNull();
+  });
+
+  it("text-only analysis handles cancel, late results, context switches and retries", async () => {
+    const outcome = anOutcome();
+    const deferredExtract = deferred<ExtractOutcome>();
+    const { deps } = makeDeps({ extract: vi.fn(() => deferredExtract.promise) });
+    const flow = new ImageDraftFlow(deps);
+    flow.setContext({ caption: "Weekend brunch special 2-for-1" });
+
+    // Start analysis (in-flight)
+    const run = flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("extracting");
+
+    // Cancel while in flight
+    flow.cancel();
+    expect(flow.getSnapshot().phase).toBe("canceled");
+
+    // Late resolution is ignored
+    deferredExtract.resolve(outcome);
+    await run;
+    expect(flow.getSnapshot().phase).toBe("canceled");
     expect(flow.getSnapshot().offers).toEqual([]);
-    for (const fn of [deps.prepareImage, deps.getToken, deps.generateUploadUrl, deps.upload, deps.extract]) expect(fn).not.toHaveBeenCalled();
+
+    // Context switch: selecting a file supersedes any previous run
+    const picked = file();
+    flow.selectFile(picked);
+    expect(flow.getSnapshot().source.file).toBe(picked);
+    expect(flow.getSnapshot().source.caption).toBe("Weekend brunch special 2-for-1");
+
+    // Switch back to text-only (clear file) and retry
+    flow.selectFile(null);
+    const deferredRetry = deferred<ExtractOutcome>();
+    (deps.extract as Mock).mockImplementationOnce(() => deferredRetry.promise);
+    const retryRun = flow.analyze();
+    expect(flow.getSnapshot().phase).toBe("extracting");
+    deferredRetry.resolve(outcome);
+    await retryRun;
+    expect(flow.getSnapshot().phase).toBe("done");
+    expect(flow.getSnapshot().offers).toHaveLength(1);
   });
 
   it("rejects bad context before any call and keeps the file and text", async () => {

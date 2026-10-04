@@ -45,6 +45,7 @@ import { extractOutcomeToDrafts, validateExtractOutcome } from "./extractionDraf
 import { checkRecordingFile, RECORDING_COPY, RECORDING_FRAME_COUNT } from "./recordingFrameFlow";
 import { demoKeyFromMaterial, type DemoCacheResult, type DemoKey, type DemoMaterial } from "./demoCache";
 import { buildDemoMaterial, DEMO_LOOKUP_DEADLINE_MS, type CachedOrigin } from "./demoCacheFlow";
+import { hasNonUrlText } from "./postSource";
 
 // ------------------------------------------------------------------ limits
 
@@ -167,7 +168,7 @@ export interface Offer {
   imageId: OwnedStorageId | null;
   /** Every owned upload that was analyzed together: one for an image, exactly four for a recording. */
   imageIds: OwnedStorageId[];
-  source: "image" | "recording";
+  source: "image" | "recording" | "text";
   imageName: string;
   /** Present only when this offer was replayed from a saved capture (T-16B); absent for live analysis. */
   cached?: CachedOrigin;
@@ -472,8 +473,16 @@ export class ImageDraftFlow {
     if (isRunning(this.snap.phase)) return;
     const recording = this.snap.source.recording;
     const file = recording ?? this.snap.source.file;
-    if (!file) {
-      this.set({ phase: "failed", error: { code: "NO_IMAGE", message: "Choose a screenshot, flyer or screen recording to analyze, or fill in the form by hand.", retryable: false } });
+    const hasText = hasNonUrlText(this.snap.source.caption, this.snap.source.text);
+    if (!file && !hasText) {
+      this.set({
+        phase: "failed",
+        error: {
+          code: "NO_SOURCE",
+          message: "Choose a screenshot, flyer or screen recording to analyze, or enter deal text from the post.",
+          retryable: false,
+        },
+      });
       return;
     }
     const context = this.validateContext();
@@ -482,7 +491,6 @@ export class ImageDraftFlow {
       return;
     }
 
-    const replay = this.snap.demoReplay && !!this.deps.demoPromptVersion && !!this.deps.loadDemo;
     const myRun = ++this.runId;
     const myFile = this.fileSeq;
     const controller = new AbortController();
@@ -492,6 +500,62 @@ export class ImageDraftFlow {
       if (!stale()) this.set({ phase: "failed", error });
     };
 
+    if (!file) {
+      // Text-only analysis (N-TEXT-FORM): no prepare, token, uploadUrl, upload, or demo cache calls.
+      this.set({ phase: "extracting", error: null, progress: null });
+      try {
+        let raw: unknown;
+        try {
+          raw = await this.deps.extract({ imageIds: [], ...context.args });
+        } catch (error) {
+          if (stale()) return;
+          return fail(classifyExtractError(error));
+        }
+        if (stale()) return;
+
+        let built: { model: string; noDeal: boolean; drafts: DealDraft[] };
+        try {
+          validateExtractOutcome(raw);
+          const outcome = raw as ExtractOutcome;
+          const noDeal = !outcome.result.isDeal || outcome.result.deals.length === 0;
+          const drafts = noDeal
+            ? []
+            : extractOutcomeToDrafts(outcome, {
+                sourceUrl: context.args.provenanceUrl ?? null,
+                imageId: null,
+              });
+          built = { model: outcome.model, noDeal, drafts };
+        } catch {
+          return fail({
+            code: "UNUSABLE_RESULT",
+            message: "The analysis result was not usable. Try again, or fill in the form by hand.",
+            retryable: true,
+          });
+        }
+        if (stale()) return;
+
+        const offer: Offer = {
+          id: this.nextId("offer"),
+          runId: myRun,
+          model: built.model,
+          imageId: null,
+          imageIds: [],
+          source: "text",
+          imageName: "Pasted text",
+          noDeal: built.noDeal,
+          drafts: built.drafts,
+          appliedTo: built.drafts.map(() => null),
+        };
+        this.set({ phase: "done", error: null, offers: [...this.snap.offers, offer].slice(-MAX_OFFERS) });
+      } catch {
+        fail({ code: "UNEXPECTED", message: "Something went wrong. Your details are kept; try again.", retryable: true });
+      } finally {
+        if (this.runId === myRun) this.abort = null;
+      }
+      return;
+    }
+
+    const replay = this.snap.demoReplay && !!this.deps.demoPromptVersion && !!this.deps.loadDemo;
     let receipt = this.receipt && this.receipt.fileSeq === myFile ? this.receipt : null;
     this.set({ phase: receipt ? "extracting" : "preparing", error: null, progress: null });
     try {
