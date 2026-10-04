@@ -529,7 +529,7 @@
       "implementationState": "corrected f4a368c reviewed locally integrated",
       "nativeChecks": "pending real runtime execution",
       "phoneAcceptance": "pending William iPhone",
-      "localChecks": "Northstar combined check at553a4e6 PASS637Vitest/23workflow/typecheck/lint/build; browser QA denied and unrun"
+      "localChecks": "Northstar combined check at33b894d PASS904Vitest/23workflow/typecheck/lint/build; no rendered UI/native/phone/provider proof"
     },
     {
       "id": "N-MAP-A",
@@ -561,7 +561,7 @@
       "implementationState": "84fab5f independently reviewed and locally integrated f81a56b; mandatory parent invalidation correction follows",
       "nativeChecks": "pending real runtime execution",
       "phoneAcceptance": "pending William iPhone",
-      "localChecks": "Worker clean root/child install and build PASS; 24 root map tests, 3 child tests, typecheck/lint/workflow PASS; rendered/native pending"
+      "localChecks": "Northstar combined check at33b894d PASS904Vitest/23workflow/typecheck/lint/build; no rendered UI/native/phone/provider proof"
     },
     {
       "id": "T-08G-CORE",
@@ -582,9 +582,10 @@
       "packet": "docs/tasks/T-08G-CORE.md",
       "pinnedBaseSha": "1eb2e7cb4f094aa1a7a460889686fdf31e8355aa",
       "backendTarget": "local checks only; no cloud/provider actions authorized",
-      "implementationState": "9cf0a69 reviewed; capped full-body timeout/cache/config/privacy corrections requested; not integrated",
+      "implementationState": "e5e65fc reviewed/integratede01480e; durable backend wrapper pending",
       "nativeChecks": "pending real runtime execution",
-      "phoneAcceptance": "pending William iPhone"
+      "phoneAcceptance": "pending William iPhone",
+      "localChecks": "Northstar combined check at33b894d PASS904Vitest/23workflow/typecheck/lint/build; no rendered UI/native/phone/provider proof"
     },
     {
       "id": "T-09B",
@@ -673,7 +674,7 @@
       "implementationState": "83629a4 corrections reviewed and locally integrated7535260",
       "nativeChecks": "pending real WKWebView file picker",
       "phoneAcceptance": "pending real native receipt/recording/VLM",
-      "localChecks": "Northstar combined npmruncheck PASS821tests/23workflow/typecheck/lint/build; no live source/provider"
+      "localChecks": "Northstar combined check at33b894d PASS904Vitest/23workflow/typecheck/lint/build; no rendered UI/native/phone/provider proof"
     },
     {
       "id": "T-14A",
@@ -694,9 +695,10 @@
       "packet": "docs/tasks/T-14A.md",
       "pinnedBaseSha": "553a4e6654fd84d040577750a17f564242182e25",
       "backendTarget": "browser helpers/local tests only; no provider/cloud",
-      "implementationState": "ee1ca52 reviewed; cleanup/late-event/encoder-deadline corrections requested; not integrated",
+      "implementationState": "50af99e reviewed/integrated33b894d; actual cancellation coroutine regression covered",
       "nativeChecks": "pending actual WKWebView media decoding",
-      "phoneAcceptance": "pending real10second recording and Harry reveal"
+      "phoneAcceptance": "pending real10second recording and Harry reveal",
+      "localChecks": "Northstar combined check at33b894d PASS904Vitest/23workflow/typecheck/lint/build; no rendered UI/native/phone/provider proof"
     },
     {
       "id": "N-MAP-B",
@@ -762,6 +764,64 @@
       "backendTarget": "actual in-memory component tests only; no cloud",
       "implementationState": "dispatched to Loom sole canonical schema/package/API/deals writer",
       "nativeChecks": "pending native form/map",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-FORM-B",
+      "owner": "Mica",
+      "branch": "t-07-reel-common-form",
+      "worktree": "reel-common-form",
+      "status": "prepared",
+      "dependencies": [
+        "N-FORM-UI",
+        "N-FORM-A",
+        "N-SOURCE-A",
+        "N-MAP-A",
+        "N-SHARE-DRAFT"
+      ],
+      "allowedPaths": [
+        "components/reels/ReelIntake.tsx",
+        "components/reels/CanonicalReelReview.tsx",
+        "lib/reels/reviewDraft.ts",
+        "lib/dealDraft.ts",
+        "tests/import/reviewDraft.test.ts",
+        "tests/import/locationInvalidation.test.ts",
+        "convex/reels.ts",
+        "tests/backend/reelManualDraft.test.ts",
+        "docs/integration/reel-common-form.md",
+        "docs/handoffs/n-form-b.md"
+      ],
+      "packet": "docs/tasks/N-FORM-B.md",
+      "pinnedBaseSha": "33b894d40f7e1075c6579a297657c227dc3e4f65",
+      "backendTarget": "local synthetic checks only; no cloud",
+      "implementationState": "dispatched to Mica independent canonical form/manual private save",
+      "nativeChecks": "pending rendered map/form",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-SOURCE-C",
+      "owner": "Prism",
+      "branch": "t-05-reel-source-constraints",
+      "worktree": "reel-source-constraints",
+      "status": "prepared",
+      "dependencies": [
+        "N-SOURCE-A",
+        "N-FORM-A"
+      ],
+      "allowedPaths": [
+        "lib/reels/contract.ts",
+        "lib/reels/contract.test.ts",
+        "lib/reels/toDealDraft.ts",
+        "convex/reelActions.ts",
+        "tests/import/reelConstraints.test.ts",
+        "docs/integration/reel-source-constraints.md",
+        "docs/handoffs/n-source-c.md"
+      ],
+      "packet": "docs/tasks/N-SOURCE-C.md",
+      "pinnedBaseSha": "33b894d40f7e1075c6579a297657c227dc3e4f65",
+      "backendTarget": "synthetic parser/model transport only; no provider/cloud",
+      "implementationState": "dispatched to Prism source-evidence constraints",
+      "nativeChecks": "pending actual media/extraction",
       "phoneAcceptance": "pending"
     }
   ],

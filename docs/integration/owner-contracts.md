@@ -43,3 +43,8 @@ Geocoding policy: [Nominatim public policy](https://operations.osmfoundation.org
 ### Canonical publishing ownership and index contract, October 4
 
 Northstar approves T-09C Loom as sole implementation writer for canonical CRUD, schema, package/config and generated component typing; Northstar reviews and owns final integration. Official geospatial0.2.1 uses nearest with meter radius. Preserve workflow component/env and canonical table fields; mutations update the index transactionally. Add private dealUploads(ownerId,storageId,expiresAt,published), by_storage/by_expiry and deals.by_image index for authenticated server-established image ownership. Actual upload follows a separate HTTP source slice; no public storageID claim. Canonical update is full field replacement, omittedoptional fields clear; author/counts remain server-controlled. This addition does not reopen T-02. No cloud sync authorized; future release must inventory/preserve newly published teammate tables/functions.
+
+
+### Typed private source constraints before publish
+
+Northstar approves N-SOURCE-C additive optional ReelExtraction.constraints annotations with indexed canonical FUTURE_START/UNSUPPORTED_CONSTRAINT and literal source evidence, no new canonical field or confidence key. Known future-start restrictions remain hard blockers in the canonical draft. Legacy absence remains explicit source-review uncertainty, never a fabricated empty result. Existing extraction/draft/table/API names and private model provenance remain preserved. This source contract refinement is independent of Mica form mounting and Loom index/schema work.
