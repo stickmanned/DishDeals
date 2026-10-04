@@ -1553,7 +1553,8 @@
       "allowedPaths": [
         "ios/ShareExtension/ShareViewController.swift",
         "docs/qa/share-receipt-contrast.md",
-        "docs/handoffs/n-share-contrast.md"
+        "docs/handoffs/n-share-contrast.md",
+        "tests/native/ShareReceiptContrastChecks.swift"
       ],
       "packet": "docs/tasks/N-SHARE-CONTRAST.md",
       "pinnedBaseSha": "8a46e5304949e8c2fa9a84e0333a8e7a6682c982",
@@ -1561,6 +1562,26 @@
       "implementationState": "William screenshot repro; priority native readability fix",
       "nativeChecks": "Assigned iPhone18Pro simulation, exact native source required",
       "phoneAcceptance": "Pending signed rebuild and receipt check"
+    },
+    {
+      "id": "N-TEXT-SYNC",
+      "owner": "Loom",
+      "branch": "t-19-core-backend-readiness",
+      "worktree": "core-backend-readiness",
+      "status": "prepared",
+      "dependencies": [
+        "N-SOURCE-TEXT"
+      ],
+      "allowedPaths": [
+        "docs/qa/text-backend-sync.md",
+        "docs/handoffs/n-text-sync.md"
+      ],
+      "packet": "docs/tasks/N-TEXT-SYNC.md",
+      "pinnedBaseSha": "3f6f10dce64a1ba21accb492aa47a196dbfac019",
+      "backendTarget": "Explicit dev proper-marmot-82 regional only; fresh private backup; no schema changes",
+      "implementationState": "Authorized sole serialized development function sync",
+      "nativeChecks": "No native source change",
+      "phoneAcceptance": "Pending genuine extraction after web form release"
     }
   ],
   "completedDependencies": {
