@@ -1,10 +1,5 @@
-import { ConvexTestResult } from "@/components/ConvexTestResult";
+import { TrialApp } from "@/components/TrialApp";
 
 export default function Home() {
-  return (
-    <main>
-      <h1>DishDeals</h1>
-      <ConvexTestResult />
-    </main>
-  );
+  return <TrialApp />;
 }

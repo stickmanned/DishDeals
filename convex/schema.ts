@@ -1,8 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { workflowTables } from "./workflowTables";
 import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
+  ...workflowTables,
   ...authTables, // includes the users table
 
   profiles: defineTable({

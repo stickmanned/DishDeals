@@ -118,7 +118,7 @@ describe("agent workflow", () => {
       const f = make();
       const elsewhere = path.join(f.dir, "elsewhere");
       mkdirSync(elsewhere);
-      symlinkSync(elsewhere, f.parent);
+      symlinkSync(elsewhere, f.parent, process.platform === "win32" ? "junction" : "dir");
       assert.throws(() => create(f.main, "T-03"), /symlink escape/);
       assert.ok(!existsSync(path.join(elsewhere, "t-03-feature")));
     });

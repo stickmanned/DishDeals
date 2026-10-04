@@ -1,1 +1,32 @@
 @import "tailwindcss";
+
+body { margin: 0; background: #f5f6f5; color: #172820; font-family: Arial, sans-serif; line-height: 1.5; }
+main { max-width: 1120px; margin: auto; padding: 24px 16px; }
+header, .session { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+h1 { font-size: 32px; font-weight: 700; margin: 0; }
+h2 { font-size: 23px; font-weight: 600; margin-bottom: 12px; }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 8px 0; }
+section { background: white; border: 1px solid #d7dfda; border-radius: 8px; margin: 20px 0; padding: 20px; }
+label { display: block; margin: 12px 0; flex: 1; min-width: 0; }
+input, select, textarea { display: block; width: 100%; border: 1px solid #869a8e; border-radius: 4px; padding: 9px; margin-top: 4px; background: white; color: inherit; }
+input[type=checkbox] { width: auto; margin: 0; }
+.check { display: flex; align-items: center; gap: 9px; }
+button { padding: 8px 14px; border: 1px solid #688774; border-radius: 4px; background: #f4f7f5; cursor: pointer; margin: 6px 8px 6px 0; }
+button.primary { background: #215b3f; color: white; }
+button:disabled { opacity: .5; cursor: default; }
+button.link { border: 0; padding: 0; background: transparent; text-align: left; }
+button[aria-pressed=true], article.chosen { border: 2px solid #215b3f; }
+a { color: #215b3f; text-decoration: underline; margin-right: 8px; }
+.row { display: flex; gap: 16px; flex-wrap: wrap; }
+.row > label { flex-basis: 230px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 16px; }
+article, .review { padding: 14px; border: 1px solid #d7dfda; border-radius: 5px; margin: 10px 0; overflow-wrap: anywhere; }
+.badge { font-size: 12px; border: 1px solid #b6cbbf; border-radius: 20px; padding: 4px 9px; white-space: nowrap; }
+small, footer { display: block; color: #53655b; font-size: 13px; }
+[role=alert] { color: #8e2525; overflow-wrap: anywhere; }
+ul { padding-left: 20px; list-style: disc; }
+blockquote { border-left: 3px solid #869a8e; padding-left: 12px; }
+summary { cursor: pointer; margin: 12px 0; }
+.map-loading { height: 380px; display: grid; place-items: center; background: #eef3ef; }
+@media (max-width: 500px) { section { padding: 14px; } .row { gap: 0; } .row > label { flex-basis: 100%; } }

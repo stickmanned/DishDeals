@@ -14,7 +14,9 @@
     "check": "npm run typecheck && npm run lint && npm run test && npm run test:workflow && npm run build"
   },
   "dependencies": {
+    "@auth/core": "^0.41.3",
     "@convex-dev/auth": "^0.0.96",
+    "@restaurant-deals/map": "file:vendor/restaurant-deals-map-0.1.0.tgz",
     "convex": "^1.46.0",
     "next": "^16.3.8",
     "react": "^19.3.0",
@@ -26,6 +28,7 @@
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "convex-test": "^0.0.60",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.8",
     "tailwindcss": "^4.3.3",
