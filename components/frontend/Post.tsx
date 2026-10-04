@@ -109,6 +109,7 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (busy || (app.mode === "live" && app.live?.authLoading)) return;
     setError("");
     let source: WorkflowSource;
     try {
@@ -289,7 +290,7 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
                 {error}
               </p>
             )}
-            <button className="button primary full" disabled={busy}>
+            <button className="button primary full" disabled={busy || (app.mode === "live" && !!app.live?.authLoading)}>
               {busy
                 ? "Preparing…"
                 : app.mode === "preview"
@@ -299,7 +300,7 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
             </button>
             <p className="quiet-note">
               {app.mode === "preview"
-                ? "Image extraction isn’t running in the preview. You’ll fill the draft yourself, or try the sample below."
+                ? "Automatic extraction isn’t running in the preview. You’ll fill the draft yourself, or try the sample below."
                 : "Verified offers may publish automatically. Other offers need your review. Closing this page doesn’t cancel processing."}
             </p>
             {app.mode === "preview" && (
