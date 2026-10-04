@@ -15,6 +15,8 @@
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.96",
+    "@convex-dev/workflow": "^0.4.8",
+    "@google/genai": "^2.27.0",
     "convex": "^1.46.0",
     "next": "^16.3.8",
     "react": "^19.3.0",

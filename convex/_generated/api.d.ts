@@ -11,6 +11,9 @@
 import type * as auth from "../auth.js";
 import type * as deals from "../deals.js";
 import type * as http from "../http.js";
+import type * as reels from "../reels.js";
+import type * as reelActions from "../reelActions.js";
+import type * as reelWorkflow from "../reelWorkflow.js";
 import type * as test from "../test.js";
 import type * as users from "../users.js";
 import type * as votes from "../votes.js";
@@ -25,6 +28,9 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   deals: typeof deals;
   http: typeof http;
+  reels: typeof reels;
+  reelActions: typeof reelActions;
+  reelWorkflow: typeof reelWorkflow;
   test: typeof test;
   users: typeof users;
   votes: typeof votes;
@@ -56,4 +62,4 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: { workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow"> };

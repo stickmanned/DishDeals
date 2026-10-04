@@ -339,7 +339,7 @@
       "packet": "docs/tasks/N-IOS-A.md",
       "pinnedBaseSha": "547a74df5d279ad40758394430979645e416f2c5",
       "backendTarget": "read-only source inspection; no cloud/provider",
-      "implementationState": "dispatched",
+      "implementationState": "reviewed source contracts at601a615; canonical UI/backend integration pending",
       "nativeChecks": "pending compile; installed Xcode/SDK, runtime downloading",
       "phoneAcceptance": "pending"
     },
@@ -359,9 +359,30 @@
       "packet": "docs/tasks/N-BUILD-A.md",
       "pinnedBaseSha": "547a74df5d279ad40758394430979645e416f2c5",
       "backendTarget": "no cloud/provider",
-      "implementationState": "dispatched",
-      "nativeChecks": "SDK compilation inspection available; runtime execution pending",
+      "implementationState": "reviewed",
+      "nativeChecks": "actual app/extension SwiftSDK typechecks PASS",
       "phoneAcceptance": "pending signing/phone"
+    },
+    {
+      "id": "N-BUILD-B",
+      "owner": "Cinder",
+      "branch": "t-13-native-project-build",
+      "worktree": "native-project-build",
+      "status": "prepared",
+      "dependencies": [
+        "T-01",
+        "T-02"
+      ],
+      "allowedPaths": [
+        "docs/handoffs/n-build-b.md"
+      ],
+      "packet": "docs/tasks/N-BUILD-B.md",
+      "pinnedBaseSha": "8b6df6279eecc5f37772f5b65816f5e53f6e1561",
+      "backendTarget": "no cloud/provider",
+      "implementationState": "reviewed unsigned generic simulator SDK build PASS, no runtime execution",
+      "nativeChecks": "xcodegen2.46.0 + xcodebuild app/embeddedextension PASS; simulator execution pending",
+      "phoneAcceptance": "pending signing",
+      "localChecks": "source unchanged; nativeartifactverified; docs46b4c69"
     }
   ],
   "completedDependencies": {

@@ -52,8 +52,8 @@ describe("validNow temporal logic", () => {
 
     it("returns 'expired' after the inclusive Vancouver expiry date", () => {
       // Expiry is 2026-10-31 (Saturday)
-      // 2026-11-01 12:00 Vancouver (20:00 UTC)
-      const now = vancouverDate("2026-11-01T20:00:00.000Z");
+      // 2026-11-01 12:00 Vancouver (19:00 UTC)
+      const now = vancouverDate("2026-11-01T19:00:00.000Z");
       const result = validNow(baseDeal, now);
       expect(result).toEqual({ status: "expired" });
     });
@@ -331,7 +331,7 @@ describe("validNow temporal logic", () => {
       expect(validNow(gapDeal, now)).toEqual({ status: "unknown" });
     });
 
-    // 2. Fall Back: Sunday, November 1, 2026
+    // 2. Fall Back: Sunday, November 2, 2025 (last Vancouver fall-back)
     // At 02:00 PDT (09:00 UTC), clocks fall back to 01:00 PST (09:00 UTC).
     // The hour from 01:00 to 01:59 occurs twice.
     it("accounts for fall back repeated hour in elapsed minutes left", () => {
@@ -339,13 +339,13 @@ describe("validNow temporal logic", () => {
         validDays: ["sun"],
         validStart: "00:30",
         validEnd: "03:30",
-        expiresOn: "2026-11-30",
+        expiresOn: "2025-11-30",
       };
 
-      // Sunday November 1, 2026 at 00:30 PDT (07:30 UTC).
+      // Sunday November 2, 2025 at 00:30 PDT (07:30 UTC).
       // Deal ends at 03:30 PST (11:30 UTC).
       // Wall-clock difference is 3 hours, but elapsed real time is 4 hours = 240 minutes!
-      const now = vancouverDate("2026-11-01T07:30:00.000Z");
+      const now = vancouverDate("2025-11-02T07:30:00.000Z");
       expect(validNow(fallDeal, now)).toEqual({ status: "valid", minutesLeft: 240 });
     });
 
@@ -354,16 +354,16 @@ describe("validNow temporal logic", () => {
         validDays: ["sun"],
         validStart: "00:30",
         validEnd: "01:30",
-        expiresOn: "2026-11-30",
+        expiresOn: "2025-11-30",
       };
 
       // 00:30 PDT (07:30 UTC): ends at first 01:30 (01:30 PDT = 08:30 UTC)
       // 60 minutes left
-      const atStart = vancouverDate("2026-11-01T07:30:00.000Z");
+      const atStart = vancouverDate("2025-11-02T07:30:00.000Z");
       expect(validNow(shortFallDeal, atStart)).toEqual({ status: "valid", minutesLeft: 60 });
 
       // 01:15 PST (second pass, 09:15 UTC): already ended at 08:30 UTC -> not_today
-      const secondPass = vancouverDate("2026-11-01T09:15:00.000Z");
+      const secondPass = vancouverDate("2025-11-02T09:15:00.000Z");
       expect(validNow(shortFallDeal, secondPass)).toEqual({ status: "not_today" });
     });
 
@@ -372,13 +372,13 @@ describe("validNow temporal logic", () => {
         validDays: ["sun"],
         validStart: null,
         validEnd: null,
-        expiresOn: "2026-11-30",
+        expiresOn: "2025-11-30",
       };
 
-      // Sunday November 1, 2026 at 00:00 PDT (07:00 UTC).
-      // Ends at 24:00 (November 2 00:00 PST = 08:00 UTC).
+      // Sunday November 2, 2025 at 00:00 PDT (07:00 UTC).
+      // Ends at 24:00 (November 3 00:00 PST = 08:00 UTC).
       // Total day length is 25 hours = 1500 minutes.
-      const atMidnight = vancouverDate("2026-11-01T07:00:00.000Z");
+      const atMidnight = vancouverDate("2025-11-02T07:00:00.000Z");
       expect(validNow(allDayFallDeal, atMidnight)).toEqual({
         status: "valid",
         minutesLeft: 1500,

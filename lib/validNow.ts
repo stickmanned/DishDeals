@@ -1,3 +1,5 @@
+import { formatVancouverParts } from "./vancouverTime";
+
 /**
  * DishDeals temporal validity engine.
  * Computes deal validity status and elapsed minutes left based on injected Date
@@ -16,7 +18,8 @@
  *   cannot extend beyond inclusive expiry.
  * - Invalid calendar, invalid time format, or malformed input yields 'unknown'.
  * - Minutes left counts actual elapsed real minutes until window end,
- *   taking daylight saving transitions (PST/PDT) into account.
+ *   taking historical daylight saving transitions into account. Vancouver stays
+ *   UTC-7 after March 8, 2026; no November 2026 fallback.
  * - Ambiguous local boundaries:
  *   - Spring-forward gap (02:00-02:59): Non-existent local times yield 'unknown'.
  *   - Fall-back repeated hour (01:00-01:59): Windows resolve to the first matching
@@ -51,8 +54,6 @@ const VALID_WEEKDAYS = new Set<ValidWeekday>([
   "sun",
 ]);
 
-const TIMEZONE = "America/Vancouver";
-
 type VancouverParts = {
   year: number;
   month: number;
@@ -65,8 +66,7 @@ type VancouverParts = {
 };
 
 function getVancouverParts(date: Date): VancouverParts {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: TIMEZONE,
+  const parts = formatVancouverParts(date, "en-US", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -75,7 +75,7 @@ function getVancouverParts(date: Date): VancouverParts {
     second: "2-digit",
     weekday: "short",
     hourCycle: "h23",
-  }).formatToParts(date);
+  });
 
   const map: Record<string, string> = {};
   for (const p of parts) {
