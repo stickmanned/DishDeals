@@ -11,6 +11,7 @@
   import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
   import type * as ai from "../ai.js";
 import type * as auth from "../auth.js";
+import type * as compare from "../compare.js";
 import type * as deals from "../deals.js";
 import type * as http from "../http.js";
 import type * as jobs from "../jobs.js";
@@ -28,6 +29,7 @@ import type * as search from "../search.js";
   declare const fullApi: ApiFromModules<{
     "ai": typeof ai,
 "auth": typeof auth,
+"compare": typeof compare,
 "deals": typeof deals,
 "http": typeof http,
 "jobs": typeof jobs,

@@ -190,3 +190,7 @@ Job 状态：`queued → processing → completed`，失败时 `failed`。`compl
 现有 Convex 项目接入时需合并 schema 和 HTTP router，安装此包的 dependencies，复制 `src/` 与相关 `convex/` 文件并重新 `convex dev`；不要覆盖队友已有表、路由或 auth 配置。已提供可在无云账号情况下 typecheck 的 `_generated/` bootstrap；正常 `convex dev` 会自动重新生成。`npm.cmd run codegen:offline` 仅供初始离线开发。
 
 官方参考：[Gemini generateContent / JSON schema](https://ai.google.dev/api/generate-content)、[Geoapify Places](https://apidocs.geoapify.com/docs/places/)、[Convex Actions](https://docs.convex.dev/functions/actions)、[Convex scheduled functions](https://docs.convex.dev/scheduling/scheduled-functions)。
+
+## Restaurant comparison
+
+See [COMPARISON.md](./COMPARISON.md) for the English comparison API and teammate integration. `POST /v1/deals/compare` and `api.compare.find` compare two to five published offers from different restaurant locations. Priorities are `value`, `price`, and `taste`; taste-first suggestions require sourced food review excerpts for every selected restaurant. The API retains restrictions and unknown fields, validates AI evidence references, and returns an explicitly labelled evidence-only result when AI is unavailable. Run `npx.cmd tsx scripts/demo-comparison.ts` for the fictional, mocked-provider demo.

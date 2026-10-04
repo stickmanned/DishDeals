@@ -5,6 +5,8 @@ import type { Id } from "./_generated/dataModel";
 import { inputSchema } from "../src/contracts";
 import { z } from "zod";
 import { searchInputSchema } from "../src/search-contracts";
+import { comparisonInputSchema } from "../src/compare-contracts";
+import { ConvexError } from "convex/values";
 
 const http = httpRouter();
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -87,6 +89,20 @@ http.route({ path: "/v1/deals/pitch", method: "POST", handler: httpAction(async 
   catch (error) {
     const limited = error instanceof Error && error.message.includes("Search limit reached");
     return reply({ error: limited ? "RATE_LIMITED" : "SEARCH_FAILED" }, limited ? 429 : 500);
+  }
+}) });
+http.route({ path: "/v1/deals/compare", method: "POST", handler: httpAction(async (ctx, request) => {
+  if (!authorized(request)) return reply({ error: "UNAUTHORIZED" }, 401);
+  let input;
+  try { input = comparisonInputSchema.parse(await readBody(request)); }
+  catch { return reply({ error: "INVALID_INPUT", message: "Select two to five distinct deals, with value, price, or taste priority." }, 400); }
+  try { return reply(await ctx.runAction(internal.compare.run, { owner: "integration", inputJson: JSON.stringify(input) })); }
+  catch (error) {
+    const limited = error instanceof Error && error.message.includes("Search limit reached");
+    const data = error instanceof ConvexError && typeof error.data === "object" && error.data !== null ? error.data : null;
+    const invalid = data && "code" in data && (data.code === "INVALID_INPUT" || data.code === "INVALID_SELECTION");
+    return reply({ error: limited ? "RATE_LIMITED" : invalid ? "INVALID_SELECTION" : "COMPARISON_FAILED",
+      message: limited ? "Hourly search and comparison limit reached." : invalid ? "A selected deal is unavailable, expired, or from the same restaurant. Refresh your selection." : "Comparison failed. Try again later." }, limited ? 429 : invalid ? 400 : 500);
   }
 }) });
 export default http;
