@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { buildReelExtractionRequest, normalizeInstagramUrl, runReelExtraction, toCanonical, validateExtraction } from "./contract";
+import { buildReelExtractionRequest, instagramSourceKind, normalizeInstagramUrl, runReelExtraction, toCanonical, validateExtraction } from "./contract";
 import type { NativeContext } from "./nativeContext";
 const draft = { restaurant: null, address: null, dealText: "$8 meal", price: 8, currency: null, validDays: null, validStart: null, validEnd: null, expiresOn: null, conditions: null };
 const output = { isDeal: true, drafts: [draft], evidence: [
@@ -7,7 +7,20 @@ const output = { isDeal: true, drafts: [draft], evidence: [
   { draftIndex: 0, field: "price", channel: "visual", quote: "$8", timestampSeconds: 4 },
 ], transcript: "$8 meal", warnings: ["Currency unknown"] };
 test("normalizes shared prose and rejects ambiguous or unsafe targets", () => {
-  expect(normalizeInstagramUrl("Have a look https://m.instagram.com/p/AbCdEf123/?igsh=123")).toBe("https://www.instagram.com/reel/AbCdEf123/");
+  expect(normalizeInstagramUrl("Have a look https://m.instagram.com/p/AbCdEf123/?igsh=123")).toBe("https://www.instagram.com/p/AbCdEf123/");
+  expect(normalizeInstagramUrl("https://instagram.com/reels/AbCdEf123/")).toBe("https://www.instagram.com/reel/AbCdEf123/");
+  expect(normalizeInstagramUrl("https://instagram.com/reel/AbCdEf123/")).toBe("https://www.instagram.com/reel/AbCdEf123/");
+  expect(instagramSourceKind("https://www.instagram.com/p/AbCdEf123/")).toBe("post");
+  expect(instagramSourceKind("https://www.instagram.com/reel/AbCdEf123/")).toBe("reel");
+  expect(instagramSourceKind("https://www.instagram.com/reels/AbCdEf123/")).toBe("reel");
+  expect(instagramSourceKind("https://example.com")).toBe("unknown");
+  expect(instagramSourceKind("https://user:pass@instagram.com/reel/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("https://instagram.com:8080/p/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("http://instagram.com/p/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("https://evil.com/?q=/p/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind("https://instagram.com.evil/reel/AbCdEf123/")).toBe("unknown");
+  expect(instagramSourceKind(null)).toBe("unknown");
+  expect(instagramSourceKind(undefined)).toBe("unknown");
   for (const url of ["https://instagram.com.evil/reel/AbCdEf123/", "http://instagram.com/reel/AbCdEf123/", "https://user:pass@instagram.com/reel/AbCdEf123/", "https://instagram.com/share/reel/x", "https://localhost/reel/AbCdEf123/", "https://instagram.com/reel/AbCdEf123/ https://evil.com/"]) expect(() => normalizeInstagramUrl(url)).toThrow();
 });
 test("keeps unknown fields and non-CAD currency without invented canonical prices", () => {

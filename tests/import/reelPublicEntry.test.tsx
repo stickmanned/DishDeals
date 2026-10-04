@@ -35,6 +35,7 @@ vi.mock("@/convex/_generated/api", async () => import("../../convex/_generated/a
 vi.mock("@/lib/nativeSession", async () => import("../../lib/nativeSession"));
 vi.mock("@/lib/reels/suppliedMedia", async () => import("../../lib/reels/suppliedMedia"));
 vi.mock("@/lib/reels/publish", async () => import("../../lib/reels/publish"));
+vi.mock("@/lib/reels/contract", async () => import("../../lib/reels/contract"));
 
 // DOM parsing helper for rendered <button> elements in SSR markup
 interface RenderedButton {
@@ -301,5 +302,33 @@ describe("ReelIntake public entry from owned Reel result (SSR markup; not a phon
     // 4. Recording is described as optional with accurate copy (link alone supplies no facts)
     expect(html).toMatch(/attach.*recording.*\(optional\)/i);
     expect(html).toMatch(/link alone supplies no facts|link alone is never analyzed|link alone cannot be analyzed/i);
+  });
+
+  it("renders distinct copy and links for Instagram Post vs Reel vs unknown sources", async () => {
+    const { ReelIntake } = await import("../../components/reels/ReelIntake");
+
+    // Case 1: Instagram Post (/p/)
+    mockGetItem = makeSyntheticItem({ sourceUrl: "https://www.instagram.com/p/POST12345/" });
+    const postHtml = renderToStaticMarkup(
+      createElement(ReelIntake, { itemId: "reel-fixture-0001" })
+    );
+    expect(postHtml).toContain(">Original Post</a>");
+    expect(postHtml).toContain("This saved post is private to your account.");
+
+    // Case 2: Instagram Reel (/reel/)
+    mockGetItem = makeSyntheticItem({ sourceUrl: "https://www.instagram.com/reel/REEL12345/" });
+    const reelHtml = renderToStaticMarkup(
+      createElement(ReelIntake, { itemId: "reel-fixture-0001" })
+    );
+    expect(reelHtml).toContain(">Original Reel</a>");
+    expect(reelHtml).toContain("This saved Reel is private to your account.");
+
+    // Case 3: Unknown / historical row
+    mockGetItem = makeSyntheticItem({ sourceUrl: "https://example.com/other" });
+    const unknownHtml = renderToStaticMarkup(
+      createElement(ReelIntake, { itemId: "reel-fixture-0001" })
+    );
+    expect(unknownHtml).toContain(">Original Post or Reel</a>");
+    expect(unknownHtml).toContain("This saved post or Reel is private to your account.");
   });
 });

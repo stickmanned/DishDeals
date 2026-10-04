@@ -68,10 +68,23 @@ import Foundation
         let orphan = ShareStore.record(from: try JSONSerialization.data(withJSONObject: ["kind": "item", "value": "Item123", "savedAt": now - 1, "sourceUrl": "https://example.invalid/x", "nativeContext": ctx] as [String: Any]), now: now)
         try check(orphan != nil && orphan?.sourceUrl == nil && orphan?.context == nil, "item with bad source drops binding")
         try check((try? ShareStore.resolveLink(["Look", link + "?igsh=1", "https://instagram.com/reel/EXAMPLE123"])) == link, "same link across fragments")
+        let postLink = "https://www.instagram.com/p/EXAMPLE123/"
+        try check((try? ShareStore.normalize("https://m.instagram.com/p/EXAMPLE123/?igsh=123")) == postLink, "post link preserves /p/ canonical")
+        try check((try? ShareStore.normalize("https://instagram.com/reels/EXAMPLE123/")) == link, "alias /reels/ normalizes to /reel/")
+        try check((try? ShareStore.resolveLink([link, postLink])) == nil, "same shortcode with different kinds rejected as different links")
+        try check(ShareStore.sourceKind(postLink) == "post", "sourceKind identifies post")
+        try check(ShareStore.sourceKind(link) == "reel", "sourceKind identifies reel")
+        try check(ShareStore.sourceKind("https://example.com") == "unknown", "sourceKind unknown for non-instagram")
+        try check(ShareStore.sourceKind("https://user:pass@instagram.com/reel/EXAMPLE123/") == "unknown", "sourceKind unknown for credentials")
+        try check(ShareStore.sourceKind("https://instagram.com:8080/p/EXAMPLE123/") == "unknown", "sourceKind unknown for custom port")
+        try check(ShareStore.sourceKind("http://instagram.com/p/EXAMPLE123/") == "unknown", "sourceKind unknown for http")
+        try check(ShareStore.sourceKind("https://evil.com/?q=/p/EXAMPLE123/") == "unknown", "sourceKind unknown for substring")
+        try check(ShareStore.sourceKind(nil) == "unknown", "sourceKind unknown for nil")
         try check((try? ShareStore.resolveLink([link, "https://www.instagram.com/reel/OTHER9999/"])) == nil, "different links rejected")
         try check((try? ShareStore.resolveLink([link + " https://example.com/menu"])) == nil, "mixed link in fragment rejected")
         try check((try? ShareStore.resolveLink(["https://example.com/menu"])) == nil, "no supported link")
         try check((try? ShareStore.resolveLink(["just text", link])) == link, "link found after plain text")
+        try check((try? ShareStore.resolveLink(["just text", postLink])) == postLink, "post link found after plain text")
         // Review corrections: masquerading numbers, malformed present context.
         func ctxWith(_ key: String, _ value: Any) -> [String: Any] {
             var base: [String: Any] = ["version": 1, "textFragments": [String](), "registeredTypes": [String](), "receivedAt": 1.0, "truncated": false]

@@ -212,14 +212,33 @@ enum ShareStore {
         guard text.utf8.count <= 4096, matches.count == 1, let url = matches.first?.url else { throw ShareFailure.invalid }
         return try canonical(url)
     }
+    static func sourceKind(_ urlString: String?) -> String {
+        guard let urlString = urlString?.trimmingCharacters(in: .whitespacesAndNewlines),
+              let url = URL(string: urlString),
+              url.scheme == "https",
+              ["instagram.com", "www.instagram.com", "m.instagram.com"].contains(url.host ?? ""),
+              url.user == nil, url.password == nil, url.port == nil else {
+            return "unknown"
+        }
+        let pattern = "^/(reel|reels|p)/([A-Za-z0-9_-]{5,64})/?$"
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: url.path, range: NSRange(url.path.startIndex..., in: url.path)),
+              let kindRange = Range(match.range(at: 1), in: url.path) else {
+            return "unknown"
+        }
+        return url.path[kindRange] == "p" ? "post" : "reel"
+    }
     private static func canonical(_ url: URL) throws -> String {
         guard url.scheme == "https", ["instagram.com", "www.instagram.com", "m.instagram.com"].contains(url.host ?? ""),
               url.user == nil, url.password == nil, url.port == nil else { throw ShareFailure.invalid }
-        let pattern = "^/(?:reel|reels|p)/([A-Za-z0-9_-]{5,64})/?$"
+        let pattern = "^/(reel|reels|p)/([A-Za-z0-9_-]{5,64})/?$"
         let regex = try NSRegularExpression(pattern: pattern)
         let path = url.path
-        guard let match = regex.firstMatch(in: path, range: NSRange(path.startIndex..., in: path)), let range = Range(match.range(at: 1), in: path) else { throw ShareFailure.invalid }
-        return "https://www.instagram.com/reel/\(path[range])/"
+        guard let match = regex.firstMatch(in: path, range: NSRange(path.startIndex..., in: path)),
+              let kindRange = Range(match.range(at: 1), in: path),
+              let codeRange = Range(match.range(at: 2), in: path) else { throw ShareFailure.invalid }
+        let kind = path[kindRange] == "p" ? "p" : "reel"
+        return "https://www.instagram.com/\(kind)/\(path[codeRange])/"
     }
     /// One distinct supported link across all fragments; different links, or a supported link mixed with
     /// another link in one fragment, are ambiguous and rejected.
