@@ -8,8 +8,9 @@ GitHub `main` is the shared integration branch. Each implementation task has one
 | --- | --- | --- |
 | Northstar · Codex GPT-6.1 Sol/high · Maestro | Scheduling, contracts, independent review, integration, Delivery Board | workflow / `t-00-agent-workflow` for setup; integration thereafter |
 | Loom · Claude Code | T-03 auth and profiles, after setup | auth / `t-03-auth` |
-| Tempo · Codex | T-04 browser validity and distance math | logic / `t-04-deal-logic` |
-| Prism · Gemini | T-05R teammate extraction reconciliation; blocked until model credits available | extraction / `t-05-extraction-reconciliation` |
+| Cinder · Gemini Flash | T-04A browser validity and time-left math | logic / `t-04-deal-logic` |
+| Mica · Gemini Flash | T-04B distance arithmetic and deterministic tests | distance / `t-04-distance` |
+| Prism · Gemini | T-05R teammate extraction reconnaissance, contract fixtures and bounded research | extraction / `t-05-extraction-reconciliation` |
 | Human frontend teammate | Product appearance and polished components | Human-owned branch |
 | Human map teammate | ALL maps, geocoding, pins, geospatial integration | Human-owned branch |
 
@@ -19,10 +20,22 @@ Checkouts live under the sibling `DishDeals-worktrees/` directory. The original 
 
 1. Finish T-00: publish the committed T-01/T-02 baseline plus this workflow, run CI, review the exact PR head, integrate through GitHub.
 2. Northstar fetches origin, reads task packets and latest teammate branches, verifies dependencies and assigns `ready` to approved independent tasks in `docs/workflow/tasks.json`.
-3. Verify the prepared auth/logic worktrees match the manifest branch and contain the integrated baseline. For a task without a worktree, set it ready and use `npm run agents -- create TASK_ID`; create deliberately refuses existing paths/branches. Run `npm ci` per worktree. Do not copy `.env.local` automatically. Pure logic and mocked tests need no provider secrets.
-4. Dispatch T-03 and T-04 concurrently through Maestri using their exact packets. T-05R starts only with usable Gemini credits and a new assignment. It initially produces a reconciliation report, not a second backend. Stop after this batch. Later tickets remain backlog.
+3. Verify the prepared auth/logic/distance/extraction worktrees match the manifest branch and contain the integrated baseline. For a task without a worktree, set it ready and use `npm run agents -- create TASK_ID`; create deliberately refuses existing paths/branches. Run `npm ci` per worktree. Do not copy `.env.local` automatically. Pure logic and mocked tests need no provider secrets.
+4. Northstar issues one bounded batch: Loom T-03, Cinder T-04A, Mica T-04B and Prism T-05R, only after checking active runtimes, current provider readiness and dependencies. T-04 is a parent acceptance ticket; never dispatch the old combined packet to another writer. The three Gemini scopes do not overlap. T-05R produces a reconciliation report and inert fixtures before any new extraction backend. Stop after these handoffs; later tickets remain backlog.
 
 The current task manifest records prepared scopes, not an instruction to implement features during workflow setup. T-01 live browser/HTTPS/phone evidence remains pending. A coordinator may authorize local T-03 work on the reviewed baseline without pretending those live acceptance checks passed.
+
+## Gemini-first routing and usage budget
+
+Prism answered a fresh readiness probe on 2026-10-03 using Gemini 3.8 Flash (High); the old “AI: Out of credits” footer still appeared alongside that successful reply. Treat a current failed request as a provider blocker, not that footer alone. The human reports a Google AI plan. This verifies development-agent access only; it does not establish app Gemini API credentials, live extraction, unlimited requests or a specific subscription tier.
+
+Default small, well-specified tasks to Gemini Flash. Cinder handles time logic, Mica handles small utilities/tests, and Prism handles teammate source reconnaissance, canonical fixtures, short official-documentation lookups and later independent QA when not the author. Reuse these sessions; do not recruit more copies or allow nested agent fan-out. Start with at most three concurrent Gemini requests across the workspace. Northstar handles scheduling, ambiguous contract decisions, independent final review and serialized integration on GPT-6.1 Sol/high. Loom handles complex auth/backend changes. Do not use Codex/Claude for routine file discovery, summary rewriting or mechanical tests Gemini can finish.
+
+The new Gemini worker commands select the installed `gemini-3.8-flash-medium` model with medium effort. Existing Prism stays on its working Flash/high session to preserve context. Increase effort only for a specific difficult task after inspecting the failure; do not change provider silently. Runtime unattended permissions are separate from file ownership and require explicit setup authorization. A routing document does not grant additional filesystem access.
+
+Each microtask prompt contains: task ID; exact checkout/branch and source SHA; only relevant files and agreed contract; writable paths; one measurable outcome; targeted checks; and a short handoff (status, changed paths, checks, unresolved decision, commit/PR). Prefer one function plus tests or one short report. Split oversized packets before dispatch. Do not paste the entire repo/plan into every prompt. Ask for a concise result and store longer evidence in the owned handoff. Full quality checks run once per completed PR and again after material changes; use targeted checks while iterating.
+
+If Gemini stalls or fails twice on the same issue, return the evidence and smallest unresolved question to Northstar. Preserve the branch; do not retry an identical prompt indefinitely or silently switch to Claude/Codex. At quota exhaustion, park that lane; no credit purchases, overage-setting changes or account changes. Multiple sessions use the same account allowance. Google explains that straightforward tasks consume less quota and that AI-credit overages are separate: [plans](https://antigravity.google/docs/plans?app=cli). CLI options were verified locally with `agy --help` and `agy models`; see [official CLI reference](https://www.antigravity.google/docs/cli/reference/).
 
 ## Git loop
 
@@ -30,12 +43,12 @@ The current task manifest records prepared scopes, not an instruction to impleme
 git fetch --no-write-fetch-head origin
 npm run agents -- status
 npm run agents -- sync
-npm run agents -- check T-04
+npm run agents -- check T-04A
 npm run check
-git add lib/validNow.ts lib/distance.ts lib/validNow.test.ts lib/distance.test.ts docs/handoffs/t-04.md
-git commit -m "Implement T-04 deal validity logic"
+git add lib/validNow.ts lib/validNow.test.ts docs/handoffs/t-04a.md
+git commit -m "Implement T-04A deal validity logic"
 git push -u origin t-04-deal-logic
-gh pr create --base main --draft --title "T-04: deal validity and distance" --body-file /tmp/t-04-pr.md
+gh pr create --base main --draft --title "T-04A: deal validity" --body-file /tmp/t-04a-pr.md
 ```
 
 `sync` only fast-forwards a clean task branch. If branches diverge, preserve commits and stop for Northstar to integrate `origin/main` in that task worktree explicitly; do not reset, stash, force push or rewrite a teammate's branch. Remote feature branches are read with `git show origin/<branch>:<path>` or `git diff`; fetch never merges their code automatically.
@@ -44,7 +57,7 @@ Only Northstar integrates approved PRs, one at a time (the setup installer may l
 
 ## Contracts and shared resources
 
-`lib/dealSchema.ts` and `convex/schema.ts` are canonical. Read `docs/decisions/0001-teammate-backend-integration.md` before importing teammate extraction. Shared files (schema, generated Convex APIs, dependency manifest/lock, provider/layout, CI) have one coordinator-issued owner at a time. T-03 owns provider/layout for this batch; T-04 touches only its pure lib files. Other workers request a narrowly scoped ownership amendment before changing a shared file.
+`lib/dealSchema.ts` and `convex/schema.ts` are canonical. Read `docs/decisions/0001-teammate-backend-integration.md` before importing teammate extraction. Shared files (schema, generated Convex APIs, dependency manifest/lock, provider/layout, CI) have one coordinator-issued owner at a time. T-03 owns provider/layout for this batch; T-04A and T-04B have distinct pure lib files and handoffs. Other workers request a narrowly scoped ownership amendment before changing a shared file.
 
 All schema changes and live Convex dev syncs are serialized. Existing approval covered T-02 on `proper-marmot-82`; it is not blanket permission for later migrations or production. Local checks and tracked generated files require no cloud deployment. Never run `convex dev` in every worktree against the same deployment. Keep project configuration outside committed source; only explicitly authorized backend workers receive needed secrets, never through chat.
 
@@ -54,7 +67,7 @@ Server keys stay server-side. No scraping, invented coordinates, currency assump
 
 Northstar is the hub. Workers run `maestri list` and read connected Workflow/Delivery Board before starting. Maestro uses `ask --batch` for independent assignments. Workers return their handoff directly to a caller already awaiting an `ask`; do not issue a blocking ask back to that caller. For free-standing questions, ask a free peer or put a short blocker in the task handoff and let Northstar schedule it. Never create circular waits. A worker can publish an assigned draft branch/PR; only Northstar integrates.
 
-No automatic unlimited task queue, background polling routine or surprise notification. Model quota failures are blockers, not hidden reassignment. Keep Northstar GPT-6.1 Sol/high; do not change provider/model without instruction.
+No automatic unlimited task queue, background polling routine or surprise notification. Model quota failures are blockers, not hidden reassignment or automatic paid overages. Keep Northstar GPT-6.1 Sol/high; do not change provider/model without instruction.
 
 ## Handoff and validation
 

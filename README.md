@@ -48,6 +48,6 @@ Vercel build command: `npx convex deploy --cmd "npm run build"`. In Vercel, set 
 
 ## Parallel agent workflow
 
-Read [the workflow](docs/agent-workflow.md), [task ownership](docs/workflow/tasks.json) and [teammate integration decision](docs/decisions/0001-teammate-backend-integration.md). Northstar coordinates, Loom owns auth, Tempo owns pure logic, Prism reconciles extraction when Gemini credits are available. Every builder has its own Git worktree; human teammates retain polished frontend and all maps.
+Read [the workflow](docs/agent-workflow.md), [task ownership](docs/workflow/tasks.json) and [teammate integration decision](docs/decisions/0001-teammate-backend-integration.md). Northstar coordinates and reviews, Loom owns complex auth, Cinder owns validity, Mica owns distance math, and Prism reconciles extraction. Small bounded tasks default to Gemini Flash, with at most three Gemini requests concurrently. Every builder has its own Git worktree; human teammates retain polished frontend and all maps.
 
-`npm run agents -- status` shows the roster and published branches; `npm run check` runs local quality checks. No provider credentials or deployment are required by CI. T-03/T-04 packets are prepared; Northstar must assign the bounded batch after setup integration.
+`npm run agents -- status` shows the roster and published branches; `npm run check` runs local quality checks. No provider credentials or deployment are required by CI. T-03/T-04A/T-04B/T-05R packets are prepared; Northstar must assign the bounded batch after setup integration.

@@ -6,7 +6,7 @@ The effective repository is `/Users/william/Code/DishDeals` or an explicitly ass
 
 - Execute only the explicitly assigned ticket. Verify its dependencies; stop with a handoff once its checks pass or a named blocker prevents progress. Do not pull the next ticket automatically.
 - Human teammates own high-quality frontend and all map integration. Agents own functional core work only, with minimal usable UI where needed. Do not implement polished styling/fonts/animations, geocoding, maps, pin controls, map grounding, directions integration, or geospatial wiring without a new explicit assignment. Keep the plan's coordinates, table fields, and API names intact.
-- Run `maestri list` (or `"$MAESTRI_CLI" list`) before addressing connected teammates or notes. Reuse Northstar, Loom, and Prism. Northstar coordinates and alone maintains Delivery Board/shared status. No duplicate recruits or circular blocking requests.
+- Run `maestri list` (or `"$MAESTRI_CLI" list`) before addressing connected teammates or notes. Reuse Northstar, Loom, Prism, Cinder and Mica; see Gemini-first routing in docs/agent-workflow.md. Northstar coordinates and alone maintains Delivery Board/shared status. No duplicate recruits or circular blocking requests.
 - Agree branch/checkout, exact writable paths, acceptance, and checks before edits. Use `t-XX-short-name` branches. Overlapping writers require isolated checkouts or serial work. Preserve human and teammate changes.
 - Follow plan security/data rules: server-only keys, no committed `.env*`, signed-in checks on protected operations, no Instagram scraping, browser-computed current validity, America/Vancouver local times, schema-validated extraction, null-to-undefined conversion for optional Convex fields.
 - Inspect current official documentation for version-sensitive SDK/setup claims. Keep unavailable models, credentials, or deployment steps explicit; never invent successful backend or API evidence.
@@ -14,7 +14,7 @@ The effective repository is `/Users/william/Code/DishDeals` or an explicitly ass
 - The workflow instruction authorizes scoped task commits, branch pushes and draft PRs. Only Northstar integrates reviewed green PRs. Do not force push, deploy, submit purchases or create accounts. Cloud changes require specific authorization; old T-02 dev sync approval is scoped to T-02.
 - Return ticket status, branch/checkout, changed files, checks, human phone/setup steps, and the next proposed ticket. Stop if stuck for 30 minutes as the plan directs.
 
-Current scope: T-00 workflow setup. T-01/T-02 are committed in 356ec1b; T-02 development schema sync succeeded. Live T-01 browser/HTTPS/phone acceptance remains pending. T-03/T-04 task packets are prepared, not automatically dispatched; T-05R is reconciliation before extraction implementation. Read docs/workflow/tasks.json for ownership. All autonomous workers use separate worktrees. Root main is human-owned. No unlimited backlog execution.
+Current scope: T-00 Gemini-first workflow setup; no app feature dispatch implied. T-01/T-02 are committed in 356ec1b; T-02 development schema sync succeeded. Live T-01 browser/HTTPS/phone acceptance remains pending. T-03/T-04A/T-04B task packets are prepared, not automatically dispatched; T-05R is reconciliation before extraction implementation. Read docs/workflow/tasks.json for ownership. All autonomous workers use separate worktrees. Root main is human-owned. No unlimited backlog execution.
 
 <!-- convex-ai-start -->
 
