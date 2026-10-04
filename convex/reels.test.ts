@@ -170,6 +170,27 @@ test("multimodal action sends video plus caption and validates audio/visual evid
   expect(await alice.query(api.reels.get, { itemId })).toMatchObject({ status: "ready" });
   expect(await t.run(ctx => ctx.storage.get(videoId))).toBeNull();
 });
+test("a failed video extraction logs a safe diagnostic (type, status, short reason) and never the key or the content", async () => {
+  const { t, alice } = await sessions(); const { itemId } = await alice.mutation(api.reels.submit, { text });
+  for (const [key, value] of Object.entries({ ...reelEnv, GEMINI_API_KEY: "secret-gemini-key" })) vi.stubEnv(key, value);
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const videoId = await t.run(ctx => ctx.storage.store(new Blob(["synthetic media fixture"], { type: "video/mp4" })));
+  await t.mutation(internal.reels.attachMedia, { itemId, generation: 1, videoId, caption: "Lunch special", duration: 12, publishedAt: null });
+  sdk.generateContent.mockRejectedValueOnce(Object.assign(new Error("got status: 429 RESOURCE_EXHAUSTED secret-gemini-key"), { status: 429 }));
+  await t.action(internal.reelActions.extract, { itemId, generation: 1 });
+  expect(await alice.query(api.reels.get, { itemId })).toMatchObject({ status: "failed", error: { code: "EXTRACTION_FAILED" } });
+  const logged = warn.mock.calls.map(c => String(c[0])).find(line => line.includes("reel_extract_failed"));
+  expect(logged).toBeDefined();
+  expect(JSON.parse(logged!)).toMatchObject({ event: "reel_extract_failed", kind: "model_call", status: 429 });
+  expect(logged).not.toContain("secret-gemini-key");
+  // An unfinished answer and an answer that fails validation are told apart.
+  for (const [answer, kind] of [[{ candidates: [{ finishReason: "MAX_TOKENS" }], text: "{" }, "unfinished"], [{ candidates: [{ finishReason: "STOP" }], text: "not json" }, "bad_json"], [{ candidates: [{ finishReason: "STOP" }], text: JSON.stringify({ isDeal: true, drafts: [], evidence: [], transcript: "", warnings: [] }) }, "validation"]] as const) {
+    warn.mockClear(); await t.mutation(internal.reels.attachMedia, { itemId, generation: 1, videoId: await t.run(ctx => ctx.storage.store(new Blob(["x"], { type: "video/mp4" }))), caption: "Lunch special", duration: 12, publishedAt: null });
+    sdk.generateContent.mockResolvedValueOnce(answer);
+    await t.action(internal.reelActions.extract, { itemId, generation: 1 });
+    expect(JSON.parse(warn.mock.calls.map(c => String(c[0])).find(line => line.includes("reel_extract_failed"))!)).toMatchObject({ kind });
+  }
+});
 test("valid private editable drafts preserve immutable extraction and canonical backend", async () => {
   const { t, alice } = await sessions(); const { itemId } = await alice.mutation(api.reels.submit, { text });
   const draft = { restaurant: "Cafe", address: null, dealText: "Meal", price: null, currency: null, validDays: null, validStart: null, validEnd: null, expiresOn: null, conditions: null };

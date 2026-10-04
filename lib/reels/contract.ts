@@ -197,8 +197,32 @@ export interface ReelModelTransport {
   models: { generateContent(request: ReelExtractionRequest): Promise<{ text?: string; candidates?: { finishReason?: string }[] }> };
 }
 
+/** Why a video extraction failed, for diagnostics only. Users always see the same fixed message. */
+export class ReelExtractionError extends Error {
+  constructor(public readonly kind: "model_call" | "unfinished" | "bad_json" | "validation", message: string, public readonly status?: number, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "ReelExtractionError";
+  }
+}
+function statusOf(error: unknown): number | undefined {
+  const e = error as { status?: unknown; code?: unknown } | null;
+  for (const v of [e?.status, e?.code]) if (typeof v === "number" && Number.isInteger(v) && v >= 100 && v <= 599) return v;
+  return undefined;
+}
 export async function runReelExtraction(transport: ReelModelTransport, input: ReelExtractionInput, duration: number): Promise<ReelExtraction> {
-  const response = await transport.models.generateContent(buildReelExtractionRequest(input));
-  if (response.candidates?.[0]?.finishReason !== "STOP" || !response.text) throw new Error("Incomplete extraction");
-  return validateExtraction(JSON.parse(response.text), input.caption, duration, suppliedFragments(input.nativeContext));
+  let response: Awaited<ReturnType<ReelModelTransport["models"]["generateContent"]>>;
+  try {
+    response = await transport.models.generateContent(buildReelExtractionRequest(input));
+  } catch (error) {
+    throw new ReelExtractionError("model_call", error instanceof Error ? error.message : "The model call failed", statusOf(error), { cause: error });
+  }
+  const finish = response.candidates?.[0]?.finishReason;
+  if (finish !== "STOP" || !response.text) throw new ReelExtractionError("unfinished", `Incomplete extraction (finishReason ${finish ?? "none"})`);
+  let parsed: unknown;
+  try { parsed = JSON.parse(response.text); } catch (error) { throw new ReelExtractionError("bad_json", "The model answer was not valid JSON", undefined, { cause: error }); }
+  try {
+    return validateExtraction(parsed, input.caption, duration, suppliedFragments(input.nativeContext));
+  } catch (error) {
+    throw new ReelExtractionError("validation", error instanceof Error ? error.message : "The model answer failed validation", undefined, { cause: error });
+  }
 }

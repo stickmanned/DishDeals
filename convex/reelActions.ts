@@ -5,7 +5,7 @@ import { internalAction, env } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { retrieveReel, RetrievalError } from "../lib/reels/provider";
-import { runReelExtraction } from "../lib/reels/contract";
+import { ReelExtractionError, runReelExtraction } from "../lib/reels/contract";
 import { extractionBlock } from "../lib/reels/nativeContext";
 const args = { itemId: v.id("reelItems"), generation: v.number() };
 // Supplied recordings use only the Gemini gate; the resolver gate and key stay untouched.
@@ -59,6 +59,12 @@ export const extract = internalAction({ args, returns: v.null(), handler: async 
       duration: item.duration ?? null, nativeContext: item.nativeContext ?? null, ...(supplied ? { supplied: { sourceUrl: item.sourceUrl } } : {}) }, item.duration ?? 0);
     await ctx.runMutation(internal.reels.finish, { ...args, extractionJson: JSON.stringify(result) });
   } catch (error) {
+    if (!(error instanceof RetrievalError)) {
+      // Fixed fields only: failure kind, HTTP status and a short reason with the key removed. Never the video, caption or model text.
+      const key = env.GEMINI_API_KEY ?? "";
+      const reason = (error instanceof Error ? error.message : "").split(key || "\u0000").join("[key]").replace(/\s+/g, " ").slice(0, 200);
+      console.warn(JSON.stringify({ event: "reel_extract_failed", kind: error instanceof ReelExtractionError ? error.kind : "other", status: error instanceof ReelExtractionError ? error.status ?? null : null, reason, model: env.GEMINI_REEL_MODEL ?? null, durationSeconds: item.duration ?? null }));
+    }
     await ctx.runMutation(internal.reels.fail, { ...args, code: error instanceof RetrievalError ? error.code : "EXTRACTION_FAILED",
       message: error instanceof RetrievalError ? error.message : "The video could not produce a validated draft. Retry or use your own caption/screenshot." });
   }
