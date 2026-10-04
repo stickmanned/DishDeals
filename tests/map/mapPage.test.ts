@@ -3,6 +3,8 @@ import {
   formatValidityLabel,
   isDemoDealId,
   isValidDealId,
+  mapSelectionFromQuery,
+  resolveMapSelectionId,
   safeSourceUrl,
   selectDeals,
   viewerLocation,
@@ -508,5 +510,18 @@ describe("viewer location acceptance", () => {
     for (const [lat, lng] of [[NaN, 0], [Infinity, 0], [86, 0], [49, 181], [null, 0], [true, 0], ["49", -123]]) expect(viewerLocation(lat, lng)).toBeNull();
     expect(viewerLocation(49.25, -122.95)).toEqual({lat: 49.25, lng: -122.95});
     expect(viewerLocation(-85.05112878, 180)).toEqual({lat: -85.05112878, lng: 180});
+  });
+});
+
+
+describe("published-deal selection after navigation", () => {
+  it("highlights only a loaded visible canonical record and cannot bypass the active price filter", () => {
+    const base: CanonicalDeal = { _id: "synthetic_saved", _creationTime: 1, authorId: "synthetic_author", restaurant: "Synthetic restaurant", dealText: "Synthetic offer", priceCad: 10, validDays: [], conditions: [], lat: 49.25, lng: -122.98, stillOnCount: 0, expiredCount: 0 };
+    const queryId = mapSelectionFromQuery(base._id);
+    expect(resolveMapSelectionId(queryId, [])).toBeNull();
+    expect(resolveMapSelectionId(queryId, selectDeals([base], { price: "under10", time: "all", sort: "default", now: new Date("2026-10-04T08:00:00Z") }))).toBeNull();
+    expect(resolveMapSelectionId(queryId, selectDeals([base], { price: "any", time: "all", sort: "default", now: new Date("2026-10-04T08:00:00Z") }))).toBe(base._id);
+    expect(resolveMapSelectionId(mapSelectionFromQuery([base._id]), [base])).toBeNull();
+    expect(resolveMapSelectionId("demo-preview", [base])).toBeNull();
   });
 });

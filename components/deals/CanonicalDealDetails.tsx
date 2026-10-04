@@ -400,7 +400,7 @@ function CanonicalDealDetailsContent({ dealId }: { dealId: Id<"deals"> }) {
         >
           <div className="form-stack">
             <p>
-              This permanently removes “{deal.restaurant}” and its votes and photo from DishDeals.
+              This permanently removes “{deal.restaurant}” and its votes from the published map.
               This cannot be undone.
             </p>
             {deleteError && (

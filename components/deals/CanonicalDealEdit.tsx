@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { DealReviewForm } from "@/components/deals/DealReviewForm";
@@ -84,6 +84,7 @@ function CanonicalDealEditContent({
   const { isAuthenticated, isLoading } = useConvexAuth();
   const deal = useQuery(api.deals.get, { dealId });
   const me = useQuery(api.users.me, isAuthenticated ? {} : "skip");
+  const findLocation = useAction(api.geocode.geocode);
 
   if (deal === undefined || isLoading) {
     return (
@@ -145,7 +146,7 @@ function CanonicalDealEditContent({
     );
   }
 
-  return <EditForm key={dealId} dealId={dealId} live={deal} search={search} />;
+  return <EditForm key={dealId} dealId={dealId} live={deal} search={search ?? (query => findLocation({ query }))} />;
 }
 
 /**
@@ -213,8 +214,7 @@ function EditForm({
       <div className="page-heading">
         <h1>Edit your deal</h1>
         <p>
-          You are editing a published deal. The form’s “Publish Deal” button saves your changes to this
-          deal and replaces its details. The photo and source link stay as they are.
+          Review your changes and confirm the location before saving.
         </p>
       </div>
 
@@ -235,6 +235,8 @@ function EditForm({
       <DealReviewForm
         key={epoch}
         draft={draft}
+        title="Edit deal details"
+        submitLabel="Save changes"
         onAction={handleAction}
         onPublish={handleSave}
         busy={saving}

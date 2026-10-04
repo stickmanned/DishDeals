@@ -319,3 +319,14 @@ function sortByTime<T extends CanonicalDeal>(items: (T & { validity?: ValidNowRe
 export function viewerLocation(lat: unknown, lng: unknown): LatLng | null {
   try { return validateLatLng(lat, lng); } catch { return null; }
 }
+
+/** URL input selects only a genuine ID-shaped candidate; the map still requires a matching loaded published record. */
+export function mapSelectionFromQuery(value: unknown): string | null {
+  return typeof value === "string" && isValidDealId(value) ? value : null;
+}
+
+/** Selection never reintroduces a record excluded by the active query or filters. */
+export function resolveMapSelectionId(requested: unknown, visibleDeals: readonly Pick<CanonicalDeal, "_id">[]): string | null {
+  const id = mapSelectionFromQuery(requested);
+  return id !== null && visibleDeals.some(deal => deal._id === id) ? id : null;
+}

@@ -7,6 +7,8 @@ import { api } from "@/convex/_generated/api";
 import { PublishedDealMap } from "./PublishedDealMap";
 import {
   selectDeals,
+  mapSelectionFromQuery,
+  resolveMapSelectionId,
   viewerLocation,
   formatValidityLabel,
   type CanonicalDeal,
@@ -19,7 +21,7 @@ import { distanceKm, type LatLng } from "@/lib/distance";
 import { useClock } from "@/components/frontend/useClock";
 import { Icon } from "@/components/frontend/Icon";
 
-export function CanonicalDealMapPage() {
+export function CanonicalDealMapPage({ initialDealId }: { initialDealId?: string } = {}) {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
   if (!convexUrl) {
@@ -37,7 +39,7 @@ export function CanonicalDealMapPage() {
     );
   }
 
-  return <MapQueryBoundary><CanonicalDealMapContent /></MapQueryBoundary>;
+  return <MapQueryBoundary><CanonicalDealMapContent initialDealId={initialDealId} /></MapQueryBoundary>;
 }
 
 class MapQueryBoundary extends React.Component<{children: React.ReactNode}, {failed: boolean}> {
@@ -49,13 +51,13 @@ class MapQueryBoundary extends React.Component<{children: React.ReactNode}, {fai
   }
 }
 
-function CanonicalDealMapContent() {
+function CanonicalDealMapContent({ initialDealId }: { initialDealId?: string }) {
   const { now, ready: clockReady } = useClock();
 
   const [priceFilter, setPriceFilter] = useState<PriceFilter>("any");
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [sortOption, setSortOption] = useState<SortOption>("default");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() => mapSelectionFromQuery(initialDealId));
 
   const [userLocation, setUserLocation] = useState<LatLng | null>(null);
   const [locating, setLocating] = useState(false);
@@ -272,7 +274,7 @@ function CanonicalDealMapContent() {
       >
         <PublishedDealMap
           deals={filteredDeals}
-          selectedId={filteredDeals.some(deal => deal._id === selectedId) ? selectedId : null}
+          selectedId={resolveMapSelectionId(selectedId, filteredDeals)}
           fitKey={JSON.stringify([userLocation, priceFilter, timeFilter, filteredDeals.map(deal => deal._id)])}
           onSelectDeal={(deal) => setSelectedId(deal?._id ?? null)}
           ariaLabel="Published restaurant deals in Vancouver"

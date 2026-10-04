@@ -31,6 +31,8 @@ export interface DealReviewFormProps {
     onConfirm: (point: { lat: number; lng: number }) => void;
   }) => ReactNode;
   busy?: boolean;
+  submitLabel?: string;
+  title?: string;
 }
 
 function SuggestionItem({
@@ -70,6 +72,8 @@ export function DealReviewForm({
   publishUnavailableReason,
   renderLocation,
   busy = false,
+  submitLabel = "Publish deal",
+  title = "Review deal draft",
 }: DealReviewFormProps) {
   const idPrefix = useId();
   const restaurantId = `${idPrefix}-restaurant`;
@@ -200,7 +204,7 @@ export function DealReviewForm({
     <form className="form-stack panel" onSubmit={handleSubmit} noValidate>
       <div className="review-header">
         <div>
-          <h2>Review Deal Draft</h2>
+          <h2>{title}</h2>
           <p className="quiet-note">
             Review suggestions and confirm details before publishing. Every field must be
             explicitly checked.
@@ -822,7 +826,7 @@ export function DealReviewForm({
             className="button primary draft-submit"
             disabled={busy || isPublishing}
           >
-            {isPublishing ? "Publishing…" : "Publish Deal"}
+            {isPublishing ? "Saving…" : submitLabel}
           </button>
         )}
       </div>

@@ -58,7 +58,7 @@ export interface DealUpdateArgs {
 
 export const GENERIC_SAVE_ERROR =
   "Your changes could not be saved. Your edits are kept on this screen; check your connection and try again.";
-export const GENERIC_DELETE_ERROR = "This deal could not be deleted. Nothing was changed. Try again.";
+export const GENERIC_DELETE_ERROR = "The deletion could not be confirmed. Check the map before trying again.";
 
 /** Thrown with a message that is safe to show to the user. */
 export class DealEditError extends Error {
