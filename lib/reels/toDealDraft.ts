@@ -36,6 +36,7 @@
  *   and source immutability.
  */
 
+import { addAsCondition, isCanadianDollar, isOrdinaryRestriction } from "../benignRestrictions";
 import {
   createDraft,
   createDraftsFromOffers,
@@ -109,7 +110,7 @@ function identifyMissingFields(draft: ReelDraft): string[] {
 
   if (draft.price === null) {
     missing.push("price");
-  } else if (draft.currency !== "CAD") {
+  } else if (!isCanadianDollar(draft.currency)) {
     missing.push("priceCad"); // Price was extracted but currency is unconfirmed/non-CAD
   }
 
@@ -125,6 +126,21 @@ function identifyMissingFields(draft: ReelDraft): string[] {
   if (draft.conditions === null) missing.push("conditions");
 
   return missing;
+}
+
+/** Move ordinary UNSUPPORTED_CONSTRAINT notes into the offer's conditions; everything else is left to block. */
+function withOrdinaryRestrictionsAsConditions(extraction: ReelExtraction): ReelExtraction {
+  if (extraction.constraints === undefined) return extraction;
+  const drafts = extraction.drafts.map((d) => ({ ...d }));
+  const kept = extraction.constraints.filter((c) => {
+    const target = drafts[c.draftIndex];
+    if (c.code !== "UNSUPPORTED_CONSTRAINT" || !target || !isOrdinaryRestriction(c.detail, c.quote)) return true;
+    const added = addAsCondition(target.conditions, { quote: c.quote, detail: c.detail });
+    if (!added.absorbed) return true;
+    target.conditions = added.conditions;
+    return false;
+  });
+  return { ...extraction, drafts, constraints: kept };
 }
 
 /**
@@ -145,15 +161,18 @@ export function reelExtractionToDealDrafts(
       `Invalid ReelExtraction payload: ${parsed.error.message}`
     );
   }
-  const extraction = parsed.data;
+  const original = parsed.data;
+  // Ordinary restrictions (per-person limits, supplies, ...) become visible conditions instead of blocking notes
+  // (docs/decisions/0007). The sidecar keeps the model's original constraints and evidence untouched.
+  const extraction = withOrdinaryRestrictionsAsConditions(original);
 
   const sidecar: ReelDraftSidecar = {
-    evidence: deepClone(extraction.evidence),
-    transcript: extraction.transcript,
-    warnings: deepClone(extraction.warnings),
+    evidence: deepClone(original.evidence),
+    transcript: original.transcript,
+    warnings: deepClone(original.warnings),
     missingFieldsByDraft: {},
-    contractGaps: extraction.constraints !== undefined ? [] : [...REEL_EXTRACTION_CONTRACT_GAPS],
-    ...(extraction.constraints !== undefined ? { constraints: deepClone(extraction.constraints) } : {}),
+    contractGaps: original.constraints !== undefined ? [] : [...REEL_EXTRACTION_CONTRACT_GAPS],
+    ...(original.constraints !== undefined ? { constraints: deepClone(original.constraints) } : {}),
   };
 
   // Case 1: No deal detected or empty drafts
@@ -222,7 +241,7 @@ export function reelExtractionToDealDrafts(
   const offers: DealOffer[] = extraction.drafts.map((draft, index) => {
     sidecar.missingFieldsByDraft[index] = identifyMissingFields(draft);
 
-    const isCad = draft.currency === "CAD";
+    const isCad = isCanadianDollar(draft.currency);
     let priceCad: number | null = null;
 
     if (draft.price !== null) {
@@ -359,7 +378,7 @@ export function reelExtractionToDealDrafts(
     }
 
     // PriceCad: if null or non-CAD, ensure suggestion is undefined
-    if (rawDraft.price === null || rawDraft.currency !== "CAD") {
+    if (rawDraft.price === null || !isCanadianDollar(rawDraft.currency)) {
       fields.priceCad = {
         value: null,
         isManuallyEdited: false,

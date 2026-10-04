@@ -12,6 +12,7 @@
  * lib/dealDraft (the single canonical gate).
  */
 
+import { isCanadianDollar } from "../benignRestrictions";
 import {
   createDraft,
   type DealDraft,
@@ -231,7 +232,7 @@ export function initDraftsFromReelItem(
           restaurant: reel.restaurant,
           address: reel.address,
           dealText: reel.dealText,
-          priceCad: reel.currency === "CAD" ? reel.price : null,
+          priceCad: isCanadianDollar(reel.currency) ? reel.price : null,
           validDays: reel.validDays ? [...reel.validDays] : [],
           validStart: reel.validStart,
           validEnd: reel.validEnd,
@@ -247,8 +248,8 @@ export function initDraftsFromReelItem(
           if (reel.restaurant !== null) f.restaurant.isManuallyEdited = true;
           if (reel.address !== null) f.address.isManuallyEdited = true;
           if (reel.dealText !== null) f.dealText.isManuallyEdited = true;
-          // Only a CAD price was ever entered; a non-CAD price stays unconfirmed currency.
-          if (reel.price !== null && reel.currency === "CAD") f.priceCad.isManuallyEdited = true;
+          // Only a CAD (or currency-less, so CAD) price was ever entered; another stated currency stays unconfirmed.
+          if (reel.price !== null && isCanadianDollar(reel.currency)) f.priceCad.isManuallyEdited = true;
           if (reel.validDays !== null) f.validDays.isManuallyEdited = true;
           if (reel.validStart !== null) f.validStart.isManuallyEdited = true;
           if (reel.validEnd !== null) f.validEnd.isManuallyEdited = true;
@@ -280,7 +281,7 @@ export function initDraftsFromReelItem(
         // A saved non-CAD price needs its own currency note unless the model already raised one.
         if (
           reel.price !== null &&
-          reel.currency !== "CAD" &&
+          !isCanadianDollar(reel.currency) &&
           !reviewIssues.some((iss) => iss.code === "CURRENCY_UNVERIFIED")
         ) {
           reviewIssues.push({
@@ -306,7 +307,7 @@ export function initDraftsFromReelItem(
           if (!f.dealText.isManuallyEdited && modelOffer.dealText) {
             f.dealText.suggestion = { value: modelOffer.dealText };
           }
-          if (!f.priceCad.isManuallyEdited && modelOffer.price !== null && modelOffer.currency === "CAD") {
+          if (!f.priceCad.isManuallyEdited && modelOffer.price !== null && isCanadianDollar(modelOffer.currency)) {
             f.priceCad.suggestion = { value: modelOffer.price };
           }
           if (!f.validDays.isManuallyEdited && modelOffer.validDays !== null) {

@@ -12,13 +12,13 @@ Rules:
 - restaurant: the restaurant named in the offer, not the social account or author. Use "" when it is not shown.
 - address: only text address or location shown in the source; never coordinates, never a guessed street.
 - dealText: the offer in a short plain sentence.
-- statedPrice: the price number exactly as the source shows it, in whatever currency, or null. Do not convert currencies. cadEvidence: the exact text from the source that shows the price is Canadian dollars (for example "CAD", "C$", "CA$"), else null. A dollar sign alone, the city, or a Vancouver context is not CAD evidence; leave cadEvidence null then.
+- statedPrice: the price number exactly as the source shows it, or null. Do not convert currencies. A dollar sign alone, or no currency symbol, means Canadian dollars (every venue is in Metro Vancouver). cadEvidence: the exact source text that names the price's currency when there is one (for example "CAD", "C$", or another currency such as "US$12"), else null.
 - validDays: weekdays the offer applies to as lowercase mon, tue, wed, thu, fri, sat, sun. Empty array means every day or not stated.
 - validStart / validEnd: 24-hour HH:MM wall-clock times (00:00 to 23:59) in the restaurant's local time. null means not stated. An overnight range may end earlier than it starts.
 - expiresOn: last valid date as YYYY-MM-DD, or null. Resolve relative dates ("this Friday", "until the 30th") ONLY when a publication date is supplied in the context or the source itself states the full date. Today's date is never the publication date.
 - startDate: the first valid date as YYYY-MM-DD when the source says the offer starts on a later date, else null.
-- conditions: restrictions stated by the source (dine-in only, minimum spend). Never put your own doubts or warnings here.
-- unsupportedConstraints: offer limits stated by the source that the fields above cannot express (for example "first 50 customers only", "members only", "only at the Burnaby location", "every second Tuesday"). Else [].
+- conditions: restrictions stated by the source, in the source's words (dine-in only, minimum spend, limit one per person, while supplies last, first 50 customers, cash only, reservations required, which locations). Never put your own doubts or warnings here.
+- unsupportedConstraints: offer limits stated by the source that neither the fields above nor conditions can express (for example "members only", "every second Tuesday", "coupon code required"). Do NOT list per-person limits, supplies-last, dine-in or takeout only, cash only, reservations or which locations here: those belong in conditions. Else [].
 - confidence: your own self-assessment from 0 to 1 for each of restaurant, priceCad, hours, expiresOn. These are not probabilities. Score how clearly the source supports that field; a clearly absent field (no price stated) is scored on how sure you are that it is absent. Never copy one score to all four and never use a default.
 - isDeal is true only when the source shows an offer. Set isDeal false and deals [] only when there is evidence of no offer. A partly clear offer is still a deal; lower the confidence scores instead of rejecting it.
 Output only JSON matching the schema.`;

@@ -186,7 +186,7 @@ describe("supplied caption/text without images (synthetic source and network)", 
       deal({ startDate: "2099-01-01", unsupportedConstraints: ["members only"], statedPrice: 12, cadEvidence: null }),
       deal({ restaurant: "Other restaurant" }),
     ] })]);
-    const out = await s.alice.action(api.extract.extractDeal, { imageIds: [], caption: "2-for-1 pho; members only from 2099-01-01; second offer" });
+    const out = await s.alice.action(api.extract.extractDeal, { imageIds: [], caption: "2-for-1 pho US$12; members only from 2099-01-01; second offer" });
     expect(out.manualReview.slice(0, 3).map(n => [n.dealIndex, n.code, n.blocking])).toEqual([
       [0, "FUTURE_START", true], [0, "UNSUPPORTED_CONSTRAINT", true], [0, "CURRENCY_UNVERIFIED", false],
     ]);
@@ -289,13 +289,13 @@ describe("extraction through the reviewed core (scripted network)", () => {
     expect(await s.snapshot()).toEqual(before); // no deal written, no upload claimed or changed
   });
   it("passes the blocking sidecar through intact", async () => {
-    const s = await setup(); enable(); network([ok({ isDeal: true, deals: [deal({ startDate: "2099-01-01", unsupportedConstraints: ["members only"], statedPrice: 12, cadEvidence: "C$12 not in the supplied text" })] })]);
+    const s = await setup(); enable(); network([ok({ isDeal: true, deals: [deal({ startDate: "2099-01-01", unsupportedConstraints: ["members only"], statedPrice: 12, cadEvidence: "US$12 shown on the flyer" })] })]);
     const id = await s.upload(s.aId, img(PNG));
     const out = await s.alice.action(api.extract.extractDeal, { imageIds: [id] });
     expect(out.requiresBlockingReview).toBe(true);
     expect(out.manualReview.map(n => [n.dealIndex, n.code, n.blocking])).toEqual([[0, "FUTURE_START", true], [0, "UNSUPPORTED_CONSTRAINT", true], [0, "CURRENCY_UNVERIFIED", false]]);
     expect(out.manualReview[2].originalAmount).toBe(12);
-    expect(out.result.deals[0].priceCad).toBeNull(); // unverified CAD never becomes a canonical price
+    expect(out.result.deals[0].priceCad).toBeNull(); // a price in another named currency never becomes a canonical CAD price
     expect(out.result.deals[0].conditions).toEqual(["dine-in only"]); // sidecar text is not folded into conditions
   });
   it("returns an isDeal=false result unchanged (no invented offer or scores)", async () => {

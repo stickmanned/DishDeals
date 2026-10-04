@@ -746,7 +746,7 @@ describe("extractionDraft adapter (T-07D)", () => {
             address: "Peace Arch",
             dealText: "3 tacos for $10",
             statedPrice: 10,
-            cadEvidence: null, // Ambiguous currency: no CAD confirmation
+            cadEvidence: null, // The source names US dollars at the border
             validDays: ["tue"],
             validStart: "12:00",
             validEnd: "20:00",
@@ -760,7 +760,7 @@ describe("extractionDraft adapter (T-07D)", () => {
       };
 
       const { config } = createSyntheticTransport(modelDealOutput);
-      const outcome = await extractDealCore({ text: "Taco Tuesday $10" }, config);
+      const outcome = await extractDealCore({ text: "Taco Tuesday US$10" }, config);
 
       expect(outcome.requiresBlockingReview).toBe(false); // Non-blocking sidecar
       expect(outcome.manualReview).toEqual(

@@ -1,3 +1,4 @@
+import { addAsCondition, isOrdinaryRestriction, mentionsForeignCurrency } from "./benignRestrictions";
 import { z } from "zod";
 import { DealResult } from "./dealSchema";
 import { buildContextText, RESPONSE_JSON_SCHEMA, SYSTEM_PROMPT } from "./prompt";
@@ -181,16 +182,6 @@ export function vancouverToday(now: Date): string {
   }).format(now);
 }
 
-const norm = (t: string) => t.replace(/\s+/g, " ").trim().toLowerCase();
-const CAD_MARKER = /\b(cad|ca\$|c\$|cdn|canadian)\b|ca\$|c\$/i;
-
-function cadEvidenceProblem(evidence: string | null, supplied: string): string | null {
-  const q = evidence ? norm(evidence) : "";
-  if (!q) return "no CAD evidence";
-  if (!CAD_MARKER.test(q)) return "quoted evidence does not name CAD";
-  if (!norm(supplied).includes(q)) return "quote not found in supplied text; image-only claims cannot be verified";
-  return null;
-}
 
 /** Strict semantic validation of raw model JSON into a canonical DealResult. */
 export function validateModelOutput(
@@ -233,33 +224,35 @@ export function validateModelOutput(
         detail: `Offer starts on ${d.startDate}, which the canonical Deal cannot represent.`,
       });
     }
+    // Ordinary restrictions (per-person limits, supplies last, ...) become visible conditions; others block.
+    let conditions = d.conditions.map((c) => c.trim()).filter(Boolean);
     for (const c of d.unsupportedConstraints) {
-      if (c.trim()) {
-        manualReview.push({
-          dealIndex,
-          code: "UNSUPPORTED_CONSTRAINT",
-          blocking: true,
-          detail: c.trim(),
-        });
+      if (!c.trim()) continue;
+      const added = isOrdinaryRestriction(c) ? addAsCondition(conditions, { detail: c }) : null;
+      if (added?.absorbed) {
+        conditions = added.conditions;
+        continue;
       }
+      manualReview.push({
+        dealIndex,
+        code: "UNSUPPORTED_CONSTRAINT",
+        blocking: true,
+        detail: c.trim(),
+      });
     }
-    // Canonical priceCad is set only when the quote is found in the supplied
-    // text and itself names CAD. A quote not in the supplied text (including
-    // anything claimed from an image) is model-reported and not verifiable
-    // here, so it is never treated as proof.
+    // A price is Canadian dollars (every venue is in Metro Vancouver) unless the source names another currency.
     let priceCad: number | null = null;
     if (d.statedPrice !== null) {
-      const reason = cadEvidenceProblem(d.cadEvidence, suppliedText);
-      if (reason === null) {
-        priceCad = d.statedPrice;
-      } else {
+      if (mentionsForeignCurrency(`${suppliedText} ${d.cadEvidence ?? ""}`)) {
         manualReview.push({
           dealIndex,
           code: "CURRENCY_UNVERIFIED",
           blocking: false,
-          detail: `Price ${d.statedPrice} is not confirmed as CAD (${reason}). Choose the currency manually.`,
+          detail: `Price ${d.statedPrice} may not be in CAD (the source names another currency). Choose the currency manually.`,
           originalAmount: d.statedPrice,
         });
+      } else {
+        priceCad = d.statedPrice;
       }
     }
     return {
@@ -271,7 +264,7 @@ export function validateModelOutput(
       validStart: d.validStart,
       validEnd: d.validEnd,
       expiresOn: d.expiresOn,
-      conditions: d.conditions.map((c) => c.trim()).filter(Boolean),
+      conditions,
       confidence: d.confidence,
     };
   });

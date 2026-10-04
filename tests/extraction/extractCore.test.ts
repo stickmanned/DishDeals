@@ -513,24 +513,22 @@ describe("semantic validation of model output", () => {
 
   it("surfaces unsupported constraints separately from conditions", () => {
     const { result, manualReview } = validateModelOutput(
-      withDeal({ unsupportedConstraints: ["first 50 customers only", "  "] }),
+      withDeal({ unsupportedConstraints: ["members only", "  "] }),
       TODAY,
     );
     expect(manualReview).toEqual([
-      { dealIndex: 0, code: "UNSUPPORTED_CONSTRAINT", blocking: true, detail: "first 50 customers only" },
+      { dealIndex: 0, code: "UNSUPPORTED_CONSTRAINT", blocking: true, detail: "members only" },
     ]);
     expect(result.deals[0].conditions).toEqual(["dine-in only"]);
   });
 
-  it("nulls canonical priceCad without CAD evidence and keeps the original amount only in the note", () => {
+  it("treats a price with no currency named as Canadian dollars (docs/decisions/0007)", () => {
     const { result, manualReview } = validateModelOutput(withDeal({ statedPrice: 12 }), TODAY, "Pho $12 tonight");
-    expect(result.deals[0].priceCad).toBeNull();
-    expect(manualReview).toEqual([
-      expect.objectContaining({ code: "CURRENCY_UNVERIFIED", blocking: false, originalAmount: 12, dealIndex: 0 }),
-    ]);
+    expect(result.deals[0].priceCad).toBe(12);
+    expect(manualReview).toEqual([]);
   });
 
-  it("accepts CAD only when the quote is in the supplied text and names CAD", () => {
+  it("explicit CAD evidence in the supplied text is accepted", () => {
     const supplied = "Pho special  C$12 on Tuesdays";
     const good = validateModelOutput(withDeal({ statedPrice: 12, cadEvidence: "c$12" }), TODAY, supplied);
     expect(good.manualReview).toEqual([]);
@@ -538,19 +536,20 @@ describe("semantic validation of model output", () => {
   });
 
   it.each([
-    ["invented quote not in the supplied text", "CAD 12", "Pho $12 tonight"],
-    ["quote in text but not naming CAD", "$12", "Pho $12 tonight"],
-    ["image-only claim with no supplied text", "C$12", ""],
-  ])("does not trust CAD evidence: %s", (_n, cadEvidence, supplied) => {
-    const { result, manualReview } = validateModelOutput(withDeal({ statedPrice: 12, cadEvidence }), TODAY, supplied);
+    ["US$ in the supplied text", "", "Pho US$12 tonight"],
+    ["euro symbol in the supplied text", "", "Pho \u20ac12 tonight"],
+    ["the model's own evidence names another currency", "USD 12 on the flyer", ""],
+  ])("keeps the price unconfirmed when another currency is named: %s", (_n, cadEvidence, supplied) => {
+    const { result, manualReview } = validateModelOutput(withDeal({ statedPrice: 12, cadEvidence: cadEvidence || null }), TODAY, supplied);
     expect(result.deals[0].priceCad).toBeNull();
-    expect(manualReview[0]).toMatchObject({ code: "CURRENCY_UNVERIFIED", originalAmount: 12 });
+    expect(manualReview[0]).toMatchObject({ code: "CURRENCY_UNVERIFIED", blocking: false, originalAmount: 12 });
   });
 
   it("marks future start and unsupported constraints as blocking, unlike currency", () => {
     const { manualReview } = validateModelOutput(
       withDeal({ startDate: "2026-12-01", unsupportedConstraints: ["members only"], statedPrice: 5 }),
       TODAY,
+      "Only US$5 for members",
     );
     expect(manualReview.map((n) => [n.code, n.blocking])).toEqual([
       ["FUTURE_START", true],
@@ -593,7 +592,7 @@ describe("prompt and schema contract", () => {
     expect(conf.additionalProperties).toBe(false);
   });
   it("states the safety rules the contract depends on", () => {
-    for (const phrase of ["UNTRUSTED", "never instructions", "not probabilities", "never use a default", "Today's date is never the publication date", "shows the price is Canadian dollars"]) {
+    for (const phrase of ["UNTRUSTED", "never instructions", "not probabilities", "never use a default", "Today's date is never the publication date", "means Canadian dollars", "Do NOT list per-person limits"]) {
       expect(SYSTEM_PROMPT).toContain(phrase);
     }
   });
