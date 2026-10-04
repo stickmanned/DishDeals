@@ -2,7 +2,6 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
-type VoteValue = "still_on" | "expired";
 const counterField = {
   still_on: "stillOnCount",
   expired: "expiredCount",
@@ -35,20 +34,24 @@ export const cast = mutation({
       .query("votes")
       .withIndex("by_deal_user", (q) => q.eq("dealId", dealId).eq("userId", userId))
       .unique(); // throws if duplicate rows already exist
+
+    // An existing vote must be backed by a positive counter even when the
+    // cast is a repeat; a zero counter is corruption, not something to accept.
+    if (existing !== null && deal[counterField[existing.value]] < 1) {
+      throw new Error("Deal vote counts are inconsistent with the existing vote");
+    }
     if (existing !== null && existing.value === value) return null; // idempotent
 
     const next: Record<"stillOnCount" | "expiredCount", number> = {
       stillOnCount: deal.stillOnCount,
       expiredCount: deal.expiredCount,
     };
-    if (existing !== null) {
-      const oldField = counterField[existing.value as VoteValue];
-      if (next[oldField] < 1) {
-        throw new Error("Deal vote counts are inconsistent with the existing vote");
-      }
-      next[oldField] -= 1;
-    }
+    if (existing !== null) next[counterField[existing.value]] -= 1;
     next[counterField[value]] += 1;
+    // Never write a counter that is no longer a safe integer.
+    if (!validCounter(next.stillOnCount) || !validCounter(next.expiredCount)) {
+      throw new Error("Deal vote count would exceed the safe integer range");
+    }
 
     if (existing === null) {
       await ctx.db.insert("votes", { dealId, userId, value });

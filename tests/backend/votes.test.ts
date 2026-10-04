@@ -223,6 +223,54 @@ describe("votes.cast: corrupt data is rejected atomically", () => {
     expect(await s.votes()).toEqual(rowsBefore);
   });
 
+  it.each([STILL, EXPIRED])(
+    "fails a repeated %s vote whose own counter is zero, changing nothing",
+    async (value) => {
+      const s = await setup();
+      const d = await s.makeDeal({ stillOnCount: 0, expiredCount: 0 });
+      await s.t.run((ctx) => ctx.db.insert("votes", { dealId: d, userId: s.aliceId, value }));
+      const before = await s.deal(d);
+      const rowsBefore = await s.votes();
+      await expect(s.alice.mutation(api.votes.cast, { dealId: d, value })).rejects.toThrow("inconsistent");
+      expect(await s.deal(d)).toEqual(before);
+      expect(await s.votes()).toEqual(rowsBefore);
+    },
+  );
+
+  it("still accepts a repeated vote whose counter is positive (even if totals exceed rows)", async () => {
+    const s = await setup();
+    const d = await s.makeDeal({ stillOnCount: 3 });
+    await s.t.run((ctx) => ctx.db.insert("votes", { dealId: d, userId: s.aliceId, value: STILL }));
+    await s.alice.mutation(api.votes.cast, { dealId: d, value: STILL });
+    expect(await s.counts(d)).toEqual({ stillOn: 3, expired: 0 }); // not recounted or repaired
+  });
+
+  const MAX = Number.MAX_SAFE_INTEGER;
+  it.each([
+    ["first still_on", { stillOnCount: MAX }, null, STILL],
+    ["first expired", { expiredCount: MAX }, null, EXPIRED],
+    ["switch to still_on", { stillOnCount: MAX, expiredCount: 1 }, EXPIRED, STILL],
+    ["switch to expired", { stillOnCount: 1, expiredCount: MAX }, STILL, EXPIRED],
+  ])("rejects an increment past MAX_SAFE_INTEGER: %s", async (_n, counts, prior, value) => {
+    const s = await setup();
+    const d = await s.makeDeal(counts);
+    if (prior) {
+      await s.t.run((ctx) => ctx.db.insert("votes", { dealId: d, userId: s.aliceId, value: prior }));
+    }
+    const before = await s.deal(d);
+    const rowsBefore = await s.votes();
+    await expect(s.alice.mutation(api.votes.cast, { dealId: d, value })).rejects.toThrow("safe integer");
+    expect(await s.deal(d)).toEqual(before);
+    expect(await s.votes()).toEqual(rowsBefore);
+  });
+
+  it("allows an increment that lands exactly on MAX_SAFE_INTEGER", async () => {
+    const s = await setup();
+    const d = await s.makeDeal({ stillOnCount: MAX - 1 });
+    await s.alice.mutation(api.votes.cast, { dealId: d, value: STILL });
+    expect(await s.counts(d)).toEqual({ stillOn: MAX, expired: 0 });
+  });
+
   it("fails on duplicate vote rows for one user and deal, changing nothing", async () => {
     const s = await setup();
     const d = await s.makeDeal({ stillOnCount: 2 });
