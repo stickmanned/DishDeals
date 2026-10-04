@@ -1,59 +1,65 @@
 # DishDeals Setup, Native Verification, and Release Runbook (T-19A)
 
-This document provides verified local setup procedures, stage gates for native iOS verification on William's physical iPhone, backend provisioning checkpoints, and the retained T-20 custom domain checklist.
+This document details verified local commands, stage gates for native iOS verification on William's physical iPhone, backend provisioning status, and the retained T-20 custom domain setup instructions.
 
 ---
 
 ## 1. Web and Shared Core Verification
 
-All functional core logic (auth, temporal validity, haversine distance, deal draft state, deal selection, and votes) is implemented and verified locally via pure unit and workflow tests.
+All functional core logic (auth, temporal validity, haversine distance, deal draft state, deal selection, and votes backend) is implemented and verified locally via pure unit and workflow tests.
 
-### Prerequisites
-- Node.js (v20+ recommended, tested on Node 22+)
-- npm (v10+)
+### Runtime Environment
+- **Node.js**: Exact runtime `v26.7.0` (active environment).
+- **npm**: v10+.
+- **ESLint**: Code linter (`eslint .`). Note: ESLint is configured for linting rules, not automated code formatting.
+- **Build Output**: Current Next.js build (`next build`) produces static prerendered routes (`/`, `/_not-found`, `/profile`, `/signin`); no server-side rendering (SSR) routes are tested or active.
 
-### Commands & Verification Steps
+### Verified Local Commands
 ```bash
-# 1. Clean install dependencies according to lockfile
+# 1. Clean install dependencies from lockfile
 npm ci
 
-# 2. Typecheck core TypeScript files
+# 2. Typecheck TypeScript sources
 npm run typecheck
 
-# 3. Code formatting and linting
+# 3. Lint codebase
 npm run lint
 
-# 4. Run Vitest suite across all shared logic and contracts
+# 4. Run Vitest suite across functional core modules
 npm run test
 
-# 5. Run workflow guardrail test suite
+# 5. Run workflow guardrail suite
 npm run test:workflow
 
-# 6. Verify Next.js static and SSR build
+# 6. Verify Next.js static build
 npm run build
 
-# Or execute full combined pipeline:
+# Or run combined full check:
 npm run check
 ```
 
-> **Note on Verification Evidence**: A passing `npm run check` in coordinator integration confirms shared TypeScript and React code integrity. It does **not** claim clean-clone native mobile readiness or physical device acceptance.
+> **Verification Boundary**: Passing `npm run check` confirms shared TypeScript and React code integrity. It does **not** claim clean-clone native mobile readiness or physical device acceptance.
 
 ---
 
 ## 2. Backend and Secrets Provisioning Gates
 
-Live Convex backend deployment and external Gemini API access are subject to strict stage gates and require explicit task-specific human authorization before execution.
+Live Convex backend deployment and external Gemini API access are subject to strict stage gates requiring explicit task-specific human authorization before execution.
 
-### Environment Configuration (Variable Names Only)
-The application expects the following configuration values (set in Convex Dashboard or deployment environment; **never committed to Git or `.env*` files**):
-- `CONVEX_DEPLOYMENT`: Target Convex deployment identifier.
-- `NEXT_PUBLIC_CONVEX_URL`: Client-accessible Convex backend endpoint.
-- `GEMINI_API_KEY`: Server-side API key for Gemini 3.8 Flash multimodal extraction (managed strictly in Convex dashboard; never client-exposed).
-- `JWKS` / Password Provider secrets for Convex Auth (`@convex-dev/auth`).
+### Environment Configuration (Actual Code References)
+The backend and frontend codebase references the following environment variables:
+- `NEXT_PUBLIC_CONVEX_URL`: Public client URL for Convex provider (configured in `components/ConvexClientProvider.tsx`).
+- `JWT_PRIVATE_KEY` & `JWKS`: Server-side asymmetric key material for Convex Auth (`@convex-dev/auth`).
+- `CONVEX_SITE_URL`: HTTP origin for Convex Auth routing (`convex/auth.config.ts`).
+- `Password` provider configuration: Internal Convex Auth credentials.
+- `GEMINI_API_KEY`: Server-side API key for Gemini multimodal extraction (`lib/extractCore.ts` takes an explicit config; live Convex action wiring in `convex/extract.ts` remains pending).
 
-### Backend Execution Gate
-- `npx convex dev --once`: Evaluates schema validity and syncs tables against a development deployment.
-- **Current Status**: Evaluated as **unrun** in local worktrees unless authorized for an explicit deployment task. No cloud deployment or database mutation is authorized as part of documentation prep.
+> **Secret Hygiene**: Variable names are listed for documentation only. Secrets are managed in deployment dashboards and **never committed to Git or `.env*` files**.
+
+### Backend State Gate
+- Original T-02 development schema sync succeeded (human-confirmed DONE).
+- New T-03+ schema changes (auth tables, profiles, votes) are currently unsynced on cloud deployments.
+- `npx convex dev --once`: Unrun in current worktrees; cloud deployment and database mutations remain pending target-specific human authorization.
 
 ---
 
@@ -74,36 +80,39 @@ xcrun simctl list devices available
 ```
 
 ### Discovery Checklist (Once Native Source Arrives)
-- [ ] Determine native framework: Swift/UIKit, SwiftUI, React Native, or Expo.
-- [ ] Inspect available Xcode targets and schemes:
+- [ ] Locate the project or workspace directory in Harry's source.
+- [ ] Inspect available schemes and targets from within that directory:
   ```bash
-  xcodebuild -list
+  xcodebuild -list -project <PathToProject>.xcodeproj
+  # or if using a workspace:
+  xcodebuild -list -workspace <PathToWorkspace>.xcworkspace
   ```
-- [ ] Identify main containing app target and Share Extension target (`NSExtensionPointIdentifier = "com.apple.share-services"`).
-- [ ] Inspect bundle identifiers and deployment targets (targeting William's iOS 26 device).
-- [ ] Verify dependencies (CocoaPods `Podfile`, Swift Package Manager `Package.swift`, or NPM modules).
+- [ ] Identify containing app target and Share Extension target (`NSExtensionPointIdentifier = "com.apple.share-services"`).
+- [ ] Note native bundle identifier placeholders (e.g. `<CONTAINING_APP_BUNDLE_ID>` and `<SHARE_EXTENSION_BUNDLE_ID>`); do not assume or invent names.
+- [ ] Inspect package dependencies (CocoaPods `Podfile`, Swift Package Manager `Package.swift`, or NPM modules).
 
 ---
 
 ## 4. Physical iPhone Signing & Apple Personal Team Constraints
 
-William has requested direct on-device testing on his physical iPhone (iOS 26) without paid Apple Developer Program enrollment or App Store submission.
+William has requested direct on-device testing on his physical iPhone (iOS 26; minor version unverified) without paid Apple Developer Program enrollment or App Store submission.
 
 ### Apple Personal Team Guidance & Limitations
 Official Apple Documentation: [About Your Developer Account (Personal Team)](https://developer.apple.com/help/account/basics/about-your-developer-account)
 
-Key technical constraints of a free Apple ID / Personal Team:
-1. **7-Day Provisioning Profile Expiry**: Provisioning profiles generated under a Personal Team expire every 7 days, requiring re-building/re-signing from Xcode to continue running.
-2. **Device Limits**: Limited to 3 active test devices per account.
-3. **App Limit**: Up to 3 installed personal development apps per device.
-4. **Entitlements & App Groups**:
-   - Sharing data between an iOS containing app and a Share Extension typically requires [Configuring App Groups](https://developer.apple.com/documentation/xcode/configuring-app-groups) (`group.<bundle_id>`).
-   - Free Personal Teams have restricted access to certain iCloud, Push Notification, and associated domain capabilities. App Groups support on free personal teams must be verified against Xcode's automatic signing before assuming cross-process shared container access.
+Official technical limits for a free Apple ID / Personal Team:
+1. **10 App IDs** per account.
+2. **3 Test Devices** per platform (iPhone, iPad, etc.).
+3. **7-Day Provisioning Profile Expiry**: Profiles expire weekly, requiring re-building/re-signing from Xcode to continue running.
+4. **App Groups & Capabilities**:
+   - Cross-process communication between an iOS containing app and a Share Extension requires [Configuring App Groups](https://developer.apple.com/documentation/xcode/configuring-app-groups).
+   - Free Personal Team support for App Groups is restricted/unverified; feasibility must be confirmed in Xcode's automatic signing before assuming shared container access.
 
 ### Physical Device Onboarding Procedure (Human Steps)
-1. **Connect & Trust**:
-   - Connect the iPhone via USB-C/Lightning to the Mac.
-   - Unlock the phone and tap **Trust This Computer**.
+1. **Connect & Pair Device**:
+   - Connect the iPhone via cable to the Mac.
+   - Unlock the iPhone and tap **Trust This Computer**.
+   - Note: In current iOS versions, **Developer Mode** option in Settings may remain hidden until the device is paired and trusted with Xcode.
 2. **Enable iOS Developer Mode**:
    - Reference: [Enabling Developer Mode on a Device](https://developer.apple.com/documentation/xcode/enabling-developer-mode-on-a-device).
    - On iPhone: Open **Settings** > **Privacy & Security** > scroll to **Developer Mode** > Toggle **On**.
@@ -113,8 +122,8 @@ Key technical constraints of a free Apple ID / Personal Team:
    - In Project Settings > Select App Target > **Signing & Capabilities**:
      - Check **Automatically manage signing**.
      - Select **Team: Personal Team**.
-     - Ensure bundle identifier is unique (e.g. `com.william.dishdeals`).
-   - Repeat for the Share Extension target if present.
+     - Ensure bundle identifier placeholder is replaced with a valid unique identifier.
+   - Repeat for the Share Extension target.
 4. **Deploy to Device**:
    - Select William's physical iPhone in Xcode's run destination bar.
    - Click **Run** (`Cmd + R`).
@@ -122,24 +131,18 @@ Key technical constraints of a free Apple ID / Personal Team:
 
 ---
 
-## 5. Retained T-20 Domain and HTTPS Checklist
+## 5. Retained T-20 Domain Setup Instructions (Unexecuted)
 
-The plan retains task T-20: claiming a `.tech` domain through Major League Hacking (MLH) / Namecheap and configuring HTTPS on Vercel.
+Task T-20 retains custom domain preparation. No domain has been purchased or claimed, and no DNS alterations have been performed.
 
-> **Pre-Flight Authorization**: Do not purchase, claim, register, or alter live DNS records without explicit task authorization. Native app hosting is separate from web hosting.
-
-### Step-by-Step Domain Setup Checklist
-1. **Claim Domain**:
-   - Navigate to the MLH / Namecheap student portal.
-   - Register the preferred domain (e.g. `dishdeals.tech`).
-2. **DNS Configuration (Vercel)**:
-   - In Vercel Project Dashboard: **Settings** > **Domains** > Add `dishdeals.tech` and `www.dishdeals.tech`.
-   - In DNS Registrar (Namecheap / DNS provider), add standard apex and subdomain records:
-     - **Apex (`@`)**: `A` record pointing to `76.76.21.21` (or registrar ALIAS/ANAME).
-     - **Subdomain (`www`)**: `CNAME` record pointing to `cname.vercel-dns.com`.
-3. **TLS / SSL Issuance**:
-   - Verify Vercel automated Let's Encrypt TLS certificate generation.
-   - Verify HTTP automatically redirects to HTTPS (HTTP 308).
-4. **App Integration**:
-   - Set production environment variable `NEXT_PUBLIC_SITE_URL=https://dishdeals.tech`.
-   - Verify web manifest, service worker scope, and Convex Auth origin bindings reflect the custom domain.
+### Domain Setup Checklist (When Authorized)
+1. **Claim Proposed Domain**:
+   - Proposed domain: `dishdeals.tech` (subject to availability and MLH student offer eligibility).
+   - Follow MLH / partner student offer instructions to claim.
+2. **Project-Specific DNS Configuration**:
+   - Add domain in Vercel project dashboard (**Settings** > **Domains**).
+   - Retrieve the **project-specific DNS records** provided by the Vercel dashboard (do not assume generic static IP addresses, as Vercel allocates IP and CNAME targets per account/project).
+   - Configure corresponding `A` / `ALIAS` and `CNAME` records at the registrar.
+3. **TLS Verification**:
+   - Verify automated SSL/TLS certificate issuance in Vercel dashboard.
+   - Confirm automatic HTTP-to-HTTPS redirect.

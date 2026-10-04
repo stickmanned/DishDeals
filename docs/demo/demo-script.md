@@ -1,38 +1,51 @@
-# DishDeals Demo Video Script (<= 3 Minutes)
+# DishDeals Conditional Demo Script (<= 3 Minutes)
 
-- **Target Duration**: 2 minutes 45 seconds (Hard limit: 3 minutes 00 seconds).
-- **Format**: Screen recording + physical phone camera capture (real iPhone on iOS 26).
-- **Focus**: Native reel-to-map community sharing pipeline; map-home dominant experience.
-- **Filming Status**: Pending William physical iPhone verification and Harry frontend source.
+> **Notice**: This storyboard is a conditional production plan for future filming *after* William's physical iPhone passes the acceptance gates in `docs/demo/iphone-acceptance.md`. Native iOS transitions, actual Instagram share sheet payloads, and UI bindings remain unobserved until integrated on the physical device.
 
----
-
-## Timing and Scene Breakdown
-
-| Timestamp | Duration | Scene & Visual Action | Narration & Audio Cue | Stage Gate & Technical Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| **0:00 – 0:25** | 25s | **Scene 1: Map-Home Opening**<br>App opens directly to the full-screen interactive community map in Vancouver. Colored pins show active deals near SFU/Burnaby. Tapping filter toggle demonstrates "$5", "$10", "$15", and "Any" filtering. Valid-now badges countdown in real time. | *"Finding great food deals shouldn't mean scrolling through endless social media feeds and trying to remember where and when they're valid. Welcome to DishDeals: a community-powered deal saver that turns fleeting Instagram food promos into verified, live map locations."* | Demonstrates pure `selectDeals` logic, strict `<` price thresholds, and Vancouver temporal engine (`validNow`). |
-| **0:25 – 0:55** | 30s | **Scene 2: Real Instagram Reel Share**<br>Cut to Instagram app. William browses a real restaurant promo reel (e.g. happy hour burger special). Taps the iOS Share button. Selects **DishDeals** from the system share sheet. Native share extension opens with thumbnail preview and caption text. | *"When you spot a deal on an Instagram reel, you don't need to take a screenshot or write it down. Just tap Share and select DishDeals. Our native iOS extension receives the post's visual media and caption without scraping or downloading unauthorized content."* | **Gate Check**: Distinguish system share sheet from internal Instagram DM. Note that receiving a URL alone is an unsupported blocker; media/text payload required. |
-| **0:55 – 1:30** | 35s | **Scene 3: Multimodal Extraction & Draft**<br>Transition into DishDeals draft review screen. Multimodal extraction analyzes the video frames/caption using Gemini. Form fields populate: restaurant name, CAD price, validity days, hours, and expiry. Confidence indicators highlight detected terms. | *"DishDeals processes the reel's visual frames and caption with Gemini multimodal AI, extracting the restaurant name, exact CAD price, operating hours, and expiry date. Everything is structured and editable—no hallucinated deals make it to the map without human confirmation."* | Shows `extractDeal` schema conformity and `DealDraft` reducer state. Mention demo fixtures (`fixtures/demo/<hash>.json`) as resilient fallback against slow networks. |
-| **1:30 – 2:05** | 35s | **Scene 4: Pin Confirmation & Uncertainty Handling**<br>One field shows a yellow confidence indicator (< 0.6). User taps to confirm. Camera pans to Pinyuan's location pin selector: user drags pin or taps "Confirm Location" on the geocoded address. User demonstrates editing the restaurant name, showing how location confirmation is safely re-validated. | *"If a field has lower confidence—like a promotional condition or ambiguous hours—DishDeals highlights it for review. Most importantly, you explicitly confirm the restaurant's physical pin on the map. If you adjust the address, the pin confirmation updates safely before you can publish."* | Demonstrates contract: restaurant/address edits invalidate prior pin confirmation; unconfirmed locations block publish mutation. |
-| **2:05 – 2:30** | 25s | **Scene 5: Publish & Live Reactive Map**<br>User taps **Publish Deal**. Loading spinner transitions instantly back to the Map Home. The new pin drops onto the map with a reveal animation. Tapping the pin opens the card showing the exact price, distance in km from user location, and "Valid for 3h 15m" badge. | *"One tap to publish, and the deal is instantly live for the entire community. Anyone opening the app sees the verified pin, exact distance, and real-time validity status in local Vancouver time."* | Demonstrates reactive Convex query updates (`deals.listNearby`) and client-side haversine distance (`distanceKm`). |
-| **2:30 – 2:45** | 15s | **Scene 6: Fallbacks & Wrap-up**<br>Brief screen glance showing alternative manual post and photo flyer upload options. Closing title card with team names (William, Harry, Pinyuan, Antigravity agents). | *"Whether sharing directly from Instagram reels, photos, or flyers, DishDeals makes sure student and local food deals never expire in your saved folder again. Built for StormHacks 2026."* | Mentions screenshot/flyer upload as alternate input routes. Truthfully states that physical iPhone acceptance is pending final human recording. |
+- **Target Duration**: <= 3 minutes (per original StormHacks plan target; Devpost current duration limits unverified).
+- **Format**: Real physical iPhone camera + screen capture.
+- **Orientation**: Map-home dominant experience.
 
 ---
 
-## Production & Filming Checklist for William
+## Conditional Storyboard
 
-- [ ] **Device & App State**:
-  - iPhone running verified iOS 26.
-  - Native build signed via Xcode Personal Team.
-  - Test account signed in with display name configured.
-- [ ] **Lighting & Screen Capture**:
-  - Good natural lighting; no harsh screen glare on the physical phone.
-  - Clean background and stable phone mount or hands.
-- [ ] **Truthful Fixtures Note**:
-  - If network on stage is unstable, explain that SHA-256 fixture fallback protects demo continuity, but do not claim synthetic fixtures are real production receipts.
-- [ ] **Audio Quality**:
-  - Clear narration; no background noise.
-  - Pacing matched to the 2m45s target.
-- [ ] **Hard Cut**:
-  - Video must strictly finish under **3:00** (Devpost rule).
+### Scene 1: Map-Home Opening (0:00 – 0:25)
+- **Visual Action**: App launches directly into the interactive Vancouver map (MapLibre raster/vector tiles). Active local deal pins are visible around the campus area. Toggle between price filters ("Any", "$5", "$10", "$15") demonstrating strict `<` thresholding and "price varies" inclusion. Pins show status countdown badges (or "No expiry listed" with `unknown` validity per plan edge case 2).
+- **Narration Cue**: *"Finding local food deals usually means endless scrolling through social feeds and forgetting where or when they're valid. DishDeals turns fleeting food promos into a verified, real-time community map with live Vancouver validity countdowns and strict price filtering."*
+
+### Scene 2: Real Instagram Share to DishDeals (0:25 – 0:50)
+- **Visual Action**: Switch to Instagram on the physical iPhone. Open a local restaurant promo post. Tap the system share button and select DishDeals from the native iOS Share Sheet.
+- **Technical Note & Blocker Check**:
+  - Distinguish system share sheet from Instagram internal DM.
+  - If the incoming payload provides a URL only without accessible media/text, the script demonstrates the safe unsupported URL blocker and routes to manual/fallback entry. No automated web scraping of Instagram is performed.
+- **Narration Cue**: *"When you spot a food deal on Instagram, tap Share to DishDeals. Our native share extension receives the user-supplied post context directly from the system share sheet without unauthorized background scraping."*
+
+### Scene 3: Multimodal Extraction & Draft Review (0:50 – 1:30)
+- **Visual Action**: Transition into DishDeals editable deal draft. The system performs multimodal extraction via injected Gemini API REST fetch, generating editable fields: restaurant, price CAD, days, hours, and expiry.
+- **Technical Note & Caveat**:
+  - Model confidence scores are self-assessments (0..1), not calibrated probabilities.
+  - **All** extracted fields require explicit human acceptance before publishing, not just low-scoring ones.
+  - Note: In demo environments on unstable networks, pre-computed fixtures (`fixtures/demo/<hash>.json`) serve as an emergency fallback, but are distinct from genuine live extraction.
+- **Narration Cue**: *"Gemini analyzes the promo visuals and caption via structured REST extraction, suggesting the restaurant, price in CAD, valid hours, and expiration date. Every field is an editable suggestion that requires explicit human review."*
+
+### Scene 4: Uncertainty Handling, Late Edits & Location Pin (1:30 – 2:10)
+- **Visual Action**:
+  - **Error/Retry**: Demonstrate handling an ambiguous field or transient extraction error with clear retry/manual fallback.
+  - **Late Edit**: User adjusts the restaurant name or address text; demonstrate that editing the location text safely invalidates the previous pin confirmation.
+  - **Pin Placement**: User opens Pinyuan's map pin interface, drags or confirms the exact physical coordinates (`lat`, `lng`), completing the location requirement.
+- **Narration Cue**: *"To prevent coordinate hallucination, DishDeals enforces a strict human-in-the-loop requirement: you explicitly verify and confirm the pin on the map. If you edit the address, the pin confirmation is invalidated until re-confirmed."*
+
+### Scene 5: Publishing & Live Community Map (2:10 – 2:40)
+- **Visual Action**: Tap **Publish Deal**. The mutation saves to Convex, and the Map Home immediately reflects the new deal pin. Tapping the pin displays the deal card with straight-line Haversine distance (`distanceKm`) from user location and computed local validity.
+- **Narration Cue**: *"Once published, the deal is instantly live for the community. The feed sorts valid deals first, then nearest by straight-line distance, with accurate local Vancouver validity."*
+
+### Scene 6: Input Fallbacks & Wrap-up (2:40 – 2:55)
+- **Visual Action**: Brief screen showing alternative manual photo flyer upload and screenshot fallback routes (noting these are separate fallback acceptance paths). Closing slide with team member names and StormHacks project link.
+- **Narration Cue**: *"Whether shared via Instagram, photo flyer, or screenshot, DishDeals keeps community deals accessible and verified. Built for StormHacks 2026."*
+
+---
+
+## Production Caveats
+- No containing-app automatic-open promise; transition behavior depends on Harry's final native Share Extension source.
+- Physical filming, timing rehearsals, and Devpost submission remain pending William's physical device verification.
