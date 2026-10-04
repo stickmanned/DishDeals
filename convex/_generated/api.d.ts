@@ -9,6 +9,12 @@
  */
 
 import type * as test from "../test.js";
+// Offline type extension for Reel modules/component; regenerate through authorized
+// Convex codegen before deployment. No backend sync was performed by this change.
+import type * as auth from "../auth.js";
+import type * as reels from "../reels.js";
+import type * as reelActions from "../reelActions.js";
+import type * as reelWorkflow from "../reelWorkflow.js";
 
 import type {
   ApiFromModules,
@@ -18,6 +24,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   test: typeof test;
+  auth: typeof auth;
+  reels: typeof reels;
+  reelActions: typeof reelActions;
+  reelWorkflow: typeof reelWorkflow;
 }>;
 
 /**
@@ -46,4 +56,4 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: { workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow"> };

@@ -1,0 +1,283 @@
+
+> dishdeals@0.1.0 test:workflow
+> node --test scripts/agent-workflow.test.mjs
+
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'NEW.md', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'NEW.md', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/feature.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'NEW.md', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/feature.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'convex/feature/a.ts', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/x.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/feature.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'convex/feature/.env.production', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/upstream.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'lib/feature.ts', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: You appear to have cloned an empty repository.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'baseline.txt', LF will be replaced by CRLF the next time Git touches it
+▶ agent workflow
+  ▶ create
+    ✔ is gated on the baseline being an ancestor of origin/main (1814.1485ms)
+    ✔ creates a new branch worktree when the baseline is published, then refuses to reuse it (3009.2852ms)
+    ✔ refuses non-ready tasks, main as a branch, and existing branches (3101.5866ms)
+    ✔ refuses an existing directory at the worktree path (2541.6087ms)
+    ✔ rejects arbitrary or non-sibling worktreeParent values (12361.8807ms)
+    ✖ rejects a worktreeParent symlink that escapes the sibling location (1746.8409ms)
+    ✔ rejects path traversal in worktree and allowedPaths (2570.799ms)
+  ✖ create (27147.6388ms)
+  ▶ sync
+    ✔ refuses a dirty working tree and leaves it untouched (2849.4381ms)
+    ✔ refuses main (2412.1882ms)
+    ✔ refuses the primary checkout even on a t-xx branch, leaving HEAD unchanged (5026.4211ms)
+    ✔ fast-forwards a clean ticket branch to origin/main (4178.5657ms)
+    ✔ refuses diverged branches (3841.1304ms)
+  ✔ sync (18308.2199ms)
+  ▶ check
+    ✔ passes for committed, staged, and untracked changes inside allowedPaths (2909.0736ms)
+    ✔ rejects files outside allowedPaths whether committed, staged, unstaged or untracked (3587.4471ms)
+    ✔ fails when a protected file was committed then removed, but not for a removed allowed file (4968.0532ms)
+    ✔ origin/main merged into the task branch is not assigned to the worker (4550.8801ms)
+    ✔ directory entries do not match sibling prefixes (2283.5928ms)
+    ✔ rejects protected secret paths even inside allowed dirs, but ignores ignored env/cache files (2570.1241ms)
+    ✔ rejects main and the wrong checkout or branch (2943.8203ms)
+    ✔ rejects a different branch checked out in another directory (2835.0996ms)
+    ✔ unknown task is rejected (2462.5422ms)
+  ✔ check (29111.2107ms)
+  ▶ cli
+    ✔ status prints roster and heads without error; usage errors exit 1 (2388.9142ms)
+    ✔ check exits non-zero on a violation (3071.41ms)
+  ✔ cli (5460.4966ms)
+✖ agent workflow (80870.9174ms)
+ℹ tests 23
+ℹ suites 5
+ℹ pass 22
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 81045.9782
+
+✖ failing tests:
+
+test at scripts\agent-workflow.test.mjs:117:5
+✖ rejects a worktreeParent symlink that escapes the sibling location (1746.8409ms)
+  Error: EPERM: operation not permitted, symlink 'C:\Users\fengy\AppData\Local\Temp\agent-wf-kSTyti\elsewhere' -> 'C:\Users\fengy\AppData\Local\Temp\agent-wf-kSTyti\DishDeals-worktrees'
+      at symlinkSync (node:fs:1877:11)
+      at TestContext.<anonymous> (file:///C:/Users/fengy/.codex/worktrees/f259/DishDeals/scripts/agent-workflow.test.mjs:121:7)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:897:18)
+      at Test.postRun (node:internal/test_runner/test:1447:19)
+      at Test.run (node:internal/test_runner/test:1372:12)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    errno: -4048,
+    code: 'EPERM',
+    syscall: 'symlink',
+    path: 'C:\\Users\\fengy\\AppData\\Local\\Temp\\agent-wf-kSTyti\\elsewhere',
+    dest: 'C:\\Users\\fengy\\AppData\\Local\\Temp\\agent-wf-kSTyti\\DishDeals-worktrees'
+  }

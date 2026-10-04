@@ -1,0 +1,7 @@
+Dinedeals.xcodeproj/
+App/Info.plist
+App/App.entitlements
+ShareExtension/Info.plist
+ShareExtension/Share.entitlements
+build/
+*.xcuserstate

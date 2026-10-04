@@ -16,11 +16,14 @@ import { Dialog } from "./Dialog";
 export function Post({ editId, jobId }: { editId?: string; jobId?: string }) {
   const app = useFrontend();
   return (
+    <>
+    <div className="page-width"><Link href="/reels" className="back-link">Save an Instagram Reel privately</Link></div>
     <PostView
       key={`${app.mode}:${editId ?? "new"}`}
       editId={editId}
       jobId={jobId}
     />
+    </>
   );
 }
 function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {

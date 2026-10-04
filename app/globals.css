@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+.reel-page .panel { margin-block: 24px; }
+.reel-history { display: flex; justify-content: space-between; gap: 16px; overflow-wrap: anywhere; }
+.reel-days { display: flex; flex-wrap: wrap; gap: 12px; }
+.reel-page fieldset { border: 1px solid var(--stone, #E7DFD6); padding: 16px; border-radius: 16px; min-width: 0; }
+.reel-page details p { overflow-wrap: anywhere; white-space: pre-wrap; }
+
 @font-face {
   font-family: "Bricolage Grotesque";
   src: url("/fonts/bricolage-grotesque.ttf") format("truetype");
