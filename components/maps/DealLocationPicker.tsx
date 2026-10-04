@@ -1,5 +1,6 @@
 "use client";
 
+import { defaultLocationSearchQuery } from "../../lib/locationSearchQuery";
 import React, { useState, useEffect, useRef } from "react";
 import type { CSSProperties, ComponentType } from "react";
 import type { DealMapProps, DraftLocation } from "@restaurant-deals/map";
@@ -137,7 +138,7 @@ export function resetFormContextState(restaurant: string, address: string | null
     isSearching: false,
     searchMessage: null as string | null,
     geoMessage: null as string | null,
-    searchQuery: [restaurant, address].filter(Boolean).join(", "),
+    searchQuery: defaultLocationSearchQuery(restaurant, address),
   };
 }
 
@@ -180,7 +181,7 @@ export function DealLocationPicker(props: DealLocationPickerProps) {
   const [isConfirmed, setIsConfirmed] = useState<boolean>(location ? location.confirmed : false);
 
   // Search input and candidate state
-  const defaultQuery = [restaurant, address].filter(Boolean).join(", ");
+  const defaultQuery = defaultLocationSearchQuery(restaurant, address);
   const [searchQuery, setSearchQuery] = useState(defaultQuery);
   const [candidates, setCandidates] = useState<GeocodeCandidate[]>([]);
   const [isSearching, setIsSearching] = useState(false);

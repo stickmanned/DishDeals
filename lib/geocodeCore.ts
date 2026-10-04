@@ -1,3 +1,5 @@
+import { addressSearchQuery } from "./locationSearchQuery";
+
 /**
  * Bounded deterministic geocoding transport and policy core (T-08G-CORE).
  *
@@ -220,7 +222,7 @@ export function validateAndNormalizeQuery(query: unknown): string {
     throw new GeocodeError("INVALID_QUERY", "Query must contain at least one letter or digit");
   }
 
-  return trimmed;
+  return addressSearchQuery(trimmed);
 }
 
 /**
