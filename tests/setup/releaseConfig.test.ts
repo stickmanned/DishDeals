@@ -52,9 +52,81 @@ describe("release URL validator (synthetic, no network)", () => {
 
   it("parses flags strictly", () => {
     expect(parseArgs(["--website", "https://a.dev"]).input).toEqual({ website: "https://a.dev" });
+    expect(parseArgs(["--region", "ca-central-1"]).input).toEqual({ region: "ca-central-1" });
     expect(parseArgs(["--secret", "x"]).errors[0]).toContain("unknown argument");
     expect(parseArgs(["--website"]).errors[0]).toContain("value required");
     expect(parseArgs(["--site", "https://a.dev", "--site", "https://b.dev"]).errors.join()).toContain("given twice");
+  });
+
+  it("accepts actual regional deployment URLs (dishdeals-demo + ca-central-1)", () => {
+    expect(
+      validateReleaseUrls({
+        website: "https://dishdeals-demo.vercel.app",
+        backend: "https://proper-marmot-82.ca-central-1.convex.cloud",
+        site: "https://proper-marmot-82.ca-central-1.convex.site",
+      }),
+    ).toEqual({ ok: true, problems: [] });
+  });
+
+  it("supports all official Convex regions (eu-west-1, ca-central-1, ap-southeast-2) and legacy US", () => {
+    for (const region of ["eu-west-1", "ca-central-1", "ap-southeast-2"]) {
+      expect(
+        validateReleaseUrls({
+          website: "https://dishdeals-demo.vercel.app",
+          backend: `https://proper-marmot-82.${region}.convex.cloud`,
+          site: `https://proper-marmot-82.${region}.convex.site`,
+        }),
+      ).toEqual({ ok: true, problems: [] });
+    }
+  });
+
+  it("rejects arbitrary / unlisted regional suffixes", () => {
+    const res = validateReleaseUrls({
+      website: "https://dishdeals-demo.vercel.app",
+      backend: "https://proper-marmot-82.us-west-2.convex.cloud",
+      site: "https://proper-marmot-82.us-west-2.convex.site",
+    });
+    expect(res.ok).toBe(false);
+    expect(res.problems.join("\n")).toMatch(/region/i);
+  });
+
+  it("rejects mismatched regions between backend and site", () => {
+    const res = validateReleaseUrls({
+      website: "https://dishdeals-demo.vercel.app",
+      backend: "https://proper-marmot-82.ca-central-1.convex.cloud",
+      site: "https://proper-marmot-82.eu-west-1.convex.site",
+    });
+    expect(res.ok).toBe(false);
+    expect(res.problems.join("\n")).toMatch(/region|mismatch/i);
+  });
+
+  it("honours explicit --region and rejects mismatched or invalid region", () => {
+    expect(
+      validateReleaseUrls({
+        website: "https://dishdeals-demo.vercel.app",
+        backend: "https://proper-marmot-82.ca-central-1.convex.cloud",
+        site: "https://proper-marmot-82.ca-central-1.convex.site",
+        region: "ca-central-1",
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateReleaseUrls({
+        website: "https://dishdeals-demo.vercel.app",
+        backend: "https://proper-marmot-82.ca-central-1.convex.cloud",
+        site: "https://proper-marmot-82.ca-central-1.convex.site",
+        region: "eu-west-1",
+      }).ok,
+    ).toBe(false);
+
+    expect(
+      validateReleaseUrls({
+        website: "https://dishdeals-demo.vercel.app",
+        backend: "https://proper-marmot-82.ca-central-1.convex.cloud",
+        site: "https://proper-marmot-82.ca-central-1.convex.site",
+        region: "invalid-region",
+      }).ok,
+    ).toBe(false);
   });
 });
 

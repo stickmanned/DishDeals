@@ -27,3 +27,30 @@ Northstar then validates the origin, configures `REEL_WEB_ORIGIN` and the identi
 Correction for frozen401603c release: omit NEXT_PUBLIC_WORKFLOW_CONVEX_URL from both build and runtime settings. Its historical nested unauthenticated provider shadows the canonical signed-in client. If already set in this dedicated project, remove that variable for the next build/deploy. This temporary configuration preserves canonical /reels,/post,/map; legacy Discover remains its labelled preview. Northstar is fixing shared-session integration separately; do not move the frozen checkout during manual deployment. No secrets involved in these public URL values.
 
 William published https://dishdeals-demo.vercel.app and reports setting REEL_WEB_ORIGIN. Northstar verified public HTTP200, regional cloud /version200 and regional site JWKS200; the unregional site JWKS returns404. Use the regional cloud and site public build/runtime settings shown above. User edited ios/project.yml URLs; ignored existing Xcode project still requires verifying resolved build settings or explicit command overrides, without regeneration or losing Team. Native/provider acceptance not implied by HTTP200.
+
+## Operative release configuration and one-line commands
+
+### Operative release URLs
+- **Website:** `https://dishdeals-demo.vercel.app`
+- **Backend:** `https://proper-marmot-82.ca-central-1.convex.cloud`
+- **Site:** `https://proper-marmot-82.ca-central-1.convex.site`
+- **Deployment:** `proper-marmot-82`
+- **Region:** `ca-central-1`
+
+### Headless validator command
+```sh
+node scripts/check-release-config.mjs --website https://dishdeals-demo.vercel.app --backend https://proper-marmot-82.ca-central-1.convex.cloud --site https://proper-marmot-82.ca-central-1.convex.site --deployment proper-marmot-82 --region ca-central-1
+```
+
+### One-line HUMAN production deploy command
+Run in the clean reviewed snapshot directory where the dedicated project was already linked by the human:
+```sh
+/tmp/dishdeals-vercel deploy --prod --yes --build-env NEXT_PUBLIC_CONVEX_URL=https://proper-marmot-82.ca-central-1.convex.cloud --build-env NEXT_PUBLIC_CONVEX_SITE_URL=https://proper-marmot-82.ca-central-1.convex.site --env NEXT_PUBLIC_CONVEX_URL=https://proper-marmot-82.ca-central-1.convex.cloud --env NEXT_PUBLIC_CONVEX_SITE_URL=https://proper-marmot-82.ca-central-1.convex.site
+```
+
+### One-line native build command with setting overrides (preserving Team)
+Native rebuild is unnecessary for web-only changes. If native URLs or settings changed, run without XcodeGen regeneration to preserve the working Xcode Team:
+```sh
+xcodebuild -project ios/Dinedeals.xcodeproj -scheme Dinedeals -destination 'generic/platform=iOS' WEBSITE_URL="https://dishdeals-demo.vercel.app" BACKEND_URL="https://proper-marmot-82.ca-central-1.convex.cloud" build
+```
+

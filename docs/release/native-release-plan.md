@@ -3,7 +3,7 @@
 Status: **local preparation only.** Nothing here was run against any cloud, host, provider or device. No deployment data, env value, key or account was inspected. Base `25cc20b`, branch `t-19-native-release-preparation`.
 
 ## Fixed facts (from this checkout)
-- Backend target: existing **development** deployment `proper-marmot-82`. Client URL `https://proper-marmot-82.convex.cloud`; site (HTTP routes) `https://proper-marmot-82.convex.site`. These names come from the ticket, not from inspecting the deployment.
+- Backend target: existing **development** deployment `proper-marmot-82` in region `ca-central-1`. Operative Client URL `https://proper-marmot-82.ca-central-1.convex.cloud`; site (HTTP routes) `https://proper-marmot-82.ca-central-1.convex.site`. (Legacy US format `https://proper-marmot-82.convex.cloud` returns 404 for site JWKS; verified regional 200).
 - App: Next 16 with dynamic routes (`app/deal`, `app/post`, `app/reels`, `app/map`, `app/profile`, `app/signin`). Static pages are **not equivalent**: Next's official deploy guide lists the Node.js server (`npm run build` then `npm run start`) and Docker as supporting all features; static export does not. Release needs a real Node host.
 - Web env names read by code: `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, `NEXT_PUBLIC_WORKFLOW_CONVEX_URL`. Deployment-side: `CONVEX_SITE_URL` (auth config). Provider/model names from `docs/integration/backend-preservation-applied.md`: `GEMINI_MODEL`, `GEMINI_SEARCH_MODEL`, `GEMINI_WEB_SEARCH_MODEL`, `GEMINI_COMPARISON_MODEL`, `WORKFLOW_PROVIDER_USAGE_AUTHORIZED` (off by default).
 - iOS ([`ios/project.yml`](../../ios/project.yml)): build settings `WEBSITE_URL`, `BACKEND_URL` flow into `WebsiteURL` (app) and `BackendURL` (app + `ReelShare` extension) in Info.plist. Code appends `route` to `WebsiteURL` and `/api/mutation` to `BackendURL`, requires https, and the share store requires a `.convex.cloud` host. So both must be bare origins (no trailing slash/path). `DEVELOPMENT_TEAM` is empty in YAML on purpose: the human's Xcode project holds the working Team.
@@ -25,8 +25,8 @@ Convex help facts (1.46.0, none executed beyond `--help`):
 - Apple device docs ("Running your app in Simulator or on a device") could not be parsed here; device steps below rely on Xcode UI and need human confirmation. Free-account specifics (provisioning lifetime, App Group/Keychain capability availability) are **unverified**.
 
 ## Validator (local, no network)
-`node scripts/check-release-config.mjs --website https://HOST --backend https://proper-marmot-82.convex.cloud --site https://proper-marmot-82.convex.site [--deployment NAME]`
-Checks syntax only: strict https URL, no credentials/query/fragment/port/path/trailing slash, no placeholder/localhost/IP, backend host `<deployment>.convex.cloud`, site host `<deployment>.convex.site`, website not a Convex host. Takes no files or secrets, makes no calls or writes. It cannot prove ownership, reachability or TLS.
+`node scripts/check-release-config.mjs --website https://dishdeals-demo.vercel.app --backend https://proper-marmot-82.ca-central-1.convex.cloud --site https://proper-marmot-82.ca-central-1.convex.site [--deployment proper-marmot-82] [--region ca-central-1]`
+Checks syntax only: strict https URL, no credentials/query/fragment/port/path/trailing slash, no placeholder/localhost/IP, backend host `<deployment>[.<region>].convex.cloud`, site host `<deployment>[.<region>].convex.site` matching an enumerated official region (`US`, `eu-west-1`, `ca-central-1`, `ap-southeast-2`), website not a Convex host. Takes no files or secrets, makes no calls or writes. It cannot prove ownership, reachability or TLS.
 
 ## Authorization groups to request (none granted yet)
 A, B, C and D are **explicit external approval boundaries given by the user (William)**, not file or tool permission prompts. Each is a separate approval; approval of one never implies another. Nothing below has been run.
@@ -69,7 +69,11 @@ Northstar verified the current official [Gemini 3.8 Flash documentation](https:/
 
 ## Human Xcode steps (after A–C; no xcodegen)
 1. Open the existing project. Do not regenerate it; keep the working Team on both targets (Dinedeals, ReelShare).
-2. In project Build Settings (all configurations used for device builds) set `WEBSITE_URL` to the group C origin and `BACKEND_URL` to `https://proper-marmot-82.convex.cloud`. Values are origins only.
+2. In project Build Settings (all configurations used for device builds) set `WEBSITE_URL` to `https://dishdeals-demo.vercel.app` and `BACKEND_URL` to `https://proper-marmot-82.ca-central-1.convex.cloud`. Values are origins only.
+Alternatively, use the one-line command override preserving Team (native rebuild is unnecessary for web-only changes; run only if native URLs/settings changed):
+```sh
+xcodebuild -project ios/Dinedeals.xcodeproj -scheme Dinedeals -destination 'generic/platform=iOS' WEBSITE_URL="https://dishdeals-demo.vercel.app" BACKEND_URL="https://proper-marmot-82.ca-central-1.convex.cloud" build
+```
 3. Build to the device. Verify in the **built** products (plist only, no secrets):
 ```
 /usr/libexec/PlistBuddy -c 'Print :WebsiteURL' <Dinedeals.app>/Info.plist
