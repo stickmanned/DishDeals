@@ -43,3 +43,7 @@ Northstar reviews exact local commits and ownership, integrates serially in work
 Human inputs pending: Harry native branch and interface agreement; Pinyuan location/publish/map adapter agreement; 10 real deals + 2 photos + confirmed pins; actual Instagram payload sample; iOS 26 minor version and signing readiness. Independent work continues.
 
 Deadline: October 4 at 12:00 America/Vancouver. Xcode installing; own-device iOS 26 testing via free Personal Team preferred, extension entitlements/signing unverified.
+
+### T-07 split approved for independent local work
+
+T-07A (Mica after distance review): reusable pure draft state/confirmation/publish-field validation, depends completed T-02 only. T-07B actual upload/extraction/backend create depends T-03/T-05 and agreed source ownership/geospatial hooks; T-07C Harry native form/Pinyuan confirmed pin integration depends N-IOS/N-SHARE/T-08. Full original T-07 stays pending until the real phone publish flow passes. No duplicate frontend/map/share implementation.

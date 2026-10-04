@@ -29,13 +29,15 @@
         "convex/auth.config.ts",
         "convex/_generated/api.d.ts",
         "lib/profile.ts",
-        "tests/profile/"
+        "tests/profile/",
+        "package.json",
+        "package-lock.json"
       ],
       "packet": "docs/tasks/T-03.md",
       "issue": "https://github.com/stickmanned/DishDeals/issues/1",
       "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
       "backendTarget": "local checks only; no cloud target authorized",
-      "implementationState": "dispatched",
+      "implementationState": "local source implemented; review-driven wrapper tests pending",
       "nativeChecks": "pending runtime agreement/toolchain",
       "phoneAcceptance": "pending William iPhone"
     },
@@ -107,6 +109,27 @@
       "implementationState": "dispatched",
       "nativeChecks": "pending runtime agreement/toolchain",
       "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-07A",
+      "owner": "Mica",
+      "branch": "t-07-draft-state",
+      "worktree": "post-core",
+      "status": "prepared",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "lib/dealDraft.ts",
+        "lib/dealDraft.test.ts",
+        "docs/handoffs/t-07a.md"
+      ],
+      "packet": "docs/tasks/T-07A.md",
+      "pinnedBaseSha": "83035c1eeed1c17915764ae0321594315fd5a81b",
+      "backendTarget": "no backend writes; pure logic only",
+      "implementationState": "not started",
+      "nativeChecks": "pending integration",
+      "phoneAcceptance": "pending"
     }
   ],
   "completedDependencies": {
