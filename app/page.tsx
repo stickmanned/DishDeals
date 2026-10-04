@@ -1,10 +1,5 @@
-import { ConvexTestResult } from "@/components/ConvexTestResult";
+import { Discover } from "@/components/frontend/Discover";
 
 export default function Home() {
-  return (
-    <main>
-      <h1>DishDeals</h1>
-      <ConvexTestResult />
-    </main>
-  );
+  return <Discover />;
 }
