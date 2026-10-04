@@ -38,6 +38,8 @@ struct WebLoadState {
     private(set) var target: URL?
     let config: WebConfig
     private var active: Int?
+    private var expected: Int?   // token of the navigation returned by the app's own pending load
+    private var newest = 0        // highest navigation token issued or seen; older starts are stale
     private var settled: WebLoadPhase = .idle
     private var settledTarget: URL?
     init(config: WebConfig) { self.config = config; phase = config.origin == nil ? .unconfigured : .idle }
@@ -49,18 +51,22 @@ struct WebLoadState {
         parts.queryItems = (kept?.isEmpty ?? true) ? nil : kept
         return parts.url ?? url
     }
-    /// A load was issued by the app (route request). Older navigation callbacks are ignored until the new one starts.
-    mutating func requestLoad(_ url: URL) -> Bool {
-        guard config.isSameOrigin(url) else { return false }
+    /// A load issued by the app, identified by the token of the WKNavigation it returns. The requested URL is the target
+    /// until the page actually finishes; older navigation starts/callbacks cannot settle or overwrite it.
+    mutating func requestLoad(_ url: URL, token: Int) -> Bool {
+        guard config.isSameOrigin(url), token > newest else { return false }
         if phase != .loading { settled = phase; settledTarget = target }
-        phase = .loading; target = url; active = nil
+        phase = .loading; target = url; active = nil; expected = token; newest = token
         return true
     }
+    /// `url` is the page-initiated destination (policy URL); it is ignored for the app's own expected navigation.
     mutating func didStart(token: Int, url: URL?) {
-        guard config.origin != nil else { return }
+        guard config.origin != nil, token >= newest else { return }                 // older navigation: stale
+        if let pending = expected { guard token == pending else { return } }          // only our request may start while one is pending
         if phase != .loading { settled = phase; settledTarget = target }
-        phase = .loading; active = token
-        if let url = url, config.isSameOrigin(url) { target = url }
+        if expected != nil { expected = nil }
+        else if let url = url, config.isSameOrigin(url) { target = url }              // deliberate page navigation
+        phase = .loading; active = token; newest = token
     }
     /// didCommit is intentionally not an event: committed content is not finished content.
     mutating func didFinish(token: Int, url: URL?) {
@@ -71,21 +77,27 @@ struct WebLoadState {
     }
     /// `cancelled` covers NSURLErrorCancelled and WebKit's policy-change interruption: superseded or app-canceled, not a failure.
     mutating func didFail(token: Int, cancelled: Bool) {
-        guard token == active else { return }
-        active = nil
+        guard token == active || token == expected else { return }
+        active = nil; expected = nil
         if cancelled { phase = settled; target = settledTarget } else { phase = .failed }
     }
     mutating func didTerminate(liveURL: URL?) {
         guard config.origin != nil else { return }
-        active = nil; phase = .terminated
+        active = nil; expected = nil; phase = .terminated
         if let url = liveURL, config.isSameOrigin(url) { target = Self.scrubbed(url) }
     }
     /// Explicit user retry: a plain GET of the current same-origin target (never replays a form POST or a share).
-    mutating func retry() -> URL? {
-        guard canRetry, let url = target else { return nil }
-        phase = .loading; active = nil
+    mutating func retry(token: Int) -> URL? {
+        guard canRetry, let url = target, token > newest else { return nil }
+        phase = .loading; active = nil; expected = token; newest = token
         return url
     }
+}
+/// Remembers which stored inbox records were already routed in this process, so returning to the foreground never reloads
+/// (and discards edits in) the same retained recovery page. A genuinely new record has a new key and routes once.
+struct InboxRouting {
+    private var routed = Set<String>()
+    mutating func shouldRoute(_ key: String) -> Bool { routed.insert(key).inserted }
 }
 /// A route asked for by the app. The id makes repeated identical routes explicit and unrelated SwiftUI renders inert.
 struct RouteRequest: Equatable {
@@ -100,6 +112,7 @@ struct RouteRequest: Equatable {
     @UIApplicationDelegateAdaptor(NotificationDelegate.self) private var notifications
     @State private var route = RouteRequest.make("/reels")
     @StateObject private var loader = WebLoader()
+    @State private var inbox = InboxRouting()
     @Environment(\.scenePhase) private var phase
     var body: some Scene { WindowGroup {
         ZStack {
@@ -120,7 +133,7 @@ struct RouteRequest: Equatable {
     } }
     private func open(_ path: String) { route = RouteRequest.make(path) }
     private func consumeInbox() {
-        if let (file, kind, value, _) = ShareStore.first() {
+        if let (file, kind, value, _) = ShareStore.first(), inbox.shouldRoute(file.lastPathComponent) {
             if kind == "item", value.range(of: "^[A-Za-z0-9]{1,128}$", options: .regularExpression) != nil {
                 // Retained (marked routed) until server receipt or 24h expiry so the web view can recover its source context.
                 open("/reels?item=\(value)"); ShareStore.markRouted(file)
@@ -170,6 +183,7 @@ struct WebLoadOverlay: View {
     private var tokens: [ObjectIdentifier: Int] = [:]
     private var counter = 0
     private var lastRequest = 0
+    private var policyURL: URL?   // destination of the latest allowed main-frame policy decision (webView.url may still be the previous page)
     var allowed: URL? { state.config.origin }
     override init() {
         state = WebLoadState(config: WebConfig.evaluate(Bundle.main.object(forInfoDictionaryKey: "WebsiteURL") as? String))
@@ -183,12 +197,21 @@ struct WebLoadOverlay: View {
     func open(_ request: RouteRequest) {
         guard request.id != lastRequest else { return }
         lastRequest = request.id
-        guard let url = state.config.url(forPath: request.path), state.requestLoad(url) else { return }
-        webView.load(URLRequest(url: url))
+        guard let url = state.config.url(forPath: request.path) else { return }
+        counter += 1; let token = counter
+        guard state.requestLoad(url, token: token) else { return }
+        issue(url, token)
     }
     func retry() {
-        guard let url = state.retry() else { return }
-        webView.load(URLRequest(url: url))
+        counter += 1; let token = counter
+        guard let url = state.retry(token: token) else { return }
+        issue(url, token)
+    }
+    /// Registers the identity of the WKNavigation returned by our own load before any callback can arrive.
+    private func issue(_ url: URL, _ token: Int) {
+        policyURL = nil
+        if let navigation = webView.load(URLRequest(url: url)) { tokens[ObjectIdentifier(navigation)] = token }
+        else { state.didFail(token: token, cancelled: false) }
     }
     private func token(_ navigation: WKNavigation?) -> Int? { navigation.flatMap { tokens[ObjectIdentifier($0)] } }
     private func isCancellation(_ error: Error) -> Bool {
@@ -196,8 +219,11 @@ struct WebLoadOverlay: View {
         return (e.domain == NSURLErrorDomain && e.code == NSURLErrorCancelled) || (e.domain == "WebKitErrorDomain" && e.code == 102)
     }
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-        counter += 1; tokens[ObjectIdentifier(navigation)] = counter
-        state.didStart(token: counter, url: webView.url)
+        let token: Int
+        if let known = tokens[ObjectIdentifier(navigation)] { token = known }
+        else { counter += 1; token = counter; tokens[ObjectIdentifier(navigation)] = token }
+        state.didStart(token: token, url: policyURL ?? webView.url)
+        policyURL = nil
     }
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         if let t = token(navigation) { state.didFinish(token: t, url: webView.url); tokens[ObjectIdentifier(navigation)] = nil }
@@ -213,7 +239,7 @@ struct WebLoadOverlay: View {
     }
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = action.request.url else { decisionHandler(.cancel); return }
-        if state.config.isSameOrigin(url) { decisionHandler(.allow) }
+        if state.config.isSameOrigin(url) { if action.targetFrame?.isMainFrame ?? true { policyURL = url }; decisionHandler(.allow) }
         else { decisionHandler(.cancel); if allowed != nil, action.navigationType == .linkActivated { UIApplication.shared.open(url) } }
     }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
