@@ -7,6 +7,7 @@ import { internal } from "./_generated/api";
 import schema from "./schema";
 import { reelWorkflow } from "./reelWorkflow";
 import { normalizeInstagramUrl, reelDraft, reelExtraction } from "../lib/reels/contract";
+import { SAVE_ERRORS, bump, checkSave, planFinish } from "../lib/reels/draftRevision";
 const day = 86400000;
 async function owner(ctx: QueryCtx | MutationCtx) {
   const id = await getAuthUserId(ctx);
@@ -65,12 +66,15 @@ export const retry = mutation({ args: { itemId: v.id("reelItems") }, returns: v.
   const item = await owned(ctx, itemId);
   if (item.status !== "failed") throw new ConvexError("Only failed items can be retried.");
   if (item.attempts >= 5) throw new ConvexError("Retry limit reached. Delete and share again after reviewing the error.");
+  const generation = bump(item.generation), attempts = bump(item.attempts);
+  if (generation === null || attempts === null) throw new ConvexError("This item cannot be retried again.");
   await rateLimit(ctx, item.ownerId);
   if (item.workflowId) { await reelWorkflow.cancel(ctx, item.workflowId as WorkflowId); await ctx.scheduler.runAfter(60000, internal.reels.cleanupWorkflow, { workflowId: item.workflowId }); }
   if (item.videoId) await ctx.storage.delete(item.videoId);
-  await ctx.db.patch(itemId, { generation: item.generation + 1, attempts: item.attempts + 1, status: "queued", updatedAt: Date.now(), error: undefined,
-    videoId: undefined, caption: undefined, duration: undefined, publishedAt: undefined, extractionJson: undefined, draftJson: undefined });
-  await enqueue(ctx, itemId, item.generation + 1);
+  // The private draft, its revision/edited flags and the previous extraction
+  // (provenance) are kept until a new extraction arrives. Only the media is dropped.
+  await ctx.db.patch(itemId, { generation, attempts, status: "queued", updatedAt: Date.now(), error: undefined, videoId: undefined });
+  await enqueue(ctx, itemId, generation);
   return null;
 } });
 export const remove = mutation({ args: { itemId: v.id("reelItems") }, returns: v.null(), handler: async (ctx, { itemId }) => { await erase(ctx, await owned(ctx, itemId)); return null; } });
@@ -79,12 +83,18 @@ export const setRetention = mutation({ args: { itemId: v.id("reelItems"), days: 
   const expiresAt = Date.now() + days * day;
   await ctx.db.patch(itemId, { expiresAt }); await ctx.scheduler.runAt(expiresAt, internal.reels.expire, { itemId, expiresAt }); return null;
 } });
-export const saveDraft = mutation({ args: { itemId: v.id("reelItems"), draftJson: v.string() }, returns: v.null(), handler: async (ctx, { itemId, draftJson }) => {
-  const item = await owned(ctx, itemId); if (item.status !== "ready") throw new ConvexError("No draft is ready.");
+export const saveDraft = mutation({ args: { itemId: v.id("reelItems"), draftJson: v.string(), expectedGeneration: v.number(), expectedRevision: v.number() }, returns: v.null(),
+  handler: async (ctx, { itemId, draftJson, expectedGeneration, expectedRevision }) => {
+  const item = await owned(ctx, itemId);
+  const check = checkSave(item, { generation: expectedGeneration, revision: expectedRevision });
+  if (!check.ok) throw new ConvexError(SAVE_ERRORS[check.reason]);
+  // Only an existing private draft can be edited (any processing state, so edits survive retries).
+  let existing: unknown;
+  try { existing = item.draftJson === undefined ? undefined : JSON.parse(item.draftJson); } catch { throw new ConvexError("This draft is corrupt."); }
+  if (!Array.isArray(existing) || existing.length < 1) throw new ConvexError("No draft is ready.");
   if (draftJson.length > 60000) throw new ConvexError("Draft is too large.");
   const drafts = reelDraft.array().min(1).max(10).parse(JSON.parse(draftJson));
-  if (drafts.length !== reelExtraction.parse(JSON.parse(item.extractionJson!)).drafts.length) throw new ConvexError("Keep the original number of offers.");
-  await ctx.db.patch(itemId, { draftJson: JSON.stringify(drafts), updatedAt: Date.now() }); return null;
+  await ctx.db.patch(itemId, { draftJson: JSON.stringify(drafts), draftRevision: check.nextRevision, draftEdited: true, updatedAt: Date.now() }); return null;
 } });
 const jobArgs = { itemId: v.id("reelItems"), generation: v.number() };
 export const workItem = internalQuery({ args: jobArgs, returns: v.union(schema.doc("reelItems"), v.null()), handler: async (ctx, args) => {
@@ -100,9 +110,12 @@ export const attachMedia = internalMutation({ args: { ...jobArgs, videoId: v.id(
 export const finish = internalMutation({ args: { ...jobArgs, extractionJson: v.string() }, returns: v.null(), handler: async (ctx, args) => {
   const item = await ctx.db.get(args.itemId); if (!item || item.generation !== args.generation || item.expiresAt <= Date.now()) return null;
   const extraction = reelExtraction.parse(JSON.parse(args.extractionJson));
+  const plan = planFinish(item, JSON.stringify(extraction.drafts));
+  if (!plan.ok) throw new ConvexError(SAVE_ERRORS[plan.reason]);
   if (item.videoId) await ctx.storage.delete(item.videoId);
-  await ctx.db.patch(item._id, { videoId: undefined, extractionJson: JSON.stringify(extraction), draftJson: JSON.stringify(extraction.drafts),
-    status: extraction.isDeal ? "ready" : "no_deal", updatedAt: Date.now() }); return null;
+  // The model extraction is stored separately. An edited draft is retained as-is.
+  await ctx.db.patch(item._id, { videoId: undefined, extractionJson: JSON.stringify(extraction), draftJson: plan.draftJson,
+    draftRevision: plan.draftRevision, draftEdited: plan.draftEdited, status: extraction.isDeal ? "ready" : "no_deal", updatedAt: Date.now() }); return null;
 } });
 export const fail = internalMutation({ args: { ...jobArgs, code: v.string(), message: v.string() }, returns: v.null(), handler: async (ctx, args) => {
   const item = await ctx.db.get(args.itemId); if (!item || item.generation !== args.generation || item.expiresAt <= Date.now()) return null;
