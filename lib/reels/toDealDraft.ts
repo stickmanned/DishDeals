@@ -26,8 +26,11 @@
  *   CAD prices remain tentative suggestions until user acceptance.
  * - Warnings: All non-empty warnings are preserved as blocking UNSUPPORTED_CONSTRAINT
  *   review notes requiring explicit resolution. Does not guess FUTURE_START.
- * - Contract gaps: Explicitly reports absent typed future/unsupported note fields
- *   in ReelDraft as known extraction contract gaps.
+ * - Typed constraints (N-SOURCE-C): extraction.constraints FUTURE_START maps to a hard-block
+ *   review note; UNSUPPORTED_CONSTRAINT maps to explicit source review; evidence is kept in the
+ *   sidecar and never turned into confidence. Output without a constraints array is legacy:
+ *   every offer gets a blocking LEGACY_CONSTRAINT_REVIEW_DETAIL note (no bypass option) and
+ *   the contract gaps stay reported.
  * - Nullable fields: Unknown nullable fields remain blank/review-pending.
  * - Deep cloning: All arrays and nested objects are cloned for complete isolation
  *   and source immutability.
@@ -41,7 +44,12 @@ import {
   type ManualReviewNote,
   type Weekday,
 } from "../dealDraft";
-import { reelExtraction, type ReelDraft, type ReelExtraction } from "./contract";
+import {
+  reelExtraction,
+  type ReelDraft,
+  type ReelExtraction,
+  type SourceConstraint,
+} from "./contract";
 
 export class ReelDraftAdapterError extends Error {
   constructor(message: string) {
@@ -55,12 +63,16 @@ export const REEL_EXTRACTION_CONTRACT_GAPS = [
   "ReelDraft schema lacks typed unsupportedConstraints field; constraints appear only as unstructured warnings strings.",
 ] as const;
 
+export const LEGACY_CONSTRAINT_REVIEW_DETAIL =
+  "Legacy extraction has no typed start-date or restriction check: review the source for future start dates and restrictions, or re-run extraction.";
+
 export interface ReelDraftSidecar {
   evidence: ReelExtraction["evidence"];
   transcript: string;
   warnings: string[];
   missingFieldsByDraft: Record<number, string[]>;
   contractGaps: string[];
+  constraints?: SourceConstraint[];
 }
 
 export interface ReelToDraftResult {
@@ -140,7 +152,8 @@ export function reelExtractionToDealDrafts(
     transcript: extraction.transcript,
     warnings: deepClone(extraction.warnings),
     missingFieldsByDraft: {},
-    contractGaps: [...REEL_EXTRACTION_CONTRACT_GAPS],
+    contractGaps: extraction.constraints !== undefined ? [] : [...REEL_EXTRACTION_CONTRACT_GAPS],
+    ...(extraction.constraints !== undefined ? { constraints: deepClone(extraction.constraints) } : {}),
   };
 
   // Case 1: No deal detected or empty drafts
@@ -166,17 +179,38 @@ export function reelExtractionToDealDrafts(
   // Case 2: One or more deals detected
   const manualReviewNotes: ManualReviewNote[] = [];
 
+  if (extraction.constraints !== undefined) {
+    // Typed annotations: FUTURE_START stays a hard blocker in the canonical reducer/publish
+    // validator; UNSUPPORTED_CONSTRAINT needs an explicit source-review note. Evidence rides in
+    // the sidecar. An empty array is the model's "none found", which is still only an assertion.
+    for (const c of extraction.constraints) {
+      manualReviewNotes.push({ dealIndex: c.draftIndex, code: c.code, blocking: true, detail: c.detail });
+    }
+  } else {
+    // No `constraints` array at all (legacy output). That is unknown, not "no restriction": block
+    // every offer until a human reviews the source or a new extraction supplies typed constraints.
+    for (let d = 0; d < extraction.drafts.length; d++) {
+      manualReviewNotes.push({ dealIndex: d, code: "UNSUPPORTED_CONSTRAINT", blocking: true, detail: LEGACY_CONSTRAINT_REVIEW_DETAIL });
+    }
+  }
+
   // Add non-empty warnings as blocking UNSUPPORTED_CONSTRAINT review notes
+  // (Never invent FUTURE_START from warning substrings)
   for (const warning of extraction.warnings) {
     const trimmed = warning.trim();
     if (trimmed.length > 0) {
       for (let d = 0; d < extraction.drafts.length; d++) {
-        manualReviewNotes.push({
-          dealIndex: d,
-          code: "UNSUPPORTED_CONSTRAINT",
-          blocking: true,
-          detail: trimmed,
-        });
+        const alreadyExists = manualReviewNotes.some(
+          (n) => n.dealIndex === d && n.detail === trimmed
+        );
+        if (!alreadyExists) {
+          manualReviewNotes.push({
+            dealIndex: d,
+            code: "UNSUPPORTED_CONSTRAINT",
+            blocking: true,
+            detail: trimmed,
+          });
+        }
       }
     }
   }

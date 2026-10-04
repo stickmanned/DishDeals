@@ -3,6 +3,7 @@ import {
   reelExtractionToDealDrafts,
   ReelDraftAdapterError,
   REEL_EXTRACTION_CONTRACT_GAPS,
+  LEGACY_CONSTRAINT_REVIEW_DETAIL,
 } from "../../lib/reels/toDealDraft";
 import {
   dealDraftReducer,
@@ -10,7 +11,20 @@ import {
   validateForPublish,
   DraftValidationError,
 } from "../../lib/dealDraft";
+import type { DealDraft } from "../../lib/dealDraft";
 import type { ReelExtraction } from "../../lib/reels/contract";
+
+// These fixtures omit `constraints` (legacy output), so every offer carries an explicit blocking
+// legacy source-review note. A human resolves it with a non-empty note after checking the source.
+function resolveLegacyReview(draft: DealDraft): DealDraft {
+  const legacy = draft.reviewIssues.find((i) => i.detail === LEGACY_CONSTRAINT_REVIEW_DETAIL);
+  expect(legacy).toBeDefined();
+  return dealDraftReducer(draft, {
+    type: "RESOLVE_REVIEW_ISSUE",
+    issueId: legacy!.id,
+    resolutionNote: "Checked the source: no future start date or restriction",
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Synthetic test fixtures (clearly labeled, no live extraction or network)
@@ -305,8 +319,9 @@ describe("Reel-to-DealDraft adapter (N-FORM-A)", () => {
       expect(draft.fields.priceCad.suggestion).toBeUndefined();
 
       // Review issue must be created with originalAmount
-      expect(draft.reviewIssues).toHaveLength(1);
-      const currencyIssue = draft.reviewIssues[0];
+      expect(draft.reviewIssues).toHaveLength(2);
+      expect(draft.reviewIssues.filter((i) => i.code === "UNSUPPORTED_CONSTRAINT" && i.blocking && i.detail === LEGACY_CONSTRAINT_REVIEW_DETAIL)).toHaveLength(1);
+      const currencyIssue = draft.reviewIssues.find((i) => i.code === "CURRENCY_UNVERIFIED")!;
       expect(currencyIssue.code).toBe("CURRENCY_UNVERIFIED");
       expect(currencyIssue.originalAmount).toBe(14.99);
       expect(currencyIssue.detail).toContain("USD");
@@ -339,6 +354,9 @@ describe("Reel-to-DealDraft adapter (N-FORM-A)", () => {
         value: 20.5,
       });
 
+      // The unresolved legacy source review still blocks until a human resolves it
+      expect(validateForPublish(draft).valid).toBe(false);
+      draft = resolveLegacyReview(draft);
       expect(validateForPublish(draft).valid).toBe(true);
       expect(buildPublishFields(draft).priceCad).toBe(20.5);
     });
@@ -351,7 +369,8 @@ describe("Reel-to-DealDraft adapter (N-FORM-A)", () => {
       expect(draft.fields.priceCad.value).toBeNull();
       expect(draft.fields.priceCad.suggestion?.value).toBe(12.5);
       expect(draft.fields.priceCad.isReviewed).toBe(false);
-      expect(draft.reviewIssues).toHaveLength(0);
+      expect(draft.reviewIssues).toHaveLength(1);
+      expect(draft.reviewIssues[0]).toMatchObject({ code: "UNSUPPORTED_CONSTRAINT", blocking: true, resolved: false, detail: LEGACY_CONSTRAINT_REVIEW_DETAIL });
     });
   });
 
@@ -367,14 +386,15 @@ describe("Reel-to-DealDraft adapter (N-FORM-A)", () => {
       const { drafts } = reelExtractionToDealDrafts(extractionWithWarnings);
       let draft = drafts[0];
 
-      expect(draft.reviewIssues).toHaveLength(2);
-      expect(draft.reviewIssues[0].code).toBe("UNSUPPORTED_CONSTRAINT");
-      expect(draft.reviewIssues[0].blocking).toBe(true);
-      expect(draft.reviewIssues[0].detail).toBe("Must show valid student ID at cashier");
-
-      expect(draft.reviewIssues[1].code).toBe("UNSUPPORTED_CONSTRAINT");
-      expect(draft.reviewIssues[1].blocking).toBe(true);
-      expect(draft.reviewIssues[1].detail).toBe("Beverage purchase required per table");
+      // Legacy source-review note first, then one note per warning
+      expect(draft.reviewIssues).toHaveLength(3);
+      expect(draft.reviewIssues[0].detail).toBe(LEGACY_CONSTRAINT_REVIEW_DETAIL);
+      for (const issue of draft.reviewIssues) {
+        expect(issue.code).toBe("UNSUPPORTED_CONSTRAINT");
+        expect(issue.blocking).toBe(true);
+      }
+      expect(draft.reviewIssues[1].detail).toBe("Must show valid student ID at cashier");
+      expect(draft.reviewIssues[2].detail).toBe("Beverage purchase required per table");
 
       // Does not invent FUTURE_START from guessed language
       expect(draft.reviewIssues.some((iss) => iss.code === "FUTURE_START")).toBe(false);
@@ -399,25 +419,30 @@ describe("Reel-to-DealDraft adapter (N-FORM-A)", () => {
       // Resolving with empty note is refused
       draft = dealDraftReducer(draft, {
         type: "RESOLVE_REVIEW_ISSUE",
-        issueId: draft.reviewIssues[0].id,
+        issueId: draft.reviewIssues[1].id,
         resolutionNote: "   ",
       });
-      expect(draft.reviewIssues[0].resolved).toBe(false);
+      expect(draft.reviewIssues[1].resolved).toBe(false);
 
       // Resolving with meaningful notes succeeds
       draft = dealDraftReducer(draft, {
         type: "RESOLVE_REVIEW_ISSUE",
-        issueId: draft.reviewIssues[0].id,
+        issueId: draft.reviewIssues[1].id,
         resolutionNote: "Verified student promo active all term",
       });
       draft = dealDraftReducer(draft, {
         type: "RESOLVE_REVIEW_ISSUE",
-        issueId: draft.reviewIssues[1].id,
+        issueId: draft.reviewIssues[2].id,
         resolutionNote: "Added drink requirement to conditions",
       });
 
-      expect(draft.reviewIssues[0].resolved).toBe(true);
       expect(draft.reviewIssues[1].resolved).toBe(true);
+      expect(draft.reviewIssues[2].resolved).toBe(true);
+      // The legacy review note is still open and still blocks
+      expect(draft.reviewIssues[0].resolved).toBe(false);
+      expect(validateForPublish(draft).valid).toBe(false);
+
+      draft = resolveLegacyReview(draft);
       expect(validateForPublish(draft).valid).toBe(true);
     });
   });
@@ -477,6 +502,9 @@ describe("Reel-to-DealDraft adapter (N-FORM-A)", () => {
         lng: -123.1207,
       });
       expect(draft.location?.confirmed).toBe(true);
+      // Confirmed pin alone is not enough: the legacy source review is still open
+      expect(validateForPublish(draft).valid).toBe(false);
+      draft = resolveLegacyReview(draft);
       expect(validateForPublish(draft).valid).toBe(true);
 
       // Editing address invalidates confirmed pin
@@ -528,13 +556,14 @@ describe("Reel-to-DealDraft adapter (N-FORM-A)", () => {
       // Draft 0: CAD price, no currency issue
       expect(draft0.fields.dealText.suggestion?.value).toBe("Afternoon wings $5");
       expect(draft0.fields.priceCad.suggestion?.value).toBe(5);
-      expect(draft0.reviewIssues).toHaveLength(0);
+      expect(draft0.reviewIssues.map((i) => i.detail)).toEqual([LEGACY_CONSTRAINT_REVIEW_DETAIL]);
 
       // Draft 1: USD price, has CURRENCY_UNVERIFIED issue
       expect(draft1.fields.dealText.suggestion?.value).toBe("Late night nachos $10 USD");
       expect(draft1.fields.priceCad.suggestion).toBeUndefined();
-      expect(draft1.reviewIssues).toHaveLength(1);
-      expect(draft1.reviewIssues[0].code).toBe("CURRENCY_UNVERIFIED");
+      expect(draft1.reviewIssues).toHaveLength(2);
+      expect(draft1.reviewIssues.map((i) => i.code).sort()).toEqual(["CURRENCY_UNVERIFIED", "UNSUPPORTED_CONSTRAINT"]);
+      expect(draft1.reviewIssues.find((i) => i.detail === LEGACY_CONSTRAINT_REVIEW_DETAIL)?.dealIndex).toBe(1);
 
       // Mutating Draft 0 does NOT touch Draft 1
       const modifiedDraft0 = dealDraftReducer(draft0, {
