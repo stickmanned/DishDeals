@@ -23,6 +23,7 @@ import {
   type SavedDeal,
 } from "@/lib/dealEdit";
 import { isValidDealId } from "@/lib/mapPage";
+import { createSearch } from "@/lib/reels/publish";
 
 export interface CanonicalDealEditProps {
   id: string;
@@ -146,7 +147,7 @@ function CanonicalDealEditContent({
     );
   }
 
-  return <EditForm key={dealId} dealId={dealId} live={deal} search={search ?? (query => findLocation({ query }))} />;
+  return <EditForm key={dealId} dealId={dealId} live={deal} search={search ?? createSearch(query => findLocation({ query }))} />;
 }
 
 /**

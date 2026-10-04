@@ -1030,6 +1030,42 @@
       "implementationState": "assigned actual reel publish/geocode UI binding",
       "nativeChecks": "pending",
       "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-REMOTE-B",
+      "owner": "Prism",
+      "branch": "t-19-backend-preservation-integration",
+      "worktree": "backend-preservation-integration",
+      "status": "prepared",
+      "dependencies": [
+        "N-REMOTE-A",
+        "T-08G-B"
+      ],
+      "allowedPaths": [
+        "convex/workflow/",
+        "convex/workflowTables.ts",
+        "convex/trial.ts",
+        "lib/workflow/",
+        "tests/workflow/",
+        "convex/schema.ts",
+        "convex/convex.config.ts",
+        "convex/_generated/api.d.ts",
+        "convex/_generated/server.d.ts",
+        "convex/http.ts",
+        "convex/crons.ts",
+        "convex/auth.ts",
+        ".env.example",
+        "tests/backend/dealImageUpload.test.ts",
+        "tests/auth/publishedProvider.test.ts",
+        "docs/integration/backend-preservation-applied.md",
+        "docs/handoffs/n-remote-b.md"
+      ],
+      "packet": "docs/tasks/N-REMOTE-B.md",
+      "pinnedBaseSha": "475146057701b7f4ea6d7e8e3484b40cd9ba6447",
+      "backendTarget": "LOCAL ONLY; no deployment, provider or remote Git authorized",
+      "implementationState": "assigned local published backend compatibility",
+      "nativeChecks": "unrun",
+      "phoneAcceptance": "pending"
     }
   ],
   "completedDependencies": {

@@ -33,6 +33,7 @@ import {
   type Offer,
 } from "@/lib/imageDraftFlow";
 import { isValidDealId } from "@/lib/mapPage";
+import { createSearch } from "@/lib/reels/publish";
 import { DealReviewForm } from "./DealReviewForm";
 
 export interface CanonicalPostProps {
@@ -76,6 +77,8 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
   const generateUploadUrl = useMutation(api.deals.generateUploadUrl);
   const extractDeal = useAction(api.extract.extractDeal);
   const createDeal = useMutation(api.deals.create);
+  const geocode = useAction(api.geocode.geocode);
+  const findLocation = searchLocation ?? createSearch(query => geocode({ query }));
 
   // The controller is created once; fresh hook functions are handed over after each render.
   const deps: FlowDeps = {
@@ -128,7 +131,7 @@ function LivePost({ searchLocation }: CanonicalPostProps) {
       <FormsPanel
         flow={flow}
         snap={snap}
-        searchLocation={searchLocation}
+        searchLocation={findLocation}
         onSaved={(formKey, id) => {
           const others = flow.getSnapshot().forms.filter((f) => f.key !== formKey && !f.saved && isFormEdited(f.draft));
           if (others.length === 0) router.push(savedDealMapHref(id));

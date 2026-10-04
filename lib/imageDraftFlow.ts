@@ -648,7 +648,7 @@ export class ImageDraftFlow {
       return rejected(publishMessage(error));
     }
     if (typeof created !== "string" || !DEAL_ID_PATTERN.test(created)) {
-      return rejected("The server did not confirm the save. Nothing was published; try again.");
+      return rejected("The save could not be confirmed. Your edits are kept; check the map before trying again.");
     }
     this.updateForm(form.key, (f) => ({ ...f, submitting: false, publishError: null, saved: { id: created as string } }));
     return { ok: true, id: created };

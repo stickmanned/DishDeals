@@ -73,7 +73,7 @@ export function DealReviewForm({
   renderLocation,
   busy = false,
   submitLabel = "Publish deal",
-  title = "Review deal draft",
+  title = "Review Deal Draft",
 }: DealReviewFormProps) {
   const idPrefix = useId();
   const restaurantId = `${idPrefix}-restaurant`;
