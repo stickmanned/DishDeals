@@ -139,7 +139,11 @@ try:
     visible("reels", "Save a Reel.")
     screenshot("reels")
     crashes = adb("logcat", "-b", "crash", "-d")
-    assert "FATAL EXCEPTION" not in crashes, crashes
+    # The shared emulator crash buffer also contains SDK/UiAutomator processes.
+    # Preserve the full evidence, but fail for this app (including app subprocesses).
+    app_crash = re.search(r"Process:\s*" + re.escape(PACKAGE) + r"(?:[:,\s]|$)", crashes)
+    native_crash = re.search(r">>>\s*" + re.escape(PACKAGE) + r"(?::[^\s]*)?\s*<<<", crashes)
+    assert not (app_crash or native_crash), crashes
     (OUT / "result.txt").write_text("PASS: installed APK, Discover, cold/warm text shares, draft protection, Back, map and Reels navigation, no native crash. No offers submitted.\n")
 finally:
     try:

@@ -21,6 +21,8 @@ Final runtime and QA source: `4cffe3e`. [Android Actions run 37220962559](https:
 
 The final APK was downloaded and verified locally with Android `apksigner` (valid v2 signature). Package inspection confirmed min SDK 24, target SDK 36, bundled Discover/Post/tools pages, the public proper-marmot-82 Convex endpoint, updated OpenFreeMap assets and no remote website URL. [Quality CI run 37220962539](https://github.com/stickmanned/DishDeals/actions/runs/37220962539) passed for the same source head. Final handoff-only changes do not alter that tested APK runtime.
 
+The QA helper now identifies app crashes by the package/process marker while retaining the entire emulator crash buffer. A documentation-head rerun completed the app flows but reported a crash in Android's UiAutomator accessibility helper; that unrelated system process must not be reported as a DishDeals crash. App ANRs and crashes remain hard failures. This QA-only correction does not alter the delivered APK runtime. Current head checks are available on PR #14.
+
 Local Gradle could not download its distribution due to network timeouts; no local APK compilation or local emulator pass is claimed. Existing SDK tools were used only for APK inspection. No generated provider keys or credentials were copied into source archives.
 
 ## Delivery and limitations
