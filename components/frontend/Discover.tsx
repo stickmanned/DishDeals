@@ -30,7 +30,7 @@ export function Discover() {
   );
   async function find(event: FormEvent) {
     event.preventDefault();
-    if (!search.trim() || searching) return;
+    if (!search.trim() || searching || (app.mode === "live" && app.live?.authLoading)) return;
     if (app.mode !== "live" || !app.live) {
       setSearchError("Switch to the live feed to search online."); return;
     }
@@ -85,7 +85,7 @@ export function Discover() {
             </button>
           )}
         </div>
-        <button className="button primary" disabled={searching || !search.trim()} type="submit">{searching ? "Searching…" : "Search"}</button>
+        <button className="button primary" disabled={searching || !search.trim() || (app.mode === "live" && !!app.live?.authLoading)} type="submit">{searching ? "Searching…" : "Search"}</button>
         <button
           className="filter-button"
           type="button"
