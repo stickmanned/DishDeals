@@ -1,0 +1,18 @@
+# T-31 Liquid Glass UI
+
+Branch t-31-liquid-glass-ui; checkout /Users/william/Code/DishDeals-worktrees/liquid-glass-ui, based on t-30-location-search 5dfbf0c (newest branch at the time) so it can merge after T-30 lands. Human-assigned UI work: William asked for the Liquid Glass design handoff and the official logo to be applied.
+
+Source: design_handoff_dishdeals_liquid_glass/ (README, two HTML prototypes, logo.png), copied into this branch unchanged. The handoff is a refinement: layouts, flows, features and copy stay; floating controls get Liquid Glass and content stays opaque. The app is the Next.js web app inside the iOS wrapper, so the CSS recipe was applied directly (no SwiftUI glass APIs apply).
+
+Changed:
+- app/globals.css: handoff tokens (ink, brand, brand-dark, canvas, price, success, tint, warning), Inter, radii and spring easing. Regular glass on the sticky header pill and floating tab bar (rim, sheen, shadow); regular glass on chips, back links, image labels and save buttons; tinted glass on primary buttons; dark glass on selected chips, segmented thumbs, weekday and vote toggles. Opaque cards with full-bleed photos and the price strip, opaque panels, fields and sheets. Fallbacks for no backdrop-filter and prefers-reduced-transparency.
+- Small red text (eyebrows, text links, active tab labels) uses brand-dark #C81F3D instead of #F22E4F, because #F22E4F reaches about 3.6:1 on the canvas (below WCAG AA for small text). Brand red stays for fills.
+- components/frontend/Shell.tsx, Icon.tsx: official logo mark, "dishdeals" wordmark. The mobile tab bar uses the handoff's four items: Discover, Map, Share a deal, Saved (/reels, the desktop "Saved Reels" link). Profile stays on the header avatar. Icon stroke 1.8.
+- app/layout.tsx: Inter via next/font/google; titles say DishDeals.
+- User-facing "Dinedeals" copy changed to "DishDeals" in ReelIntake and the iOS display name / permission strings. Swift type names, the dinedeals URL scheme and bundle IDs are unchanged.
+- Icons: public/logo.png, public/icon.svg (same path; layout test unchanged), app/apple-icon.png, PWA share-icon-192/512 regenerated from logo.png, manifest colors, ios/App/Assets.xcassets AppIcon (1024 single size) and ASSETCATALOG_COMPILER_APPICON_NAME in ios/project.yml.
+- Status colors hardcoded inline in DealReviewForm, CanonicalDealDetails and the map page notice now use tokens.
+
+Not changed: DealLocationPicker.tsx (T-30 is editing it), map-component, map pins/layout, Convex, flows. The map home and share-sheet screens in the prototype describe a full-bleed map and the native iOS share sheet; restructuring the map page is map-owner work. The map page wrapper still has no side padding on narrow screens (already true before this branch).
+
+Checks: the baseline before edits (identical to t-30) already failed 1 Vitest test in the androidShareTarget "deadline cancels receipt for good" suite. After the change, one run passed 86 files / 2295 tests. Two later npm run check runs each failed one different case in that same suite. That file passed 5/5 alone on this branch and 3/3 on the t-30 checkout, so it looks timing-flaky under full-suite load and needs its own ticket. Typecheck, lint, map build, test:workflow (23/23) and npm run build passed. npm run check therefore exits 1 only because of that flaky suite. Browser check at 375px and 1280px on /, /post, /signin, /reels and /map. In this dev server, /_next/image requests with a WebP Accept header did not respond within 30s (plain JPEG responds in milliseconds), so some card photos stayed blank in the dev preview. That is the image optimizer, not this CSS. xcrun actool compiled ios/App/Assets.xcassets with AppIcon for the iOS 16 simulator; a full xcodegen/Xcode build was not run.

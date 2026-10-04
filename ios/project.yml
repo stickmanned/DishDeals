@@ -19,6 +19,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.dishdeals.app
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     entitlements:
       path: App/App.entitlements
       properties:
@@ -27,9 +28,9 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: Dinedeals
-        NSCameraUsageDescription: Dinedeals uses the camera so you can take a photo of a deal to post.
-        NSPhotoLibraryUsageDescription: Dinedeals needs access to your photos so you can choose a deal image to post.
+        CFBundleDisplayName: DishDeals
+        NSCameraUsageDescription: DishDeals uses the camera so you can take a photo of a deal to post.
+        NSPhotoLibraryUsageDescription: DishDeals needs access to your photos so you can choose a deal image to post.
         UILaunchScreen: {}
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
@@ -65,7 +66,7 @@ targets:
     info:
       path: ShareExtension/Info.plist
       properties:
-        CFBundleDisplayName: Dinedeals
+        CFBundleDisplayName: DishDeals
         BackendURL: "$(BACKEND_URL)"
         AppGroup: "$(APP_GROUP)"
         KeychainGroup: "$(KEYCHAIN_GROUP)"

@@ -14,6 +14,12 @@ const paths = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  share: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v8M8 12h8" />
+    </>
+  ),
   arrow: <path d="m9 5 7 7-7 7" />,
   back: <path d="m15 5-7 7 7 7" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
@@ -151,7 +157,7 @@ export function Icon({
       viewBox="0 0 24 24"
       fill={filled ? "currentColor" : "none"}
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -162,20 +168,8 @@ export function Icon({
   );
 }
 
-export function BrandMark({ size = 32 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size * 1.24}
-      viewBox="0 0 100 124"
-      aria-hidden="true"
-    >
-      <path
-        d="M50 0C22.4 0 0 22.4 0 50c0 34 40 66 46 72a6 6 0 0 0 8 0c6-6 46-38 46-72C100 22.4 77.6 0 50 0z"
-        fill="var(--red)"
-      />
-      <circle cx="50" cy="50" r="28" fill="var(--cream)" />
-      <circle cx="50" cy="50" r="15" fill="var(--red)" />
-    </svg>
-  );
+/** The official DishDeals mark (public/logo.png, from the design handoff). */
+export function BrandMark({ size = 28 }: { size?: number }) {
+  // eslint-disable-next-line @next/next/no-img-element -- tiny static mark; next/image adds nothing here
+  return <img src="/logo.png" alt="" width={size} height={size} />;
 }
