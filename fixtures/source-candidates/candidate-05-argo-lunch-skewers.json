@@ -1,0 +1,36 @@
+{
+  "candidateId": "CAND-05",
+  "canonicalProposal": {
+    "restaurant": "Argo Greek",
+    "address": "Unit 108 – 3790 Canada Way, Burnaby, BC V5G 1G4",
+    "dealText": "Lunch Special: 6 oz Lunch Skewer (Chicken or Lamb)",
+    "priceCad": null,
+    "validDays": [],
+    "validStart": "11:30",
+    "validEnd": "14:30",
+    "expiresOn": null,
+    "conditions": [
+      "Available from 11:30am - 2:30pm",
+      "Smaller portion served during lunch hours only"
+    ],
+    "sourceUrl": "https://www.argogreek.ca/menu/"
+  },
+  "provenance": {
+    "offerUrl": "https://www.argogreek.ca/menu/",
+    "addressUrl": "https://www.argogreek.ca/contact/",
+    "accessDate": "2026-10-03",
+    "status": "publicly_advertised_candidate_live_terms_unconfirmed",
+    "statedAmount": 12.0,
+    "statedCurrency": "$12 displayed on menu; ISO currency unstated (pending CAD confirmation)",
+    "coordinatesStatus": "omitted_pending_pinyuan_pin",
+    "adImageUrl": null,
+    "daysPending": "Lunch hours 11:30am-2:30pm explicitly stated on menu; all 7 days availability was inferred from general store operating hours and remains pending.",
+    "missingFields": [
+      "lat",
+      "lng",
+      "priceCad",
+      "validDays",
+      "flyerPhoto"
+    ]
+  }
+}
