@@ -1152,6 +1152,33 @@
       "implementationState": "dependency-ready packet",
       "nativeChecks": "pending",
       "phoneAcceptance": "pending"
+    },
+    {
+      "id": "T-12A",
+      "owner": "Prism",
+      "branch": "t-12-canonical-seed",
+      "worktree": "canonical-seed",
+      "status": "prepared",
+      "dependencies": [
+        "T-02",
+        "T-09C"
+      ],
+      "allowedPaths": [
+        "convex/seed.ts",
+        "lib/seed.ts",
+        "fixtures/seed.json",
+        "fixtures/seed.README.md",
+        "tests/backend/seed.test.ts",
+        "tests/import/seed.test.ts",
+        "docs/integration/seed-preparation.md",
+        "docs/handoffs/t-12a.md"
+      ],
+      "packet": "docs/tasks/T-12A.md",
+      "pinnedBaseSha": "ce80c4d0d80b404033fee785f23b2b4640b74a88",
+      "backendTarget": "local actual in-memory component only",
+      "implementationState": "core split ready; full T12 real data pending",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending real data/map"
     }
   ],
   "completedDependencies": {

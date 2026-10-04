@@ -1,3 +1,4 @@
+import { formatVancouverParts } from "../vancouverTime";
 import { inputSchema, resultSchema, extractionSchema, type WorkflowInput, type Extraction, type Deal, type Place, type Outcome, type WorkflowResult } from "./contracts";
 import { WorkflowError } from "./errors";
 import { extractWithGemini } from "./gemini";
@@ -14,7 +15,10 @@ export async function fingerprint(value: unknown): Promise<string> {
   return [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, "0")).join("");
 }
 export function localDate(now: Date, timezone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const options = { year: "numeric", month: "2-digit", day: "2-digit" } as const;
+  const parts = timezone === "America/Vancouver"
+    ? formatVancouverParts(now, "en-CA", options)
+    : new Intl.DateTimeFormat("en-CA", { ...options, timeZone: timezone }).formatToParts(now);
   const get = (type: string) => parts.find(p => p.type === type)!.value;
   return `${get("year")}-${get("month")}-${get("day")}`;
 }

@@ -73,3 +73,15 @@ describe("deal ingestion", () => {
     expect(result.outcomes[0].reviewReasons.join(" ")).toContain("address does not match");
   });
 });
+
+// Synthetic boundary tests: old tzdb may still fall back in November2026. Shared canonical Vancouver
+// policy must apply to preserved workflow expiry too; historical/non-Vancouver inputs keep IANA rules.
+it("keeps Vancouver November expiry on its actual permanent-UTC7 calendar date", async () => {
+  const instant = new Date("2026-11-02T07:30:00Z"); // November2 00:30, not November1 23:30
+  expect(localDate(instant, "America/Vancouver")).toBe("2026-11-02");
+  expect(localDate(instant, "America/Los_Angeles")).toBe("2026-11-01");
+  expect(localDate(new Date("2026-01-02T07:30:00Z"), "America/Vancouver")).toBe("2026-01-01");
+  const result = await processDeal(input, { extract: async () => ({ deals: [{ ...deal, endDate: "2026-11-01" }], rejectionReason: null }), locate: async () => [place], now: () => instant });
+  expect(result.outcomes[0].status).toBe("rejected");
+  expect(result.outcomes[0].reviewReasons).toContain("The offer has expired.");
+});
