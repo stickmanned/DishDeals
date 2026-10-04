@@ -1,6 +1,6 @@
 /**
  * Pure haversine distance calculation utility.
- * Mean Earth radius: 6371.0088 km (IUGG / WGS84 volumetric mean radius).
+ * Mean Earth radius: 6371.0088 km.
  */
 
 export interface LatLng {
