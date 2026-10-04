@@ -4,7 +4,8 @@
  * Runtime-independent, pure immutable reducer and validation helpers for deal drafts.
  * Supports Instagram extraction suggestions, manual editing overrides,
  * explicit review of omitted optional data, Pinyuan-provided coordinate confirmation,
- * and canonical Convex publish field serialization with null-to-undefined conversion.
+ * sidecar manualReview tracking, and canonical Convex publish field serialization
+ * with null-to-undefined conversion.
  */
 
 export const CANONICAL_WEEKDAYS = [
@@ -53,6 +54,24 @@ export interface ConfirmedLocation {
   confirmed: boolean;
 }
 
+export type ManualReviewCode =
+  | "FUTURE_START"
+  | "UNSUPPORTED_CONSTRAINT"
+  | "CURRENCY_UNVERIFIED";
+
+export interface ManualReviewNote {
+  dealIndex?: number;
+  code: ManualReviewCode;
+  detail: string;
+}
+
+export interface ReviewIssue {
+  code: ManualReviewCode;
+  detail: string;
+  resolved: boolean;
+  resolutionNote?: string;
+}
+
 export interface DealOffer {
   restaurant: string;
   address: string | null;
@@ -72,6 +91,8 @@ export interface ExtractionState {
   sourceRevision: number;
   error?: string;
   unselectedOffers?: DealOffer[];
+  selectedOfferIndex?: number;
+  pendingManualReview?: ManualReviewNote[];
 }
 
 export interface DealDraftFields {
@@ -92,6 +113,7 @@ export interface DealDraft {
   imageId: string | null;
   sourceUrl: string | null;
   extraction: ExtractionState;
+  reviewIssues: ReviewIssue[];
 }
 
 export type DraftFieldKey = keyof DealDraftFields;
@@ -164,6 +186,22 @@ export function isValidCalendarDate(dateStr: string): boolean {
   );
 }
 
+/**
+ * Validates safe source URL: http(s) only without credentials;
+ * rejects javascript:, data:, file:, etc.
+ */
+export function isValidSourceUrl(urlStr: string): boolean {
+  if (typeof urlStr !== "string" || urlStr.trim().length === 0) return false;
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return false;
+    if (parsed.username || parsed.password) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function validateCoordinates(lat: number, lng: number): void {
   if (typeof lat !== "number" || !Number.isFinite(lat) || lat < -90 || lat > 90) {
     throw new RangeError(`lat must be a finite number between -90 and 90, got: ${lat}`);
@@ -221,6 +259,7 @@ export function createDraft(initial?: InitialDraftValues): DealDraft {
       currentRequestId: null,
       sourceRevision: 0,
     },
+    reviewIssues: [],
   };
 }
 
@@ -250,14 +289,17 @@ export type DealDraftAction =
   | {
       type: "FINISH_EXTRACTION_SUCCESS";
       requestId: string;
+      sourceRevision?: number;
       result: {
         isDeal: boolean;
         deals: DealOffer[];
+        manualReview?: ManualReviewNote[];
       };
     }
   | {
       type: "FINISH_EXTRACTION_ERROR";
       requestId: string;
+      sourceRevision?: number;
       error: string;
     }
   | {
@@ -281,6 +323,19 @@ export type DealDraftAction =
       field: OmissibleFieldKey;
     }
   | {
+      type: "REVIEW_FIELD";
+      field: DraftFieldKey;
+    }
+  | {
+      type: "RESOLVE_REVIEW_ISSUE";
+      code: ManualReviewCode;
+      resolutionNote?: string;
+    }
+  | {
+      type: "INVALIDATE_SOURCE_CONTEXT";
+      reason?: string;
+    }
+  | {
       type: "CONFIRM_LOCATION";
       lat: number;
       lng: number;
@@ -296,7 +351,7 @@ export type DealDraftAction =
 
 /**
  * Applies suggestions from a single DealOffer to untouched fields in the draft.
- * Never overwrites manually edited fields.
+ * Deep-clones arrays. Never overwrites manually edited fields.
  */
 function applyOfferSuggestions(draft: DealDraft, offer: DealOffer): DealDraft {
   const fields = { ...draft.fields };
@@ -307,7 +362,6 @@ function applyOfferSuggestions(draft: DealDraft, offer: DealOffer): DealDraft {
     confidence?: number
   ) {
     const cur = fields[key];
-    // Known manually edited values remain authoritative; never overwrite them.
     if (cur.isManuallyEdited) return;
 
     fields[key] = {
@@ -337,6 +391,62 @@ function applyOfferSuggestions(draft: DealDraft, offer: DealOffer): DealDraft {
   };
 }
 
+function clearFieldSuggestion<T>(field: FieldState<T>): FieldState<T> {
+  return field.suggestion ? { ...field, suggestion: undefined } : field;
+}
+
+function clearPendingSuggestions(draft: DealDraft): DealDraftFields {
+  return {
+    restaurant: clearFieldSuggestion(draft.fields.restaurant),
+    address: clearFieldSuggestion(draft.fields.address),
+    dealText: clearFieldSuggestion(draft.fields.dealText),
+    priceCad: clearFieldSuggestion(draft.fields.priceCad),
+    validDays: clearFieldSuggestion(draft.fields.validDays),
+    validStart: clearFieldSuggestion(draft.fields.validStart),
+    validEnd: clearFieldSuggestion(draft.fields.validEnd),
+    expiresOn: clearFieldSuggestion(draft.fields.expiresOn),
+    conditions: clearFieldSuggestion(draft.fields.conditions),
+  };
+}
+
+/**
+ * Creates independent editable DealDraft instances for each offer in an extraction result.
+ * Clones arrays, binds offer-specific manualReview notes, and ensures edits to one draft
+ * do not mutate any other.
+ */
+export function createDraftsFromOffers(
+  offers: DealOffer[],
+  options?: {
+    sourceUrl?: string | null;
+    imageId?: string | null;
+    manualReview?: ManualReviewNote[];
+  }
+): DealDraft[] {
+  return offers.map((offer, index) => {
+    let draft = createDraft({
+      sourceUrl: options?.sourceUrl ?? null,
+      imageId: options?.imageId ?? null,
+    });
+    draft = applyOfferSuggestions(draft, {
+      ...offer,
+      validDays: [...offer.validDays],
+      conditions: [...offer.conditions],
+    });
+
+    if (options?.manualReview) {
+      const issues: ReviewIssue[] = options.manualReview
+        .filter((n) => n.dealIndex === undefined || n.dealIndex === index)
+        .map((n) => ({
+          code: n.code,
+          detail: n.detail,
+          resolved: false,
+        }));
+      draft = { ...draft, reviewIssues: issues };
+    }
+    return draft;
+  });
+}
+
 export function dealDraftReducer(state: DealDraft, action: DealDraftAction): DealDraft {
   switch (action.type) {
     case "START_EXTRACTION": {
@@ -350,12 +460,13 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
           sourceRevision: state.extraction.sourceRevision + 1,
           error: undefined,
           unselectedOffers: undefined,
+          selectedOfferIndex: undefined,
+          pendingManualReview: undefined,
         },
       };
     }
 
     case "CANCEL_EXTRACTION": {
-      // If a specific requestId is given, verify it matches the active extraction
       if (action.requestId && action.requestId !== state.extraction.currentRequestId) {
         return state;
       }
@@ -370,9 +481,11 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
     }
 
     case "FINISH_EXTRACTION_SUCCESS": {
-      // Ignore superseded, late, or canceled extractions
+      // Ignore superseded, late, or canceled extractions by requestId and sourceRevision
       if (
         action.requestId !== state.extraction.currentRequestId ||
+        (action.sourceRevision !== undefined &&
+          action.sourceRevision !== state.extraction.sourceRevision) ||
         state.extraction.status === "canceled"
       ) {
         return state;
@@ -386,6 +499,8 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
             status: "no_deal_detected",
             currentRequestId: null,
             unselectedOffers: undefined,
+            selectedOfferIndex: undefined,
+            pendingManualReview: undefined,
           },
         };
       }
@@ -398,20 +513,46 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
             ...state.extraction,
             status: "success",
             currentRequestId: null,
-            unselectedOffers: action.result.deals,
+            unselectedOffers: action.result.deals.map((d) => ({
+              ...d,
+              validDays: [...d.validDays],
+              conditions: [...d.conditions],
+            })),
+            selectedOfferIndex: undefined,
+            pendingManualReview: action.result.manualReview
+              ? [...action.result.manualReview]
+              : undefined,
           },
         };
       }
 
       // Exactly one deal detected: propose suggestions to untouched fields
-      const next = applyOfferSuggestions(state, action.result.deals[0]);
+      const deal = action.result.deals[0];
+      const next = applyOfferSuggestions(state, {
+        ...deal,
+        validDays: [...deal.validDays],
+        conditions: [...deal.conditions],
+      });
+
+      // Bind manualReview issues for deal 0
+      const issues: ReviewIssue[] = (action.result.manualReview || [])
+        .filter((n) => n.dealIndex === undefined || n.dealIndex === 0)
+        .map((n) => ({
+          code: n.code,
+          detail: n.detail,
+          resolved: false,
+        }));
+
       return {
         ...next,
+        reviewIssues: issues,
         extraction: {
           ...state.extraction,
           status: "success",
           currentRequestId: null,
           unselectedOffers: undefined,
+          selectedOfferIndex: 0,
+          pendingManualReview: undefined,
         },
       };
     }
@@ -422,20 +563,38 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
         return state;
       }
       const selectedOffer = offers[action.offerIndex];
-      const next = applyOfferSuggestions(state, selectedOffer);
+      let next = applyOfferSuggestions(state, {
+        ...selectedOffer,
+        validDays: [...selectedOffer.validDays],
+        conditions: [...selectedOffer.conditions],
+      });
+
+      // Bind manualReview issues for the selected offer index
+      if (state.extraction.pendingManualReview) {
+        const issues: ReviewIssue[] = state.extraction.pendingManualReview
+          .filter((n) => n.dealIndex === undefined || n.dealIndex === action.offerIndex)
+          .map((n) => ({
+            code: n.code,
+            detail: n.detail,
+            resolved: false,
+          }));
+        next = { ...next, reviewIssues: issues };
+      }
+
       return {
         ...next,
         extraction: {
           ...next.extraction,
-          unselectedOffers: undefined,
+          selectedOfferIndex: action.offerIndex,
         },
       };
     }
 
     case "FINISH_EXTRACTION_ERROR": {
-      // Ignore superseded or canceled extractions
       if (
         action.requestId !== state.extraction.currentRequestId ||
+        (action.sourceRevision !== undefined &&
+          action.sourceRevision !== state.extraction.sourceRevision) ||
         state.extraction.status === "canceled"
       ) {
         return state;
@@ -603,6 +762,49 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
       }
     }
 
+    case "REVIEW_FIELD": {
+      const fieldKey = action.field;
+      return {
+        ...state,
+        fields: {
+          ...state.fields,
+          [fieldKey]: {
+            ...state.fields[fieldKey],
+            isReviewed: true,
+          },
+        },
+      };
+    }
+
+    case "RESOLVE_REVIEW_ISSUE": {
+      return {
+        ...state,
+        reviewIssues: state.reviewIssues.map((issue) =>
+          issue.code === action.code
+            ? { ...issue, resolved: true, resolutionNote: action.resolutionNote }
+            : issue
+        ),
+      };
+    }
+
+    case "INVALIDATE_SOURCE_CONTEXT": {
+      const nextRevision = state.extraction.sourceRevision + 1;
+      return {
+        ...state,
+        fields: clearPendingSuggestions(state),
+        extraction: {
+          ...state.extraction,
+          status: state.extraction.status === "pending" ? "canceled" : state.extraction.status,
+          currentRequestId: null,
+          sourceRevision: nextRevision,
+          unselectedOffers: undefined,
+          selectedOfferIndex: undefined,
+          pendingManualReview: undefined,
+        },
+        reviewIssues: [],
+      };
+    }
+
     case "CONFIRM_LOCATION": {
       validateCoordinates(action.lat, action.lng);
       return {
@@ -616,16 +818,42 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
     }
 
     case "SET_IMAGE_ID": {
+      if (action.imageId === state.imageId) return state;
+      const nextRevision = state.extraction.sourceRevision + 1;
       return {
         ...state,
         imageId: action.imageId,
+        fields: clearPendingSuggestions(state),
+        extraction: {
+          ...state.extraction,
+          status: state.extraction.status === "pending" ? "canceled" : state.extraction.status,
+          currentRequestId: null,
+          sourceRevision: nextRevision,
+          unselectedOffers: undefined,
+          selectedOfferIndex: undefined,
+          pendingManualReview: undefined,
+        },
+        reviewIssues: [],
       };
     }
 
     case "SET_SOURCE_URL": {
+      if (action.sourceUrl === state.sourceUrl) return state;
+      const nextRevision = state.extraction.sourceRevision + 1;
       return {
         ...state,
         sourceUrl: action.sourceUrl,
+        fields: clearPendingSuggestions(state),
+        extraction: {
+          ...state.extraction,
+          status: state.extraction.status === "pending" ? "canceled" : state.extraction.status,
+          currentRequestId: null,
+          sourceRevision: nextRevision,
+          unselectedOffers: undefined,
+          selectedOfferIndex: undefined,
+          pendingManualReview: undefined,
+        },
+        reviewIssues: [],
       };
     }
 
@@ -640,8 +868,14 @@ export function dealDraftReducer(state: DealDraft, action: DealDraftAction): Dea
 
 /**
  * Validates whether the draft is ready for publishing.
- * Collects all validation errors across required fields, pending suggestions,
- * unreviewed omissions, invalid formats, and location confirmation.
+ * Collects all validation errors across:
+ * - In-progress extraction blocking
+ * - Required review state on ALL fields (initial, derived, or omitted)
+ * - Safe sourceUrl validation
+ * - Unresolved manual review issues (FUTURE_START, UNSUPPORTED_CONSTRAINT, CURRENCY_UNVERIFIED)
+ * - Pending unaccepted suggestions
+ * - Unselected multi-deal offers
+ * - Strict formats (24h time, real calendar date, finite nonnegative price, coords)
  */
 export function validateForPublish(draft: DealDraft): {
   valid: boolean;
@@ -649,7 +883,21 @@ export function validateForPublish(draft: DealDraft): {
 } {
   const errors: string[] = [];
 
-  // 1. Check for pending suggestions
+  // 1. Block publishing while extraction is still in flight
+  if (draft.extraction.status === "pending") {
+    errors.push(
+      "Cannot publish while extraction is in progress; wait for completion or cancel extraction."
+    );
+  }
+
+  // 2. Validate safe sourceUrl if present (reject javascript:, data:, file:, credentials)
+  if (draft.sourceUrl !== null && draft.sourceUrl.trim().length > 0) {
+    if (!isValidSourceUrl(draft.sourceUrl)) {
+      errors.push("sourceUrl must be a valid http or https URL without user credentials.");
+    }
+  }
+
+  // 3. Check for pending unaccepted suggestions
   const pendingKeys: string[] = [];
   (Object.keys(draft.fields) as DraftFieldKey[]).forEach((key) => {
     if (draft.fields[key].suggestion !== undefined) {
@@ -662,38 +910,64 @@ export function validateForPublish(draft: DealDraft): {
     );
   }
 
-  // 2. Multiple unselected offers
-  if (draft.extraction.unselectedOffers && draft.extraction.unselectedOffers.length > 1) {
+  // 4. Multiple unselected offers
+  if (
+    draft.extraction.unselectedOffers &&
+    draft.extraction.unselectedOffers.length > 1 &&
+    draft.extraction.selectedOfferIndex === undefined
+  ) {
     errors.push("Multiple extracted deals detected; an offer must be selected before publishing.");
+  }
+
+  // 5. Unresolved manualReview issues from sidecar
+  for (const issue of draft.reviewIssues) {
+    if (!issue.resolved) {
+      if (issue.code === "FUTURE_START") {
+        errors.push(
+          `Unresolved future-start restriction: ${issue.detail}. Future-start constraints must be explicitly reviewed before publish.`
+        );
+      } else if (issue.code === "UNSUPPORTED_CONSTRAINT") {
+        errors.push(
+          `Unresolved provider constraint: ${issue.detail}. Unsupported provider constraints must be explicitly resolved before publish.`
+        );
+      } else if (issue.code === "CURRENCY_UNVERIFIED") {
+        if (!draft.fields.priceCad.isManuallyEdited) {
+          errors.push(
+            `Currency is unverified (${issue.detail}); price must be manually confirmed or explicitly omitted.`
+          );
+        }
+      }
+    }
   }
 
   const f = draft.fields;
 
-  // 3. Required: restaurant
+  // 6. Review state for ALL fields (initial, derived, or omitted)
+  // Required: restaurant
   const restaurantVal = f.restaurant.value;
   if (!restaurantVal || restaurantVal.trim().length === 0) {
     errors.push("Restaurant name is required.");
+  } else if (!f.restaurant.isReviewed) {
+    errors.push("Restaurant name must be explicitly reviewed or confirmed.");
   }
 
-  // 4. Required: dealText
+  // Required: dealText
   const dealTextVal = f.dealText.value;
   if (!dealTextVal || dealTextVal.trim().length === 0) {
     errors.push("Deal text is required.");
+  } else if (!f.dealText.isReviewed) {
+    errors.push("Deal text must be explicitly reviewed or confirmed.");
   }
 
-  // 5. Optional address: if null/empty, must be reviewed
-  if (!f.address.value || f.address.value.trim().length === 0) {
-    if (!f.address.isReviewed) {
-      errors.push("Missing address must be explicitly reviewed or acknowledged.");
-    }
+  // Address
+  if (!f.address.isReviewed) {
+    errors.push("Address must be explicitly reviewed (or confirmed as omitted).");
   }
 
-  // 6. Optional priceCad: if null, must be reviewed; if present, must be non-negative finite number
-  if (f.priceCad.value === null) {
-    if (!f.priceCad.isReviewed) {
-      errors.push("Missing price must be explicitly reviewed or marked as varies.");
-    }
-  } else {
+  // Price
+  if (!f.priceCad.isReviewed) {
+    errors.push("Price must be explicitly reviewed (or confirmed as omitted/varies).");
+  } else if (f.priceCad.value !== null) {
     if (
       typeof f.priceCad.value !== "number" ||
       !Number.isFinite(f.priceCad.value) ||
@@ -703,27 +977,23 @@ export function validateForPublish(draft: DealDraft): {
     }
   }
 
-  // 7. Optional hours (validStart, validEnd)
-  const hasHours = f.validStart.value !== null || f.validEnd.value !== null;
-  if (!hasHours) {
-    if (!f.validStart.isReviewed || !f.validEnd.isReviewed) {
-      errors.push("Missing hours must be explicitly reviewed or marked as all-day.");
-    }
-  } else {
-    if (f.validStart.value !== null && !isValidTimeString(f.validStart.value)) {
-      errors.push(`validStart must be formatted as "HH:MM", got: "${f.validStart.value}"`);
-    }
-    if (f.validEnd.value !== null && !isValidTimeString(f.validEnd.value)) {
-      errors.push(`validEnd must be formatted as "HH:MM", got: "${f.validEnd.value}"`);
-    }
+  // Start & End hours
+  if (!f.validStart.isReviewed) {
+    errors.push("Start time must be explicitly reviewed (or confirmed as all-day).");
+  } else if (f.validStart.value !== null && !isValidTimeString(f.validStart.value)) {
+    errors.push(`validStart must be formatted as "HH:MM", got: "${f.validStart.value}"`);
   }
 
-  // 8. Optional expiresOn
-  if (f.expiresOn.value === null) {
-    if (!f.expiresOn.isReviewed) {
-      errors.push("Missing expiration date must be explicitly reviewed or marked as ongoing.");
-    }
-  } else {
+  if (!f.validEnd.isReviewed) {
+    errors.push("End time must be explicitly reviewed (or confirmed as all-day).");
+  } else if (f.validEnd.value !== null && !isValidTimeString(f.validEnd.value)) {
+    errors.push(`validEnd must be formatted as "HH:MM", got: "${f.validEnd.value}"`);
+  }
+
+  // Expiration
+  if (!f.expiresOn.isReviewed) {
+    errors.push("Expiration date must be explicitly reviewed (or confirmed as ongoing).");
+  } else if (f.expiresOn.value !== null) {
     if (!isValidCalendarDate(f.expiresOn.value)) {
       errors.push(
         `expiresOn must be a valid real calendar date formatted as "YYYY-MM-DD", got: "${f.expiresOn.value}"`
@@ -731,26 +1001,22 @@ export function validateForPublish(draft: DealDraft): {
     }
   }
 
-  // 9. Valid days: if empty array (meaning every day), must be reviewed
-  if (!f.validDays.value || f.validDays.value.length === 0) {
-    if (!f.validDays.isReviewed) {
-      errors.push("Empty weekdays (all days) must be acknowledged when evidence is missing.");
-    }
-  } else {
+  // Valid days
+  if (!f.validDays.isReviewed) {
+    errors.push("Valid days must be explicitly reviewed or confirmed.");
+  } else if (f.validDays.value.length > 0) {
     const invalidDays = f.validDays.value.filter((d) => !isCanonicalWeekday(d));
     if (invalidDays.length > 0) {
       errors.push(`Invalid weekdays specified: ${invalidDays.join(", ")}`);
     }
   }
 
-  // 10. Conditions: if empty array, must be reviewed
-  if (!f.conditions.value || f.conditions.value.length === 0) {
-    if (!f.conditions.isReviewed) {
-      errors.push("Empty conditions must be acknowledged when evidence is missing.");
-    }
+  // Conditions
+  if (!f.conditions.isReviewed) {
+    errors.push("Conditions must be explicitly reviewed or confirmed.");
   }
 
-  // 11. Location: must be confirmed with finite coords in bounds
+  // 7. Location: must be confirmed with finite coords in bounds
   if (!draft.location || !draft.location.confirmed) {
     errors.push("Coordinates (lat, lng) must be explicitly confirmed by user/map.");
   } else {
@@ -773,7 +1039,8 @@ export function validateForPublish(draft: DealDraft): {
  * Validates the draft and serializes canonical create fields for the `deals.create` mutation.
  *
  * Rules:
- * - Rejects missing/unchecked required fields, pending suggestions, and unconfirmed location.
+ * - Rejects missing/unchecked required fields, pending suggestions, unconfirmed location,
+ *   pending extraction, or unresolved provider restrictions.
  * - Converts null optional values to undefined (omitted from serialized object).
  * - Never includes backend-controlled fields (authorId, stillOnCount, expiredCount) or draft state.
  *
