@@ -1,18 +1,54 @@
 # DishDeals agent instructions
 
-Read `StormHacks Project Plan Instagram Deal Saver.md` as the current specification, particularly Guide for AI coding agents, Data model, Backend functions, and your assigned ticket. Read `docs/team-integration.md` for the human's ownership adjustment and `docs/agent-workflow.md` plus your task packet for current assignments.
+This file is the single source of agent rules. `CLAUDE.md` imports it and `GEMINI.md` points to it. Change agent rules here, not in those files.
 
-The effective repository is `/Users/william/Code/DishDeals` or an explicitly assigned isolated checkout. A role session may start under `.maestri/roles/<id>/`; locate the ancestor containing the plan and inspect Git status before editing. Do not use the old Codex output repository or its localStorage/no-login brief.
+## Read in this order
+
+Read only what your ticket needs. Each extra document costs context you need for the work.
+
+1. This file, `docs/tenets.md` (priorities) and `docs/lessons.md` (mistakes not to repeat).
+2. Your task packet in `docs/tasks/` and its entry in `docs/workflow/tasks.json` (owner, branch, worktree, writable paths).
+3. In `StormHacks Project Plan Instagram Deal Saver.md` (the spec): always "Guide for AI coding agents"; "Data model" and "Backend functions" whenever you touch a name or shape (they are canonical); then only the other sections your packet names. Do not read the whole plan unless the packet says so.
+4. When needed, not up front: `docs/agent-workflow.md` for the Git loop, model routing and integration; `docs/team-integration.md` when work touches a human-owned lane; `docs/decisions/` before changing a contract.
+
+The effective repository is `/Users/william/Code/DishDeals` or an explicitly assigned isolated checkout. A role session may start under `.maestri/roles/<id>/`; locate the ancestor containing the plan and inspect `pwd`, Git branch/status and task ownership before editing. Work in your assigned worktree, never the human main checkout. Do not use the old Codex output repository or its localStorage/no-login brief.
+
+## Rules
 
 - Execute only the explicitly assigned ticket. Verify its dependencies; stop with a handoff once its checks pass or a named blocker prevents progress. Do not pull the next ticket automatically.
 - Human teammates own high-quality frontend and all map integration. Agents own functional core work only, with minimal usable UI where needed. Do not implement polished styling/fonts/animations, geocoding, maps, pin controls, map grounding, directions integration, or geospatial wiring without a new explicit assignment. Keep the plan's coordinates, table fields, and API names intact.
+- Fetch published teammate branches before building a subsystem, so you extend their work instead of duplicating it.
 - Run `maestri list` (or `"$MAESTRI_CLI" list`) before addressing connected teammates or notes. Reuse Northstar, Loom, Prism, Cinder and Mica; see Gemini-first routing in docs/agent-workflow.md. Northstar coordinates and alone maintains Delivery Board/shared status. No duplicate recruits or circular blocking requests.
 - Agree branch/checkout, exact writable paths, acceptance, and checks before edits. Use `t-XX-short-name` branches. Overlapping writers require isolated checkouts or serial work. Preserve human and teammate changes.
-- Follow plan security/data rules: server-only keys, no committed `.env*`, signed-in checks on protected operations, no Instagram scraping, browser-computed current validity, America/Vancouver local times, schema-validated extraction, null-to-undefined conversion for optional Convex fields.
+- Follow plan security/data rules: server-only keys, no committed `.env*`, signed-in checks on protected operations, no Instagram scraping, browser-computed current validity, America/Vancouver local times, schema-validated extraction, null-to-undefined conversion for optional Convex fields. Server secrets never go in Git or chat.
 - Inspect current official documentation for version-sensitive SDK/setup claims. Keep unavailable models, credentials, or deployment steps explicit; never invent successful backend or API evidence.
 - Run relevant checks from the plan and report exact results or blockers. No false passes for unrun commands, empty tests, mocks, phone-only behavior, or external provisioning.
 - The workflow instruction authorizes scoped task commits, branch pushes and draft PRs. Only Northstar integrates reviewed green PRs. Do not force push, deploy, submit purchases or create accounts. Cloud changes require specific authorization; old T-02 dev sync approval is scoped to T-02.
-- Return ticket status, branch/checkout, changed files, checks, human phone/setup steps, and the next proposed ticket. Stop if stuck for 30 minutes as the plan directs.
+- Return ticket status, branch/checkout, changed files, checks, human phone/setup steps, lessons learned, and the next proposed ticket. Stop if stuck for 30 minutes as the plan directs.
+
+## Tests are the contract
+
+- **Tests first.** On a logic or backend ticket, the first commit on the branch contains only the tests for the agreed behaviour; failing is expected. Implement in later commits. Reviewers read that commit before the implementation.
+- **Never bend a test to pass.** Do not edit, weaken, skip (`.skip`, `.only`, `.todo`), loosen assertions in, or delete an existing test to make checks pass. If a test looks wrong, stop and explain why in the handoff; Northstar or the human decides. List every test changed after the tests-first commit in the handoff, with the reason.
+- **Derive cases from the data, not only the happy path.** Pick the classes that apply to your inputs:
+  - Strings: empty, whitespace-only, non-ASCII (accented or CJK restaurant names, emoji), very long.
+  - Numbers: 0, negative, exact boundaries, very large, `NaN`.
+  - Time: midnight, overnight windows (`validEnd` before `validStart`), the America/Vancouver DST changes, missing dates or hours.
+  - State: missing record, empty list, signed out or expired session, provider error or timeout.
+- **The demo path is not the test plan.** Cover the failure handling the plan's "Edge cases, tests and risks" table assigns to your ticket.
+- Say which tests are mocked. A mocked provider test does not prove live behaviour.
+
+## Lessons
+
+When a human or reviewer corrects you, or you lose time to something a later agent would repeat, add a "Lessons" line to your handoff: what went wrong and the rule that avoids it. Do not edit `docs/lessons.md` from a task branch; Northstar copies lessons in when integrating, so parallel PRs do not conflict on that file.
+
+## Gemini workers
+
+- Default to small bounded Flash tasks: Prism handles reconnaissance and fixtures, Cinder validity, Mica distance and small utilities. Read your exact T-04A, T-04B or T-05R packet and confirm its worktree and paths before writing.
+- At most three Gemini requests run concurrently across the workspace; no nested agent fan-out.
+- Use short relevant context and targeted checks while iterating, then one full `npm run check` per completed PR. Return concise handoffs.
+- After two failed attempts on the same issue, escalate the smallest unresolved question to Northstar.
+- A successful current reply supersedes a stale "out of credits" label. Development-agent access to Google AI is separate from the app's Gemini API credentials. Never enable paid overages or make purchases.
 
 Current scope: T-00 Gemini-first workflow setup; no app feature dispatch implied. T-01/T-02 are committed in 356ec1b; T-02 development schema sync succeeded. Live T-01 browser/HTTPS/phone acceptance remains pending. T-03/T-04A/T-04B task packets are prepared, not automatically dispatched; T-05R is reconciliation before extraction implementation. Read docs/workflow/tasks.json for ownership. All autonomous workers use separate worktrees. Root main is human-owned. No unlimited backlog execution.
 
