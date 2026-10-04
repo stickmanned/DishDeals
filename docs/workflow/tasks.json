@@ -1182,6 +1182,27 @@
       "implementationState": "core split ready; full T12 real data pending",
       "nativeChecks": "pending",
       "phoneAcceptance": "pending real data/map"
+    },
+    {
+      "id": "N-SIM-A",
+      "owner": "Cinder",
+      "branch": "t-17-native-simulator-qa",
+      "worktree": "native-simulator-qa",
+      "status": "prepared",
+      "dependencies": [
+        "N-SHARE-C"
+      ],
+      "allowedPaths": [
+        "docs/qa/simulator/",
+        "docs/handoffs/n-sim-a.md",
+        "tests/native/simulator/"
+      ],
+      "packet": "docs/tasks/N-SIM-A.md",
+      "pinnedBaseSha": "4241d266962bb2d7fe2e7d945c9e02ae7a139197",
+      "backendTarget": "NONE; controlled synthetic simulator only",
+      "implementationState": "authorized simulatorQA",
+      "nativeChecks": "assigned iPhone17e iOS27",
+      "phoneAcceptance": "pending realInstagram iOS26.6.1"
     }
   ],
   "completedDependencies": {
