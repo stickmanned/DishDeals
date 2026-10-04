@@ -17,10 +17,10 @@ export function Shell({ children }: { children: ReactNode }) {
       </a>
       <header className="site-header">
         <div className="header-inner">
-          <Link href="/" className="wordmark" aria-label="Dinedeals home">
-            <BrandMark size={25} />
+          <Link href="/" className="wordmark" aria-label="DishDeals home">
+            <BrandMark size={28} />
             <span>
-              dine<span>deals</span>
+              dish<span>deals</span>
             </span>
           </Link>
           <nav className="desktop-nav" aria-label="Main navigation">
@@ -70,9 +70,9 @@ export function Shell({ children }: { children: ReactNode }) {
       </main>
       <footer className="site-footer">
         <Link href="/" className="wordmark small">
-          <BrandMark size={16} />
+          <BrandMark size={20} />
           <span>
-            dine<span>deals</span>
+            dish<span>deals</span>
           </span>
         </Link>
         <span>Good food. A little less.</span>
@@ -80,28 +80,26 @@ export function Shell({ children }: { children: ReactNode }) {
       </footer>
       <nav className="mobile-nav" aria-label="Mobile navigation">
         <Link href="/" aria-current={path === "/" ? "page" : undefined}>
-          <Icon name="compass" />
+          <Icon name="compass" size={22} />
           <span>Discover</span>
         </Link>
         <Link href="/map" aria-current={path === "/map" ? "page" : undefined}>
-          <Icon name="pin" />
+          <Icon name="map" size={22} />
           <span>Map</span>
         </Link>
         <Link
           href="/post"
           aria-current={path.startsWith("/post") ? "page" : undefined}
         >
-          <Icon name="plus" />
-          <span>Post</span>
+          <Icon name="share" size={22} />
+          <span>Share a deal</span>
         </Link>
         <Link
-          href={profileHref}
-          aria-current={
-            path === "/profile" || path === "/signin" ? "page" : undefined
-          }
+          href="/reels"
+          aria-current={path.startsWith("/reels") ? "page" : undefined}
         >
-          <Icon name="user" />
-          <span>Profile</span>
+          <Icon name="bookmark" size={22} />
+          <span>Saved</span>
         </Link>
       </nav>
     </>

@@ -288,7 +288,7 @@ export function DealReviewForm({
                 key={issue.id}
                 className="panel"
                 style={{
-                  borderLeft: issue.blocking ? "4px solid #e53e3e" : "4px solid #dd6b20",
+                  borderLeft: issue.blocking ? "4px solid var(--red)" : "4px solid var(--warning)",
                   padding: "0.75rem",
                 }}
               >
@@ -302,13 +302,13 @@ export function DealReviewForm({
                 )}
 
                 {issue.resolved ? (
-                  <p className="quiet-note" style={{ color: "#38a169" }}>
+                  <p className="quiet-note" style={{ color: "var(--basil)" }}>
                     ✓ Resolved: {issue.resolutionNote}
                   </p>
                 ) : (
                   <div>
                     {!evaluation.canResolve ? (
-                      <p className="quiet-note" style={{ color: "#e53e3e" }}>
+                      <p className="quiet-note" style={{ color: "var(--red-hover)" }}>
                         {evaluation.reason}
                       </p>
                     ) : (
@@ -600,7 +600,7 @@ export function DealReviewForm({
           })}
         </div>
         {weekdayNotice && (
-          <p className="quiet-note" role="status" style={{ color: "#dd6b20", marginTop: "0.25rem" }}>
+          <p className="quiet-note" role="status" style={{ color: "var(--deal-ink)", marginTop: "0.25rem" }}>
             {weekdayNotice}
           </p>
         )}

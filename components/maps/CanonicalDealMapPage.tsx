@@ -247,10 +247,10 @@ function CanonicalDealMapContent({ initialDealId }: { initialDealId?: string }) 
           style={{
             padding: "10px 16px",
             marginBottom: 16,
-            borderRadius: 8,
-            background: "#fff8e1",
-            color: "#8d6e63",
-            border: "1px solid #ffe082",
+            borderRadius: 16,
+            background: "var(--deal)",
+            color: "var(--deal-ink)",
+            border: "1px solid var(--warning)",
             fontSize: "0.9rem",
           }}
         >
