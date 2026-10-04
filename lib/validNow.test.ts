@@ -186,12 +186,22 @@ describe("validNow temporal logic", () => {
       expect(validNow({ ...baseDeal, validEnd: "12:60" }, now)).toEqual({ status: "unknown" });
       expect(validNow({ ...baseDeal, validStart: "9:00" }, now)).toEqual({ status: "unknown" });
       expect(validNow({ ...baseDeal, validStart: "24:00" }, now)).toEqual({ status: "unknown" });
+      expect(validNow({ ...baseDeal, validEnd: "24:00" }, now)).toEqual({ status: "unknown" });
       expect(validNow({ ...baseDeal, validDays: ["Monday"] }, now)).toEqual({ status: "unknown" });
       expect(validNow({ ...baseDeal, validDays: "mon" }, now)).toEqual({ status: "unknown" });
       expect(validNow(null, now)).toEqual({ status: "unknown" });
       expect(validNow(undefined, now)).toEqual({ status: "unknown" });
       expect(validNow("deal", now)).toEqual({ status: "unknown" });
       expect(validNow(baseDeal, new Date("invalid"))).toEqual({ status: "unknown" });
+    });
+
+    it("rejects externally supplied validStart or validEnd = '24:00' as unknown (canonical 00..23)", () => {
+      const now = vancouverDate("2026-10-07T19:00:00.000Z");
+      expect(validNow({ ...baseDeal, validStart: "24:00" }, now)).toEqual({ status: "unknown" });
+      expect(validNow({ ...baseDeal, validEnd: "24:00" }, now)).toEqual({ status: "unknown" });
+      expect(validNow({ ...baseDeal, validStart: "10:00", validEnd: "24:00" }, now)).toEqual({
+        status: "unknown",
+      });
     });
   });
 

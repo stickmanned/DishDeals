@@ -134,9 +134,6 @@ function isValidCalendarDate(isoDate: string): boolean {
 }
 
 function parseTime(timeStr: string): { hour: number; minute: number } | null {
-  if (timeStr === "24:00") {
-    return { hour: 24, minute: 0 };
-  }
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(timeStr);
   if (!match) return null;
   return {
@@ -279,7 +276,7 @@ export function validNow(deal: unknown, now: Date): ValidNowResult {
   } else if (rawStart != null && rawEnd == null) {
     if (typeof rawStart !== "string") return { status: "unknown" };
     const parsedStart = parseTime(rawStart);
-    if (!parsedStart || parsedStart.hour === 24) return { status: "unknown" };
+    if (!parsedStart) return { status: "unknown" };
     startH = parsedStart.hour;
     startM = parsedStart.minute;
     endH = 24;
@@ -304,7 +301,6 @@ export function validNow(deal: unknown, now: Date): ValidNowResult {
     const parsedStart = parseTime(rawStart);
     const parsedEnd = parseTime(rawEnd);
     if (!parsedStart || !parsedEnd) return { status: "unknown" };
-    if (parsedStart.hour === 24) return { status: "unknown" };
     startH = parsedStart.hour;
     startM = parsedStart.minute;
     endH = parsedEnd.hour;
