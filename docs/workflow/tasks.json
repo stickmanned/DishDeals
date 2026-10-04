@@ -115,7 +115,7 @@
       "owner": "Mica",
       "branch": "t-07-draft-state",
       "worktree": "post-core",
-      "status": "prepared",
+      "status": "ready",
       "dependencies": [
         "T-02"
       ],
