@@ -14,6 +14,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { LEGACY_CONSTRAINT_REVIEW_DETAIL } from "../../lib/reels/toDealDraft";
 import {
   buildPublishFields,
   createDraft,
@@ -405,8 +406,9 @@ describe("N-FORM-B: Reel Review Draft Helpers and Lifecycle", () => {
         draftEdited: false,
         extractionJson: extraction([base()], ["Students only"]),
       });
-      expect(d.reviewIssues).toHaveLength(1);
-      expect(d.reviewIssues[0]).toMatchObject({ code: "UNSUPPORTED_CONSTRAINT", detail: "Students only", resolved: false, blocking: true });
+      expect(d.reviewIssues).toHaveLength(2);
+      expect(d.reviewIssues).toContainEqual(expect.objectContaining({ detail: LEGACY_CONSTRAINT_REVIEW_DETAIL, blocking: true, resolved: false }));
+      expect(d.reviewIssues).toContainEqual(expect.objectContaining({ code: "UNSUPPORTED_CONSTRAINT", detail: "Students only", resolved: false, blocking: true }));
       expect(d.fields.restaurant.suggestion?.value).toBe("Mine");
       expect(validateForPublish(d).errors.join("|")).toContain("Unresolved provider constraint");
     });
@@ -485,7 +487,7 @@ describe("N-FORM-B: Reel Review Draft Helpers and Lifecycle", () => {
         manualReview: [{ code: "BOGUS", detail: "x" }, { code: "FUTURE_START", detail: "  " }, 7],
       });
       const [d] = initDraftsFromReelItem({ extractionJson: raw });
-      expect(d.reviewIssues).toEqual([]);
+      expect(d.reviewIssues).toEqual([expect.objectContaining({ code: "UNSUPPORTED_CONSTRAINT", detail: LEGACY_CONSTRAINT_REVIEW_DETAIL, blocking: true, resolved: false })]);
       expect(JSON.parse(raw).manualReview).toHaveLength(3);
     });
 
@@ -575,5 +577,34 @@ describe("N-FORM-B: Reel Review Draft Helpers and Lifecycle", () => {
         planLateExtraction([createDraft()], JSON.stringify({ isDeal: false, drafts: [], evidence: [], transcript: "", warnings: [] }))
       ).toBeNull();
     });
+  });
+});
+
+describe("Northstar combined private-constraint integration (synthetic)", () => {
+  const offer = (dealText: string) => ({ restaurant: "Synthetic restaurant", address: null, dealText, price: null, currency: null, validDays: null, validStart: null, validEnd: null, expiresOn: null, conditions: null });
+  const model = JSON.stringify({ isDeal: true, drafts: [offer("A"), offer("B")], evidence: [], transcript: "", warnings: [], constraints: [
+    { draftIndex: 0, code: "FUTURE_START", detail: "Starts November 10, 2026", startsOn: "2026-11-10", channel: "caption", quote: "Starts November 10, 2026", timestampSeconds: null },
+    { draftIndex: 1, code: "UNSUPPORTED_CONSTRAINT", detail: "Members only", startsOn: null, channel: "caption", quote: "Members only", timestampSeconds: null },
+  ] });
+  it("the actual private constraints array survives same-count edited reorder and another serialize/reload", () => {
+    const saved = { extractionJson: model, draftJson: JSON.stringify([offer("B edited"), offer("A edited")]), draftEdited: true };
+    const first = initDraftsFromReelItem(saved);
+    const second = initDraftsFromReelItem({ ...saved, draftJson: JSON.stringify(serializeDraftsToReelDrafts(first)) });
+    for (const drafts of [first, second]) for (const draft of drafts) {
+      expect(draft.reviewIssues.some(issue => issue.code === "FUTURE_START" && issue.blocking && !issue.resolved)).toBe(true);
+      expect(draft.reviewIssues.some(issue => issue.detail === "Members only" && issue.blocking && !issue.resolved)).toBe(true);
+      expect(draft.fields.restaurant.isReviewed).toBe(false);
+      expect(draft.location).toBeNull();
+      const future = draft.reviewIssues.find(issue => issue.code === "FUTURE_START")!;
+      const tried = dealDraftReducer(draft, { type: "RESOLVE_REVIEW_ISSUE", issueId: future.id, resolutionNote: "Synthetic attempt to bypass" });
+      expect(tried.reviewIssues.find(issue => issue.id === future.id)?.resolved).toBe(false);
+      expect(() => buildPublishFields(tried)).toThrow();
+    }
+  });
+  it("unedited saved offers bind the real typed restrictions by index rather than dropping them", () => {
+    const [a, b] = initDraftsFromReelItem({ extractionJson: model, draftJson: JSON.stringify([offer("A"), offer("B")]), draftEdited: false });
+    expect(a.reviewIssues.some(issue => issue.code === "FUTURE_START")).toBe(true);
+    expect(b.reviewIssues.some(issue => issue.code === "FUTURE_START")).toBe(false);
+    expect(b.reviewIssues.some(issue => issue.detail === "Members only")).toBe(true);
   });
 });

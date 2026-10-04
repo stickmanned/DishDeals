@@ -729,10 +729,11 @@
       "packet": "docs/tasks/N-MAP-B.md",
       "pinnedBaseSha": "44133042340c5d4a140453a63aa445edc163e637",
       "backendTarget": "local source/tests only; no cloud",
-      "implementationState": "quota-preserved corrections incorporated for Northstar NMAPR; Cinder Claude read-only reviewer",
+      "implementationState": "reviewed locally integrated fcc0cc6; full-ticket native/provider/phone acceptance pending",
       "nativeChecks": "pending runtime/WKWebView",
       "phoneAcceptance": "pending",
-      "externalBlocker": "Gemini CLI confirmed quota error, no model switch/recruit; preserve work"
+      "externalBlocker": "Gemini CLI confirmed quota error, no model switch/recruit; preserve work",
+      "localChecks": "Northstar combined1250Vitest/23workflow/type/lint/build PASS; synthetic/in-memory only; actual private constraints save/reload regression included"
     },
     {
       "id": "T-09C",
@@ -797,10 +798,11 @@
       "packet": "docs/tasks/N-FORM-B.md",
       "pinnedBaseSha": "33b894d40f7e1075c6579a297657c227dc3e4f65",
       "backendTarget": "local synthetic checks only; no cloud",
-      "implementationState": "Claude Code resumed same bounded ticket from quota-preserved source",
+      "implementationState": "reviewed locally integrated 02f0511; full-ticket native/provider/phone acceptance pending",
       "nativeChecks": "pending rendered map/form",
       "phoneAcceptance": "pending",
-      "externalBlocker": "Gemini exhausted; William authorized in-place Claude Code replacement"
+      "externalBlocker": "Gemini exhausted; William authorized in-place Claude Code replacement",
+      "localChecks": "Northstar combined1250Vitest/23workflow/type/lint/build PASS; synthetic/in-memory only; actual private constraints save/reload regression included"
     },
     {
       "id": "N-SOURCE-C",
@@ -825,10 +827,11 @@
       "packet": "docs/tasks/N-SOURCE-C.md",
       "pinnedBaseSha": "33b894d40f7e1075c6579a297657c227dc3e4f65",
       "backendTarget": "synthetic parser/model transport only; no provider/cloud",
-      "implementationState": "Claude Code resumed same bounded ticket from quota-preserved source",
+      "implementationState": "reviewed locally integrated 4ad8731; full-ticket native/provider/phone acceptance pending",
       "nativeChecks": "pending actual media/extraction",
       "phoneAcceptance": "pending",
-      "externalBlocker": "Gemini exhausted; William authorized in-place Claude Code replacement"
+      "externalBlocker": "Gemini exhausted; William authorized in-place Claude Code replacement",
+      "localChecks": "Northstar combined1250Vitest/23workflow/type/lint/build PASS; synthetic/in-memory only; actual private constraints save/reload regression included"
     },
     {
       "id": "T-07B",
@@ -866,9 +869,10 @@
       "packet": "docs/tasks/T-07B.md",
       "pinnedBaseSha": "84415d9b542a9e3abafa51f59d85df0817025286",
       "backendTarget": "local synthetic checks only; no cloud/provider",
-      "implementationState": "cdc8164 reviewed; bounded quota/shared-storage corrections requested",
+      "implementationState": "reviewed locally integrated 86a1e6b; full-ticket native/provider/phone acceptance pending",
       "nativeChecks": "pending actual image decoding/file picker",
-      "phoneAcceptance": "pending real screenshot/flyer"
+      "phoneAcceptance": "pending real screenshot/flyer",
+      "localChecks": "Northstar combined1250Vitest/23workflow/type/lint/build PASS; synthetic/in-memory only; actual private constraints save/reload regression included"
     },
     {
       "id": "T-16A",
@@ -924,6 +928,81 @@
       "implementationState": "assigned bounded durable wrapper",
       "nativeChecks": "unrun",
       "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-07C",
+      "owner": "Cinder",
+      "branch": "t-07-canonical-image-form",
+      "worktree": "canonical-image-form",
+      "status": "prepared",
+      "dependencies": [
+        "T-07B",
+        "N-FORM-UI",
+        "N-MAP-A"
+      ],
+      "allowedPaths": [
+        "app/post/page.tsx",
+        "components/deals/CanonicalPost.tsx",
+        "lib/imageDraftFlow.ts",
+        "tests/import/imageDraftFlow.test.ts",
+        "docs/integration/canonical-image-form.md",
+        "docs/handoffs/t-07c.md"
+      ],
+      "packet": "docs/tasks/T-07C.md",
+      "pinnedBaseSha": "397c5977df56e7ce6eb187ccfcd534bd4535b841",
+      "backendTarget": "local tests only; no deployment/provider authorized",
+      "implementationState": "assigned canonical image/form/publish binding",
+      "nativeChecks": "pending WKWebView",
+      "phoneAcceptance": "pending William iPhone"
+    },
+    {
+      "id": "T-10B",
+      "owner": "Mica",
+      "branch": "t-10-author-controls",
+      "worktree": "author-controls",
+      "status": "prepared",
+      "dependencies": [
+        "T-09C",
+        "N-MAP-B",
+        "N-FORM-UI"
+      ],
+      "allowedPaths": [
+        "components/deals/CanonicalDealDetails.tsx",
+        "components/deals/CanonicalDealEdit.tsx",
+        "app/deal/[id]/edit/page.tsx",
+        "lib/dealEdit.ts",
+        "tests/import/dealEdit.test.ts",
+        "docs/integration/author-controls.md",
+        "docs/handoffs/t-10b.md"
+      ],
+      "packet": "docs/tasks/T-10B.md",
+      "pinnedBaseSha": "397c5977df56e7ce6eb187ccfcd534bd4535b841",
+      "backendTarget": "local tests only; no cloud target authorized",
+      "implementationState": "assigned canonical author controls",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending"
+    },
+    {
+      "id": "N-REMOTE-A",
+      "owner": "Prism",
+      "branch": "t-19-backend-preservation-review",
+      "worktree": "backend-preservation-review",
+      "status": "prepared",
+      "dependencies": [
+        "N-SOURCE-C",
+        "T-09C"
+      ],
+      "allowedPaths": [
+        "docs/integration/backend-preservation.md",
+        "docs/integration/backend-preservation.patch",
+        "docs/handoffs/n-remote-a.md"
+      ],
+      "packet": "docs/tasks/N-REMOTE-A.md",
+      "pinnedBaseSha": "397c5977df56e7ce6eb187ccfcd534bd4535b841",
+      "backendTarget": "read-only published source review only; no cloud commands",
+      "implementationState": "assigned concrete preservation/release artifact",
+      "nativeChecks": "pending",
+      "phoneAcceptance": "pending"
     }
   ],
   "completedDependencies": {
