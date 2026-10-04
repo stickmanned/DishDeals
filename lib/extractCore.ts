@@ -60,6 +60,9 @@ export class ExtractError extends Error {
     public readonly code: ExtractErrorCode,
     message: string,
     public readonly retryable = false,
+    /** Provider HTTP status and Retry-After hint, for diagnostics and pacing only. Never carries a body. */
+    public readonly httpStatus?: number,
+    public readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = "ExtractError";
@@ -86,6 +89,7 @@ export type ExtractConfig = {
   timeoutMs?: number;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
+  random?: () => number;
 };
 
 /**
@@ -452,14 +456,15 @@ async function callModel(
     }
     if (!response.ok) {
       const s = response.status;
+      const retryAfter = response.headers.get("retry-after");
       void response.body?.cancel().catch(() => {});
       if (s === 401 || s === 403) {
         throw new ExtractError("PROVIDER_AUTH", "Check the server-side Gemini API key and permissions.");
       }
       if (s === 429 || (s >= 500 && s <= 599)) {
-        throw new ExtractError("PROVIDER_BUSY", "The model service is busy or unavailable.", true);
+        throw new ExtractError("PROVIDER_BUSY", "The model service is busy or unavailable.", true, s, retryAfterMs(retryAfter));
       }
-      throw new ExtractError("PROVIDER_REQUEST", `The model service rejected the request (HTTP ${s}).`);
+      throw new ExtractError("PROVIDER_REQUEST", `The model service rejected the request (HTTP ${s}).`, false, s);
     }
     try {
       return await raced(response.json());
@@ -500,6 +505,24 @@ function textFromResponse(json: unknown): string {
 
 const MODEL_NAME = /^[a-zA-Z0-9._-]+$/;
 
+/** Longest wait honored from a provider Retry-After; a longer ask is capped so the user is not left hanging. */
+const MAX_RETRY_AFTER_MS = 8_000;
+/** Pause before the 2nd and 3rd attempt when the provider is busy: gives a per-minute quota or overload time to clear. */
+const BUSY_BACKOFF_MS = [1_000, 2_500] as const;
+
+/** Seconds form of Retry-After only (the form Google sends); anything else is ignored. */
+function retryAfterMs(header: string | null): number | undefined {
+  if (header === null || !/^\d{1,6}$/.test(header.trim())) return undefined;
+  return Math.min(Number(header.trim()) * 1000, MAX_RETRY_AFTER_MS);
+}
+
+function pauseBefore(next: number, e: ExtractError, random: () => number): number {
+  if (e.code !== "PROVIDER_BUSY" && e.code !== "PROVIDER_UNAVAILABLE" && e.code !== "PROVIDER_TIMEOUT") return 300;
+  const base = BUSY_BACKOFF_MS[Math.min(next - 1, BUSY_BACKOFF_MS.length - 1)];
+  const jitter = Math.floor(random() * 250);
+  return Math.max(e.retryAfterMs ?? 0, base + jitter);
+}
+
 /**
  * Extract deal suggestions from supplied images and text. Order of attempts:
  * primary, primary once more, then the fallback model. Auth failures, blocked
@@ -535,7 +558,9 @@ export async function extractDealCore(
     apiKey,
   };
 
-  const plan = primary === fallback ? [primary, primary] : [primary, primary, fallback];
+  const random = config.random ?? Math.random;
+  // Three attempts either way. With no distinct fallback model the same model is simply tried a third time.
+  const plan = primary === fallback ? [primary, primary, primary] : [primary, primary, fallback];
   let last: ExtractError | undefined;
   for (let i = 0; i < plan.length; i++) {
     try {
@@ -562,7 +587,7 @@ export async function extractDealCore(
       last = e;
       // A rejected request will not change on an identical retry of the same model.
       if (e.code === "PROVIDER_REQUEST" && plan[i + 1] === plan[i]) i++;
-      if (i < plan.length - 1) await sleep(300);
+      if (i < plan.length - 1) await sleep(pauseBefore(i + 1, e, random));
     }
   }
   throw last ?? new ExtractError("PROVIDER_UNAVAILABLE", "Extraction failed.", true);

@@ -102,7 +102,11 @@ export const extractDeal = action({
       }))];
       return { ...extracted, manualReview, requiresBlockingReview: manualReview.some(note => note.blocking) };
     } catch (error) {
-      if (error instanceof ExtractError) throw fail(error.code, error.message, error.retryable);
+      if (error instanceof ExtractError) {
+        // Fixed fields only (no key, prompt, image or provider body) so a provider limit is visible in the logs.
+        console.warn(JSON.stringify({ event: "extract_failed", code: error.code, httpStatus: error.httpStatus ?? null, model: env.GEMINI_IMAGE_MODEL ?? null, fallbackConfigured: Boolean(env.GEMINI_IMAGE_FALLBACK_MODEL) }));
+        throw fail(error.code, error.message, error.retryable);
+      }
       throw fail("EXTRACTION_FAILED", "Extraction failed. Try again.", true);
     }
   },

@@ -1058,6 +1058,11 @@ export function validateForPublish(draft: DealDraft): {
     errors.push(`validEnd must be formatted as "HH:MM", got: "${f.validEnd.value}"`);
   }
 
+  // The server accepts both times or neither; one alone is rejected at publish, so catch it here with the fix.
+  if ((f.validStart.value === null) !== (f.validEnd.value === null)) {
+    errors.push("Set both start and end times, or clear both for an all-day deal.");
+  }
+
   // Expiration
   if (!f.expiresOn.isReviewed) {
     errors.push("Expiration date must be explicitly reviewed (or confirmed as ongoing).");

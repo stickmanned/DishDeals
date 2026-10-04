@@ -328,6 +328,40 @@ describe("retry, timeout and fallback", () => {
     expect(out.model).toBe("gemini-3.5-flash-lite");
   });
 
+  it("waits with growing backoff between busy retries instead of a fixed 300 ms", async () => {
+    const t = transport([new Response("", { status: 503 }), new Response("", { status: 503 }), ok(goodPayload)]);
+    const waits: number[] = [];
+    const out = await extractDealCore({ caption: "c" }, cfg(t.fetchFn, { sleep: async (ms) => { waits.push(ms); }, random: () => 0 }));
+    expect(out.result.isDeal).toBe(true);
+    expect(waits).toEqual([1000, 2500]);
+  });
+
+  it("honors a short Retry-After on 429 and caps a long one", async () => {
+    const short = transport([new Response("", { status: 429, headers: { "retry-after": "4" } }), ok(goodPayload)]);
+    const waitsShort: number[] = [];
+    await extractDealCore({ caption: "c" }, cfg(short.fetchFn, { sleep: async (ms) => { waitsShort.push(ms); }, random: () => 0 }));
+    expect(waitsShort).toEqual([4000]);
+    const long = transport([new Response("", { status: 429, headers: { "retry-after": "3600" } }), ok(goodPayload)]);
+    const waitsLong: number[] = [];
+    await extractDealCore({ caption: "c" }, cfg(long.fetchFn, { sleep: async (ms) => { waitsLong.push(ms); }, random: () => 0 }));
+    expect(waitsLong).toEqual([8000]);
+  });
+
+  it("tries a single configured model three times before giving up", async () => {
+    const t = transport([new Response("", { status: 503 }), new Response("", { status: 503 }), ok(goodPayload)]);
+    const out = await extractDealCore({ caption: "c" }, cfg(t.fetchFn, { model: "m-one", fallbackModel: "m-one" }));
+    expect(t.calls).toHaveLength(3);
+    expect(out.model).toBe("m-one");
+  });
+
+  it("reports the provider HTTP status on the error for diagnostics, never the body or key", async () => {
+    const t = transport([new Response(`overloaded ${KEY}`, { status: 503 })]);
+    const err = await failure(extractDealCore({ caption: "c" }, cfg(t.fetchFn)));
+    expect(err.code).toBe("PROVIDER_BUSY");
+    expect(err.httpStatus).toBe(503);
+    expect(JSON.stringify([err.message, err.httpStatus])).not.toContain(KEY);
+  });
+
   it("aborts a hung request at the timeout and retries", async () => {
     const hang = (signal: AbortSignal) =>
       new Promise<Response>((_, reject) =>

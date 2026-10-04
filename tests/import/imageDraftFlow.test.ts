@@ -596,6 +596,17 @@ describe("analyze: failures preserve photo, context and manual edits", () => {
     expect(classifyExtractError(null)).toMatchObject({ code: "EXTRACTION_FAILED", retryable: true });
   });
 
+  it("tells the user when the AI service is busy, keeping retry available, and never shows server text", () => {
+    for (const code of ["PROVIDER_BUSY", "PROVIDER_UNAVAILABLE", "PROVIDER_TIMEOUT"]) {
+      const e = classifyExtractError(convexError({ code, message: "provider body sk-secret", retryable: true }));
+      expect(e).toMatchObject({ code, retryable: true });
+      expect(e.message).toMatch(/busy/i);
+      expect(e.message).toMatch(/Try again/);
+      expect(e.message).not.toMatch(/sk-secret/);
+    }
+    expect(classifyExtractError(convexError({ code: "PROVIDER_AUTH", message: "Check the key", retryable: false }))).toMatchObject({ code: "PROVIDER_AUTH", retryable: false });
+  });
+
   it.each([
     ["not an object", "oops"],
     ["null", null],

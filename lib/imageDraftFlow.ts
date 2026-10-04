@@ -244,6 +244,16 @@ export function classifyExtractError(error: unknown): FlowError {
       return { code, message: "Your session expired. Sign in again.", retryable: false };
     case "CONFIGURATION":
       return { code, message: "Image analysis is not available right now. You can fill in the form by hand.", retryable: false };
+    case "PROVIDER_BUSY":
+    case "PROVIDER_UNAVAILABLE":
+    case "PROVIDER_TIMEOUT":
+      return {
+        code,
+        message: "The AI service is busy right now. Your image and details are kept: wait a few seconds and tap Try again, or fill in the form by hand.",
+        retryable: true,
+      };
+    case "PROVIDER_AUTH":
+      return { code, message: "Image analysis is not available right now. You can fill in the form by hand.", retryable: false };
     case "IMAGE_NOT_AVAILABLE":
     case "INVALID_IMAGE":
       return { code, message: "The uploaded image could not be used. Try again to upload it afresh.", retryable: true };
@@ -280,6 +290,11 @@ const UPLOAD_FAILURES: Record<Extract<ImageUploadOutcome, { ok: false }>["reason
 const PUBLISH_FAILURES: ReadonlyMap<string, string> = new Map([
   ["Not signed in", "Your session expired. Sign in again to publish."],
   ["Create your profile before publishing.", "Create your profile before publishing."],
+  // Fixed validation reasons from lib/dealWrite.ts; they carry no query text, ids or internals.
+  ["Provide both start and end times, or neither.", "Set both start and end times, or clear both for an all-day deal."],
+  ["Start time must be HH:MM from 00:00 to 23:59.", "The start time is not valid. Use a time like 17:00, or clear it."],
+  ["End time must be HH:MM from 00:00 to 23:59.", "The end time is not valid. Use a time like 21:00, or clear it."],
+  ["Expiry must be a real date, YYYY-MM-DD.", "The expiry date is not a real date. Fix it or clear it."],
   ["That image is not available to you.", "The attached image could not be used. Remove it or choose another, then publish again."],
   ["That image is missing, too large, or not a supported image.", "The attached image could not be used. Remove it or choose another, then publish again."],
 ]);
