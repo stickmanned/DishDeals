@@ -1,12 +1,13 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { GeospatialIndex } from "@convex-dev/geospatial";
 import { v, ConvexError } from "convex/values";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { env, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { env, internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import schema from "./schema";
 import { requireOwnedImage } from "./dealUploads";
 import { PUBLISHED_EXPIRY } from "../lib/dealImageUpload";
+import { isDealDeletionDue } from "../lib/dealRetention";
 import {
   MAX_VOTES_PER_DELETE, NEARBY_FALLBACK_SCAN, NEARBY_LIMIT, WriteError, rankByDistance, validateNearbyArgs, validatePublishFields,
   type RawPublishFields,
@@ -87,6 +88,24 @@ export const listRecent = query({
         imageUrl: deal.imageId ? await ctx.storage.getUrl(deal.imageId) : null,
       };
     }));
+  },
+});
+
+// Published canonical posts (including published reel-derived deals), never
+// private reel drafts. Identity comes solely from the signed-in caller.
+export const listMine = query({
+  args: { limit: v.number() },
+  returns: v.array(schema.doc("deals").extend({ imageUrl: v.union(v.string(), v.null()) })),
+  handler: async (ctx, { limit }) => {
+    const authorId = await getAuthUserId(ctx);
+    if (authorId === null) throw new ConvexError("Not signed in");
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
+      throw new ConvexError("Choose a whole-number limit from 1 to 50.");
+    }
+    const deals = await ctx.db.query("deals").withIndex("by_author", q => q.eq("authorId", authorId)).order("desc").take(limit);
+    return Promise.all(deals.map(async deal => ({
+      ...deal, imageUrl: deal.imageId ? await ctx.storage.getUrl(deal.imageId) : null,
+    })));
   },
 });
 
@@ -180,6 +199,17 @@ export const update = mutation({
   },
 });
 
+// Shared atomic deletion invariants for explicit author removal and retention.
+async function deletePublishedDeal(ctx: MutationCtx, deal: Doc<"deals">): Promise<void> {
+  // Refuse oversized deletion rather than leaving orphan votes/index/storage.
+  const votes = await ctx.db.query("votes").withIndex("by_deal_user", q => q.eq("dealId", deal._id)).take(MAX_VOTES_PER_DELETE + 1);
+  if (votes.length > MAX_VOTES_PER_DELETE) throw new ConvexError("This deal has too many votes to delete in one step.");
+  for (const vote of votes) await ctx.db.delete(vote._id);
+  await geospatial.remove(ctx, deal._id);
+  await ctx.db.delete(deal._id);
+  await releaseImage(ctx, deal.imageId);
+}
+
 export const remove = mutation({
   args: { dealId: v.id("deals") },
   returns: v.null(),
@@ -188,15 +218,46 @@ export const remove = mutation({
     const deal = await ctx.db.get("deals", dealId);
     if (!deal) throw new ConvexError("Deal not found");
     if (deal.authorId !== userId) throw new ConvexError("Only the author can delete this deal.");
-    // Votes are deleted in this transaction. A deal with more votes than a single transaction can
-    // truthfully delete is refused (nothing changes) rather than leaving orphan votes behind.
-    const votes = await ctx.db.query("votes").withIndex("by_deal_user", q => q.eq("dealId", dealId)).take(MAX_VOTES_PER_DELETE + 1);
-    if (votes.length > MAX_VOTES_PER_DELETE) throw new ConvexError("This deal has too many votes to delete in one step.");
-    for (const vote of votes) await ctx.db.delete(vote._id);
-    await geospatial.remove(ctx, dealId);
-    await ctx.db.delete(dealId);
-    await releaseImage(ctx, deal.imageId);
+    await deletePublishedDeal(ctx, deal);
     return null;
+  },
+});
+
+// Re-read the canonical record and execution clock: queued expiry candidates
+// never override a subsequent renewal, cleared expiry, or manual removal.
+export const removeExpired = internalMutation({
+  args: { dealId: v.id("deals") },
+  returns: v.boolean(),
+  handler: async (ctx, { dealId }): Promise<boolean> => {
+    const deal = await ctx.db.get("deals", dealId);
+    if (!deal || !isDealDeletionDue(deal.expiresOn, Date.now())) return false;
+    await deletePublishedDeal(ctx, deal);
+    return true;
+  },
+});
+
+// No expiry index/schema change: walk the creation index with a bounded page
+// and persisted continuation. Retained early rows cannot starve later deals.
+// Freeze the upper creation bound so ongoing publications cannot prolong a sweep.
+export const sweepExpired = internalMutation({
+  args: { cursor: v.union(v.string(), v.null()), sweepStartedAt: v.optional(v.number()) },
+  returns: v.object({ scanned: v.number(), queued: v.number(), nextCursor: v.union(v.string(), v.null()) }),
+  handler: async (ctx, { cursor, sweepStartedAt }): Promise<{ scanned: number; queued: number; nextCursor: string | null }> => {
+    const now = Date.now();
+    const startedAt = sweepStartedAt ?? now;
+    if (!Number.isFinite(startedAt)) throw new ConvexError("Invalid sweep boundary.");
+    const result = await ctx.db.query("deals")
+      .withIndex("by_creation_time", q => q.lte("_creationTime", startedAt)).order("asc")
+      .paginate({ cursor, numItems: 25, maximumRowsRead: 25, maximumBytesRead: 128 * 1024 });
+    let queued = 0;
+    for (const deal of result.page) {
+      if (!isDealDeletionDue(deal.expiresOn, now)) continue;
+      await ctx.scheduler.runAfter(0, internal.deals.removeExpired, { dealId: deal._id });
+      queued++;
+    }
+    const nextCursor = result.isDone ? null : result.continueCursor;
+    if (nextCursor !== null) await ctx.scheduler.runAfter(0, internal.deals.sweepExpired, { cursor: nextCursor, sweepStartedAt: startedAt });
+    return { scanned: result.page.length, queued, nextCursor };
   },
 });
 

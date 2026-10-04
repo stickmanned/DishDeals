@@ -270,7 +270,7 @@ describe("private image registry", () => {
   });
   it("the public API has no way to register an upload", async () => {
     const exported = Object.keys(await import("../../convex/deals")).sort();
-    expect(exported).toEqual(["create", "generateUploadUrl", "get", "listNearby", "listRecent", "remove", "update"]); // generateUploadUrl only returns the authenticated /deal-image URL
+    expect(exported).toEqual(["create", "generateUploadUrl", "get", "listMine", "listNearby", "listRecent", "remove", "removeExpired", "sweepExpired", "update"]); // generateUploadUrl only returns the authenticated /deal-image URL; cleanup is internal-only
   });
   it("update to a new owned image releases the old one only when no other deal uses it", async () => {
     const s = await setup();
