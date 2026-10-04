@@ -1482,20 +1482,64 @@
         "N-CORE-REVIEW"
       ],
       "allowedPaths": [
-        "lib/reels/sharedText.ts",
-        "convex/reelActions.ts",
-        "convex/reelWorkflow.ts",
-        "convex/reels.ts",
-        "tests/reels/sharedText.test.ts",
-        "tests/reels/sharedTextBackend.test.ts",
+        "convex/extract.ts",
+        "tests/backend/extractAction.test.ts",
         "docs/handoffs/n-source-text.md"
       ],
       "packet": "docs/tasks/N-SOURCE-TEXT.md",
-      "pinnedBaseSha": "54627863d4722d59888bec1668305e1ff8d46a03",
+      "pinnedBaseSha": "700c46801254010ac1433c7a4ae0f2313a3a52cd",
       "backendTarget": "NONE; local source/tests only, no cloud/provider invocation",
-      "implementationState": "New bounded supplied-text implementation; private-source contract pinned in packet",
+      "implementationState": "Amended before dispatch: canonical pasted-source text without mandatory files; automatic URL retrieval remains blocked",
       "nativeChecks": "Native capture reused unchanged",
-      "phoneAcceptance": "pending actual supplied caption and live extraction; URL receipt is not media"
+      "phoneAcceptance": "pending actual supplied caption and live extraction; URL receipt is not media",
+      "blocker": "Live/phone extraction pending; bare-link automatic retrieval unavailable"
+    },
+    {
+      "id": "N-TEXT-FORM",
+      "owner": "Mica",
+      "branch": "t-07-caption-form",
+      "worktree": "caption-form",
+      "status": "prepared",
+      "allowedPaths": [
+        "lib/imageDraftFlow.ts",
+        "components/deals/CanonicalPost.tsx",
+        "app/post/page.tsx",
+        "lib/postSource.ts",
+        "tests/import/imageDraftFlow.test.ts",
+        "tests/import/postSource.test.ts",
+        "docs/handoffs/n-text-form.md"
+      ],
+      "packet": "docs/tasks/N-TEXT-FORM.md",
+      "dependencies": [
+        "N-CORE-REVIEW"
+      ],
+      "pinnedBaseSha": "700c46801254010ac1433c7a4ae0f2313a3a52cd",
+      "backendTarget": "NONE; local source/tests only",
+      "implementationState": "Bounded functional source/publication slice",
+      "nativeChecks": "No native source change",
+      "phoneAcceptance": "Pending actual supplied source / public publish"
+    },
+    {
+      "id": "N-PUBLIC-ENTRY",
+      "owner": "Cinder",
+      "branch": "t-07-reel-public-entry",
+      "worktree": "reel-public-entry",
+      "status": "prepared",
+      "allowedPaths": [
+        "components/reels/ReelIntake.tsx",
+        "components/reels/CanonicalReelReview.tsx",
+        "tests/import/reelPublicEntry.test.tsx",
+        "docs/handoffs/n-public-entry.md"
+      ],
+      "packet": "docs/tasks/N-PUBLIC-ENTRY.md",
+      "dependencies": [
+        "N-CORE-REVIEW"
+      ],
+      "pinnedBaseSha": "700c46801254010ac1433c7a4ae0f2313a3a52cd",
+      "backendTarget": "NONE; local source/tests only",
+      "implementationState": "Bounded functional source/publication slice",
+      "nativeChecks": "No native source change",
+      "phoneAcceptance": "Pending actual supplied source / public publish"
     }
   ],
   "completedDependencies": {
