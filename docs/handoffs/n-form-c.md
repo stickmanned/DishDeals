@@ -23,3 +23,9 @@ Real `deals.create` and `geocode.geocode` callbacks replace the default "publish
 ## Known limits
 - No DOM environment exists in this repo, so there is no interaction test that types a partial price, switches offers and returns; that behavior rests on the stable-key structure (unit-tested) and the server-rendered markup test.
 - `inert` hides inactive offers from focus and assistive technology in current browsers; older WebViews that lack `inert` still get `hidden`, which removes them from layout and focus.
+
+## Review corrections (second commit)
+- `GENERIC_PUBLISH_ERROR` no longer says "Nothing was published": after a lost response or network failure the outcome is unknown, so it now reads that publishing could not be confirmed, that the deal may or may not have been published, that edits are kept, and to check the map or deals before trying again. It still leaks no backend detail; it is used for any create failure and for a response that is not a genuine id.
+- `searchErrorMessage` no longer echoes the server's `code`/`message`. It reads only the error code, accepts it only if it is own-property in the fixed `SEARCH_MESSAGES` list (the geocoder's nine codes), and shows client-owned wording; anything else (unknown, missing, non-string, prototype names such as `toString` / `__proto__` / `constructor`) gets the generic message. Known code with secret-bearing message text, and unknown codes with secrets, are tested not to leak.
+- Unchanged: the source gate, review-level preconditions, single flight, receipts, and the stable per-offer partial-form keys. No schema or create-argument change (idempotency belongs to the separate backend ticket).
+- Checks: `tsc` and `eslint .` clean; `tests/import/reelPublish.test.ts` 47 passed; three mutations (echoing the server message, an `in` check that admits prototype names, the old "Nothing was published" copy) each failed tests. The full check was not repeated, as instructed.

@@ -82,7 +82,8 @@ export function publishGateMessage(input: GateInput): string | null {
   return null;
 }
 
-export const GENERIC_PUBLISH_ERROR = "Could not publish. Nothing was published and your edits are kept. Try again.";
+// A failed or lost response does not prove nothing was created, so this never claims it. The edits are kept.
+export const GENERIC_PUBLISH_ERROR = "Publishing could not be confirmed, so the deal may or may not have been published. Your edits are kept. Check the map or your deals before trying again.";
 const ID_SHAPE = /^[A-Za-z0-9]{10,64}$/;
 export const isStorageIdShape = (value: unknown): value is string => typeof value === "string" && ID_SHAPE.test(value);
 
@@ -181,10 +182,26 @@ export function parseCandidates(raw: unknown): Candidate[] {
   return out;
 }
 
-/** Message for a failed lookup: only the server's fixed text for known codes, otherwise a generic one. */
+/**
+ * Client-owned wording for the geocoder's known error codes. The server's message text is never shown: only the
+ * code is read, and only if it is in this list. An unknown code, a missing code or any other error gets the
+ * generic message, so nothing a failing server or provider put in an error can reach the screen.
+ */
+export const SEARCH_MESSAGES: Record<string, string> = {
+  NOT_SIGNED_IN: "Sign in to search for a location.",
+  INVALID_QUERY: "Enter a place name or address of 2 to 120 characters.",
+  CONFIGURATION_ERROR: "Location search is not enabled on this server.",
+  RATE_LIMITED: "Location search is busy. Try again shortly.",
+  PROVIDER_TIMEOUT: "Location search timed out. Try again.",
+  PROVIDER_UNAVAILABLE: "Location search is unavailable. Try again later.",
+  PROVIDER_ERROR: "Location search could not complete.",
+  INVALID_RESPONSE: "Location search returned an unusable answer.",
+  GEOCODE_FAILED: "Location search failed.",
+};
+
 export function searchErrorMessage(error: unknown): string {
-  const data = (error as { data?: { code?: unknown; message?: unknown } } | null)?.data;
-  return data && typeof data.code === "string" && typeof data.message === "string" && data.message.length <= 200 ? data.message : SEARCH_ERROR;
+  const code = (error as { data?: { code?: unknown } } | null)?.data?.code;
+  return typeof code === "string" && Object.prototype.hasOwnProperty.call(SEARCH_MESSAGES, code) ? SEARCH_MESSAGES[code] : SEARCH_ERROR;
 }
 
 /** Explicit-Find search callback for the location picker around api.geocode.geocode. No debounce or autocomplete. */

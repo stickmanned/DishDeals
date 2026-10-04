@@ -8,7 +8,7 @@ import {
   DraftValidationError, buildPublishFields, createDraft, dealDraftReducer, validateForPublish, type DealDraft, type DraftFieldKey, type PublishFields,
 } from "../../lib/dealDraft";
 import {
-  GENERIC_PUBLISH_ERROR, MAX_OFFERS, PublishBindingError, PublishBlocked, PublishGuard, SEARCH_ERROR, activeAfterRemove, appendOffers, applyLatePlan,
+  GENERIC_PUBLISH_ERROR, MAX_OFFERS, SEARCH_MESSAGES, PublishBindingError, PublishBlocked, PublishGuard, SEARCH_ERROR, activeAfterRemove, appendOffers, applyLatePlan,
   createPublishHandler, createSearch, liveDraft, offerListFrom, parseCandidates, publishGateMessage, publishPreconditionError, receiptFor, removeOffer, replaceOffers, toCreateArgs,
   updateOffer, type CreateArgs, type GateInput,
 } from "../../lib/reels/publish";
@@ -174,6 +174,11 @@ describe("publish handler", () => {
     const error = await s.publish(fields()).then(() => null, (e: Error) => e);
     expect(error?.message).toBe(GENERIC_PUBLISH_ERROR);
     expect(error?.message).not.toMatch(/author|secret|internal/i);
+    // The outcome is unknown after a failed or lost response, so the copy must not claim nothing was published.
+    expect(GENERIC_PUBLISH_ERROR).not.toMatch(/nothing was published/i);
+    expect(GENERIC_PUBLISH_ERROR).toMatch(/could not be confirmed/i);
+    expect(GENERIC_PUBLISH_ERROR).toMatch(/edits are kept/i);
+    expect(GENERIC_PUBLISH_ERROR).toMatch(/check the map/i);
     expect(s.guard.inFlight).toBe(false);
   });
   it.each([undefined, null, "", "bad id", 12])("a response that is not a genuine id (%j) is never a receipt", async bad => {
@@ -228,11 +233,27 @@ describe("geocode search binding (explicit Find only)", () => {
     expect(call).toHaveBeenCalledTimes(1);
     expect(call).toHaveBeenCalledWith("Cafe, 1 Fixture St");
   });
-  it("shows only the server's fixed text for known errors, otherwise a generic message", async () => {
-    const known = Object.assign(new Error("[CONVEX A] secret internals"), { data: { code: "RATE_LIMITED", message: "Location search is busy. Try again shortly." } });
-    await expect(createSearch(async () => { throw known; })("q")).rejects.toThrow("Location search is busy. Try again shortly.");
+  const withData = (data: unknown) => Object.assign(new Error("[CONVEX A] secret internals"), { data });
+  it("maps only whitelisted geocoder codes to fixed client wording", async () => {
+    for (const [code, message] of Object.entries(SEARCH_MESSAGES)) {
+      await expect(createSearch(async () => { throw withData({ code, message: "server text" }); })("q"), code).rejects.toThrow(message);
+    }
+    expect(Object.keys(SEARCH_MESSAGES).sort()).toEqual(["CONFIGURATION_ERROR", "GEOCODE_FAILED", "INVALID_QUERY", "INVALID_RESPONSE", "NOT_SIGNED_IN", "PROVIDER_ERROR", "PROVIDER_TIMEOUT", "PROVIDER_UNAVAILABLE", "RATE_LIMITED"]);
+  });
+  it("a known code never echoes the server's message: secrets in the body cannot reach the screen", async () => {
+    const leaked = "User-Agent DishDeals/1.0 (me@example.invalid) q=private place https://nominatim.example.invalid key=SECRET";
+    const error = await createSearch(async () => { throw withData({ code: "RATE_LIMITED", message: leaked, retryAfterMs: 1000 }); })("q").then(() => null, (e: Error) => e);
+    expect(error?.message).toBe(SEARCH_MESSAGES.RATE_LIMITED);
+    expect(error?.message).not.toMatch(/SECRET|example\.invalid|private place|User-Agent/);
+  });
+  it("an unknown, missing, non-string or prototype-name code gets the generic message, whatever the body says", async () => {
+    const leaked = "SECRET provider body";
+    for (const data of [{ code: "SOMETHING_NEW", message: leaked }, { message: leaked }, { code: 5, message: leaked }, { code: "toString", message: leaked }, { code: "__proto__", message: leaked }, { code: "constructor", message: leaked }, null, "SECRET", undefined]) {
+      const error = await createSearch(async () => { throw withData(data); })("q").then(() => null, (e: Error) => e);
+      expect(error?.message, JSON.stringify(data)).toBe(SEARCH_ERROR);
+      expect(error?.message).not.toContain("SECRET");
+    }
     await expect(createSearch(async () => { throw new Error("socket reset with the query inside"); })("q")).rejects.toThrow(SEARCH_ERROR);
-    await expect(createSearch(async () => { throw Object.assign(new Error("x"), { data: { code: "X", message: "m".repeat(500) } }); })("q")).rejects.toThrow(SEARCH_ERROR);
     await expect(createSearch(async () => "not an array")("q")).rejects.toThrow(SEARCH_ERROR);
   });
 });
