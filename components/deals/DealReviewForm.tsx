@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useId, type ReactNode, type FormEvent } from "react";
+import { useState, useId, useEffect, useRef, type ReactNode, type FormEvent } from "react";
 import {
-  buildPublishFields,
   type DealDraft,
   type DealDraftAction,
   type PublishFields,
@@ -13,11 +12,11 @@ import {
   evaluateIssueResolution,
   formatConfidence,
   formatWeekday,
-  getDraftPublishReadiness,
   getPriceDisplayOnAcceptAll,
   hasPendingSuggestions,
   OMISSION_SEMANTICS,
   parsePriceInput,
+  submitForPublish,
   transitionWeekdaySelection,
 } from "../../lib/dealReviewForm";
 
@@ -88,6 +87,13 @@ export function DealReviewForm({
   const [publishErrors, setPublishErrors] = useState<string[]>([]);
   const [publishRejection, setPublishRejection] = useState<string>("");
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
+  // A result that lands above the visible part of a phone screen looks like nothing happened: bring it into view.
+  const noticeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (publishErrors.length === 0 && !publishRejection) return;
+    noticeRef.current?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    noticeRef.current?.focus({ preventScroll: true });
+  }, [publishErrors, publishRejection]);
 
   // Local state for price input to retain invalid/partial text without overwriting canonical amount prematurely
   const [localPrice, setLocalPrice] = useState<string>(
@@ -182,19 +188,12 @@ export function DealReviewForm({
       return;
     }
 
-    // Shared publish readiness gate: validates both canonical draft and local uncommitted price input
-    const readiness = getDraftPublishReadiness(draft, localPrice);
-    if (!readiness.canPublish) {
-      setPublishErrors(readiness.errors);
-      return;
-    }
-
     setIsPublishing(true);
     try {
-      const publishFields = buildPublishFields(draft);
-      await onPublish(publishFields);
-    } catch (err) {
-      setPublishRejection(err instanceof Error ? err.message : "Publish request failed.");
+      // One result for every outcome: published, what still needs fixing, or a failure message (never silence).
+      const outcome = await submitForPublish(draft, localPrice, onPublish);
+      if (outcome.kind === "blocked") setPublishErrors(outcome.errors);
+      else if (outcome.kind === "failed") setPublishRejection(outcome.message);
     } finally {
       setIsPublishing(false);
     }
@@ -796,21 +795,23 @@ export function DealReviewForm({
       </div>
 
       {/* Validation / Rejection Notices */}
-      {publishErrors.length > 0 && (
-        <div role="alert" className="form-error">
-          <p>Please resolve the following before publishing:</p>
-          <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
-            {publishErrors.map((err, i) => (
-              <li key={i}>{err}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {publishRejection && (
-        <div role="alert" className="form-error">
-          Publish failed: {publishRejection}
-        </div>
-      )}
+      <div ref={noticeRef} tabIndex={-1} style={{ outline: "none" }}>
+        {publishErrors.length > 0 && (
+          <div role="alert" className="form-error">
+            <p>Please resolve the following before publishing:</p>
+            <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
+              {publishErrors.map((err, i) => (
+                <li key={i}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {publishRejection && (
+          <div role="alert" className="form-error">
+            Publish failed: {publishRejection}
+          </div>
+        )}
+      </div>
 
       {/* Publish Actions */}
       <div className="form-actions" style={{ marginTop: "1rem" }}>

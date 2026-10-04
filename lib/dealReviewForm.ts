@@ -13,6 +13,8 @@ import {
   type OmissibleFieldKey,
   type ReviewIssue,
   type Weekday,
+  buildPublishFields,
+  type PublishFields,
 } from "./dealDraft";
 
 /**
@@ -252,3 +254,46 @@ export function formatWeekday(day: Weekday): string {
 export function isFieldReviewed<T>(fieldState: FieldState<T>): boolean {
   return fieldState.isReviewed;
 }
+
+// ------------------------------------------------------------------ submit
+
+export type SubmitOutcome =
+  | { kind: "published" }
+  | { kind: "blocked"; errors: string[] }
+  | { kind: "failed"; message: string };
+
+/** Shown when the server has not answered; the request may still complete, so it never claims a failure for certain. */
+export const SLOW_PUBLISH_MESSAGE =
+  "The server has not confirmed yet. Your edits are kept and the deal may still be published: wait a moment, check your published deals, then try again only if it is missing.";
+export const PUBLISH_TIMEOUT_MS = 30_000;
+
+/**
+ * Everything pressing Publish can do, as one result the screen always shows: published, a list of what still needs
+ * fixing, or a failure message. Nothing is thrown out of this function. Previously the readiness check sat outside the
+ * try block of an async event handler, so an unexpected throw or a server call that never answered left the screen
+ * unchanged ("nothing happens").
+ */
+export async function submitForPublish(
+  draft: DealDraft,
+  localPrice: string | undefined,
+  publish: (fields: PublishFields) => Promise<unknown>,
+  options: { timeoutMs?: number } = {},
+): Promise<SubmitOutcome> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const readiness = getDraftPublishReadiness(draft, localPrice);
+    if (!readiness.canPublish) return { kind: "blocked", errors: readiness.errors };
+    const fields = buildPublishFields(draft);
+    const slow = new Promise<"slow">((resolve) => {
+      timer = setTimeout(() => resolve("slow"), options.timeoutMs ?? PUBLISH_TIMEOUT_MS);
+    });
+    const result = await Promise.race([publish(fields).then(() => "done" as const), slow]);
+    return result === "slow" ? { kind: "failed", message: SLOW_PUBLISH_MESSAGE } : { kind: "published" };
+  } catch (error) {
+    console.error("Publish did not complete", error);
+    return { kind: "failed", message: error instanceof Error && error.message ? error.message : "Publish request failed." };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
