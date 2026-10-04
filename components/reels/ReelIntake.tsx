@@ -1,14 +1,15 @@
 "use client";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { useAuthActions, useConvexAuth as useSessionToken } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import type { Id, Doc } from "@/convex/_generated/dataModel";
 import { reelDraft, reelExtraction, type ReelDraft } from "@/lib/reels/contract";
 import { afterOwnSave, versionStatus } from "@/lib/reels/draftRevision";
 import { postNativeMessage, recoveredLink, saveReelLink } from "@/lib/nativeSession";
+import { MAX_CAPTION_CHARS, MAX_DURATION_SECONDS, MAX_MEDIA_BYTES, checkFileChoice, readVideoDuration, uploadSuppliedReel, type VideoProbe } from "@/lib/reels/suppliedMedia";
 
 // Uses the canonical root auth session (ConvexClientProvider); it creates no
 // client or auth provider of its own. The session is sent to native by the
@@ -62,9 +63,56 @@ function Result({ itemId }: { itemId: Id<"reelItems"> }) {
   useEffect(() => { if (item && ["ready", "no_deal", "failed"].includes(item.status) && !announced.current) { announced.current = true; postNativeMessage({ type: "result", itemId, status: item.status as "ready" | "no_deal" | "failed" }); } }, [item, itemId]);
   async function run(task: () => Promise<unknown>) { setBusy(true); setError(""); try { await task(); } catch { setError("That change could not be saved. Try again."); } finally { setBusy(false); } }
   if (!item) return <p role="status">Loading your private save…</p>;
-  const labels = { queued: "Received. Your private item is saved.", retrieving: "Reading the Reel…", extracting: "Listening and reading the video…", ready: "Your draft is ready to review.", no_deal: "No clear dining offer was found.", failed: "Processing needs attention." };
+  const labels = { queued: item.sourceKind === "supplied" ? "Recording attached. Waiting to be analyzed." : "Link saved privately. It is not analyzed until you attach your own recording.", retrieving: "Reading the Reel…", extracting: "Listening and reading the video…", ready: "Your draft is ready to review.", no_deal: "No clear dining offer was found.", failed: "Processing needs attention." };
   return <><div className="panel form-stack"><p role="status" aria-live="polite">{labels[item.status]}</p><a href={item.sourceUrl} target="_blank" rel="noreferrer">Original Reel</a>{item.error && <p role="alert">{item.error.message}</p>}{error && <p role="alert">{error}</p>}<div className="form-actions">{item.status === "failed" && <button disabled={busy || item.attempts >= 5} className="button primary" onClick={() => { announced.current = false; void run(() => retry({ itemId })); }}>Retry processing</button>}<button disabled={busy} className="button secondary" onClick={() => void run(async () => { await remove({ itemId }); router.replace("/reels"); })}>Delete save</button></div>
-    <label className="field">Reset automatic deletion<select disabled={busy} defaultValue="" onChange={e => { const days = Number(e.target.value); if (days) void run(() => retention({ itemId, days })); }}><option value="">Choose retention</option><option value="1">1 day from now</option><option value="7">7 days from now</option><option value="30">30 days from now</option></select></label><p className="muted">Deletes {new Date(item.expiresAt).toLocaleString()}. Downloaded video is deleted after extraction or failure.</p></div>{hasDraft(item.draftJson) && <DraftEditor key={itemId} item={item} />}</>;
+    <label className="field">Reset automatic deletion<select disabled={busy} defaultValue="" onChange={e => { const days = Number(e.target.value); if (days) void run(() => retention({ itemId, days })); }}><option value="">Choose retention</option><option value="1">1 day from now</option><option value="7">7 days from now</option><option value="30">30 days from now</option></select></label><p className="muted">Deletes {new Date(item.expiresAt).toLocaleString()}. A recording you attach is kept for retries and deleted after analysis, when you delete this save, or at expiry.</p></div>{!["retrieving", "extracting"].includes(item.status) && <AttachRecording item={item} />}{hasDraft(item.draftJson) && <DraftEditor key={itemId} item={item} />}</>;
+}
+function browserProbe(): VideoProbe {
+  return {
+    createObjectURL: file => URL.createObjectURL(file as Blob), revokeObjectURL: url => URL.revokeObjectURL(url),
+    createVideo: () => document.createElement("video") as unknown as ReturnType<VideoProbe["createVideo"]>,
+    setTimer: (fn, ms) => window.setTimeout(fn, ms), clearTimer: id => window.clearTimeout(id as number),
+  };
+}
+const uploadErrors = { invalid: "That recording or its details cannot be uploaded.", auth: "Your session expired. Sign in again.", rejected: "The server did not accept this recording. Check its type and length, then try again.",
+  rate_limited: "Too many uploads or retries this hour. Try later.", network: "The upload did not reach the server. Your choices are kept; try again.", unexpected: "The upload could not be confirmed. Try again." } as const;
+// The user's own recording of this same Reel. File, caption and date are kept on every cancel or error.
+function AttachRecording({ item }: { item: Doc<"reelItems"> }) {
+  const session = useSessionToken(), siteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL;
+  const [file, setFile] = useState<File | null>(null), [duration, setDuration] = useState<number | null>(null);
+  const [caption, setCaption] = useState(item.caption ?? ""), [published, setPublished] = useState(item.publishedAt?.slice(0, 10) ?? "");
+  const [message, setMessage] = useState(""), [busy, setBusy] = useState(false), [receipt, setReceipt] = useState("");
+  async function pick(e: ChangeEvent<HTMLInputElement>) {
+    const chosen = e.target.files?.[0];
+    if (!chosen) return; // cancelling the picker keeps the previous selection
+    setReceipt("");
+    const problem = checkFileChoice(chosen);
+    if (problem) { setMessage(problem === "too_large" ? `That recording is larger than ${MAX_MEDIA_BYTES / 1048576} MB.` : problem === "empty" ? "That recording is empty." : "Choose an MP4 or QuickTime (.mov) recording."); return; }
+    setMessage("Reading the recording length…");
+    const seconds = await readVideoDuration(chosen, browserProbe());
+    if (seconds === null) { setMessage(`The recording length could not be read, or is outside 1 to ${MAX_DURATION_SECONDS} seconds.`); return; }
+    setFile(chosen); setDuration(seconds); setMessage("");
+  }
+  async function send() {
+    if (!file || duration === null || !siteUrl) return;
+    setBusy(true); setMessage(""); setReceipt("");
+    try {
+      const token = await session.fetchAccessToken({ forceRefreshToken: false });
+      if (!token) { setMessage(uploadErrors.auth); return; }
+      const outcome = await uploadSuppliedReel({ siteUrl, token, file, query: { itemId: item._id, duration, ...(published ? { publishedAt: published } : {}), ...(caption.trim() ? { caption: caption.trim() } : {}) } });
+      if (outcome.ok) setReceipt("Recording attached. Processing has started."); else setMessage(uploadErrors[outcome.reason]);
+    } finally { setBusy(false); }
+  }
+  return <div className="panel form-stack"><h2>Attach your recording</h2>
+    <p className="muted">To analyze the Reel itself, attach a screen recording or video of this same Reel from Photos or Files. The saved link alone is never fetched or analyzed. The recording stays private and is used only for this save. Its length is read by your browser and is not independently verified. Processing also needs video analysis to be enabled; if it is not, you will see a failed result and can edit by hand.</p>
+    {!siteUrl ? <p role="status" className="muted">Recording upload is not configured for this build.</p> : <>
+      <label className="field">Reel recording (MP4 or QuickTime, up to {MAX_MEDIA_BYTES / 1048576} MB, 1 to {MAX_DURATION_SECONDS} seconds)<input type="file" accept="video/mp4,video/quicktime,.mp4,.mov" onChange={e => void pick(e)} disabled={busy} /></label>
+      {file && duration !== null && <p role="status">{file.name} · {(file.size / 1048576).toFixed(1)} MB · about {Math.round(duration)} s (read by your browser)</p>}
+      <label className="field">Caption from the Reel (optional)<textarea maxLength={MAX_CAPTION_CHARS} value={caption} onChange={e => setCaption(e.target.value)} disabled={busy} /></label>
+      <label className="field">Date the Reel was posted (optional, leave blank if unknown)<input type="date" value={published} onChange={e => setPublished(e.target.value)} disabled={busy} /></label>
+      <button type="button" className="button primary" disabled={busy || !file || duration === null} onClick={() => void send()}>{busy ? "Uploading…" : "Upload recording"}</button>
+      {message && <p role="alert" className="field-error">{message}</p>}{receipt && <p role="status">{receipt}</p>}</>}
+  </div>;
 }
 function hasDraft(draftJson: string | undefined) {
   try { return draftJson !== undefined && Array.isArray(JSON.parse(draftJson)) && JSON.parse(draftJson).length > 0; } catch { return false; }

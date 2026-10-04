@@ -13,6 +13,7 @@ import type * as deals from "../deals.js";
 import type * as http from "../http.js";
 import type * as reels from "../reels.js";
 import type * as reelActions from "../reelActions.js";
+import type * as reelSource from "../reelSource.js";
 import type * as reelWorkflow from "../reelWorkflow.js";
 import type * as test from "../test.js";
 import type * as users from "../users.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   reels: typeof reels;
   reelActions: typeof reelActions;
+  reelSource: typeof reelSource;
   reelWorkflow: typeof reelWorkflow;
   test: typeof test;
   users: typeof users;
