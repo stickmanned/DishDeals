@@ -23,7 +23,7 @@ test("requires real auth and refuses every other owner's read/write", async () =
   await expect(bob.query(api.reels.get, { itemId })).rejects.toThrow("Item not found");
   for (const mutation of [api.reels.retry, api.reels.remove]) await expect(bob.mutation(mutation, { itemId })).rejects.toThrow("Item not found");
   await expect(bob.mutation(api.reels.setRetention, { itemId, days: 1 })).rejects.toThrow("Item not found");
-  await expect(bob.mutation(api.reels.saveDraft, { itemId, draftJson: "[]" })).rejects.toThrow("Item not found");
+  await expect(bob.mutation(api.reels.saveDraft, { itemId, draftJson: "[]", expectedGeneration: 1, expectedRevision: 0 })).rejects.toThrow("Item not found");
   expect(await bob.query(api.reels.list, {})).toEqual([]);
 });
 test("transactionally deduplicates tracking, hostname and /p aliases per owner", async () => {
@@ -98,8 +98,8 @@ test("valid private editable drafts preserve immutable extraction and canonical 
   const draft = { restaurant: "Cafe", address: null, dealText: "Meal", price: null, currency: null, validDays: null, validStart: null, validEnd: null, expiresOn: null, conditions: null };
   const extractionJson = JSON.stringify({ isDeal: true, drafts: [draft], evidence: [], transcript: "", warnings: [] });
   await t.mutation(internal.reels.finish, { itemId, generation: 1, extractionJson });
-  await expect(alice.mutation(api.reels.saveDraft, { itemId, draftJson: JSON.stringify([{ ...draft, price: -1 }]) })).rejects.toThrow();
-  await alice.mutation(api.reels.saveDraft, { itemId, draftJson: JSON.stringify([{ ...draft, restaurant: "Corrected" }]) });
+  await expect(alice.mutation(api.reels.saveDraft, { itemId, draftJson: JSON.stringify([{ ...draft, price: -1 }]), expectedGeneration: 1, expectedRevision: 1 })).rejects.toThrow();
+  await alice.mutation(api.reels.saveDraft, { itemId, draftJson: JSON.stringify([{ ...draft, restaurant: "Corrected" }]), expectedGeneration: 1, expectedRevision: 1 });
   expect((await alice.query(api.reels.get, { itemId })).extractionJson).toBe(extractionJson);
   expect(await t.query(api.test.ping, {})).toEqual({ message: "Hello from Convex" });
   expect(await t.run(ctx => ctx.db.query("deals").collect())).toEqual([]);
