@@ -1,8 +1,9 @@
 "use client";
 
 import { useAuthActions } from "@convex-dev/auth/react";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
+import { profileHref, returnFromParams } from "@/lib/authReturn";
 
 export default function SignInPage() {
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
@@ -13,12 +14,19 @@ export default function SignInPage() {
       </main>
     );
   }
-  return <SignInForm />;
+  // useSearchParams needs a Suspense boundary so the rest of the route can still be prerendered.
+  return (
+    <Suspense fallback={<main><p role="status">Loading…</p></main>}>
+      <SignInForm />
+    </Suspense>
+  );
 }
 
 function SignInForm() {
   const { signIn } = useAuthActions();
   const router = useRouter();
+  // Validated same-origin app route (or null); carried through /profile until the profile is ready.
+  const next = returnFromParams(useSearchParams());
   const [flow, setFlow] = useState<"signIn" | "signUp">("signIn");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,7 +37,7 @@ function SignInForm() {
     setBusy(true);
     try {
       await signIn("password", new FormData(event.currentTarget));
-      router.push("/profile");
+      router.push(profileHref(next));
     } catch {
       setError(
         flow === "signIn"
