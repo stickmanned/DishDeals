@@ -9,6 +9,9 @@ const app = defineApp({ env: {
   GEMINI_REEL_MODEL: v.optional(v.string()),
   REEL_MEDIA_USAGE_AUTHORIZED: v.optional(v.string()),
   REEL_WEB_ORIGIN: v.optional(v.string()),
+  IMAGE_PROVIDER_USAGE_AUTHORIZED: v.optional(v.string()),
+  GEMINI_IMAGE_MODEL: v.optional(v.string()),
+  GEMINI_IMAGE_FALLBACK_MODEL: v.optional(v.string()),
 } });
 app.use(workflow);
 app.use(geospatial);

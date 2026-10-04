@@ -3,10 +3,12 @@ import { GeospatialIndex } from "@convex-dev/geospatial";
 import { v, ConvexError } from "convex/values";
 import { components } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { env, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import schema from "./schema";
+import { requireOwnedImage } from "./dealUploads";
+import { PUBLISHED_EXPIRY } from "../lib/dealImageUpload";
 import {
-  MAX_IMAGE_BYTES, MAX_VOTES_PER_DELETE, NEARBY_FALLBACK_SCAN, NEARBY_LIMIT, WriteError, isAllowedImageType, rankByDistance, validateNearbyArgs, validatePublishFields,
+  MAX_VOTES_PER_DELETE, NEARBY_FALLBACK_SCAN, NEARBY_LIMIT, WriteError, rankByDistance, validateNearbyArgs, validatePublishFields,
   type RawPublishFields,
 } from "../lib/dealWrite";
 
@@ -111,20 +113,11 @@ function clean(args: { imageId?: Id<"_storage"> } & RawPublishFields) {
 }
 
 // An image may be attached only if the caller owns exactly one registry row for it (created by the
-// authenticated upload path, never by a public mutation), it is unexpired or already published, and the
-// stored file is a real image of at most 5 MiB. Arbitrary storage ids are rejected.
+// authenticated /deal-image upload, never by a public mutation), it is unexpired or already published, and
+// the stored file passes the shared size/type check. Publishing marks the row published and non-expiring.
 async function claimImage(ctx: MutationCtx, userId: Id<"users">, storageId: Id<"_storage">) {
-  const rows = await ctx.db.query("dealUploads").withIndex("by_storage", q => q.eq("storageId", storageId)).take(2);
-  const row = rows[0];
-  if (rows.length !== 1 || row.ownerId !== userId || (!row.published && row.expiresAt <= Date.now())) throw new ConvexError("That image is not available to you.");
-  const meta = await ctx.db.system.get("_storage", storageId);
-  const unavailable = () => new ConvexError("That image is missing, too large, or not a supported image.");
-  if (!meta || meta.size <= 0 || meta.size > MAX_IMAGE_BYTES) throw unavailable();
-  // The registry row is created only by the authenticated upload path (a later slice), which validates
-  // the real file type before storing. Here a recorded content type, when present, must still be an allowed
-  // image type. A mutation cannot read the file bytes, so no further signature check is possible here.
-  if (meta.contentType !== undefined && !isAllowedImageType(meta.contentType)) throw unavailable();
-  if (!row.published) await ctx.db.patch(row._id, { published: true });
+  const row = await requireOwnedImage(ctx, userId, storageId);
+  if (!row.published) await ctx.db.patch(row._id, { published: true, expiresAt: PUBLISHED_EXPIRY });
 }
 
 // Delete a storage file (and its registry row) only when no saved deal still references it.
@@ -135,6 +128,18 @@ async function releaseImage(ctx: MutationCtx, storageId: Id<"_storage"> | undefi
   for (const row of await ctx.db.query("dealUploads").withIndex("by_storage", q => q.eq("storageId", storageId)).take(2)) await ctx.db.delete(row._id);
   await ctx.storage.delete(storageId);
 }
+
+// Returns the authenticated HTTP upload URL; POST the image bytes there with the Bearer token and the
+// website origin. This is not a storage upload URL: the server validates, stores and registers the file.
+export const generateUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    if ((await getAuthUserId(ctx)) === null) throw new ConvexError("Not signed in");
+    if (!env.CONVEX_SITE_URL) throw new ConvexError("Image upload is not configured.");
+    return `${env.CONVEX_SITE_URL.replace(/\/+$/, "")}/deal-image`;
+  },
+});
 
 const toPoint = (lat: number, lng: number) => ({ latitude: lat, longitude: lng });
 

@@ -104,12 +104,12 @@ export type ManualReviewNote = {
 };
 
 /**
- * INTERNAL contract (no public action exists yet). `result` is canonical and
- * every field is a suggestion for explicit user acceptance. `manualReview` is
- * a sidecar the canonical shape cannot carry: a caller MUST carry blocking
- * notes (FUTURE_START, UNSUPPORTED_CONSTRAINT) by deal index to the form and
- * must never return or store `result` alone. The public `extract.extractDeal`
- * stays unimplemented until an owner-agreed envelope carries this sidecar.
+ * Envelope returned by the public `extract.extractDeal` action (convex/extract.ts,
+ * owner-approved contract revision: this envelope, not a bare DealResult). `result`
+ * is canonical and every field is a suggestion for explicit user acceptance.
+ * `manualReview` is a sidecar the canonical shape cannot carry: a caller MUST carry
+ * blocking notes (FUTURE_START, UNSUPPORTED_CONSTRAINT) by deal index to the form
+ * and must never return or store `result` alone.
  */
 export type ExtractOutcome = {
   result: DealResult;
