@@ -5,6 +5,7 @@ import { FrontendProvider } from "@/components/frontend/FrontendProvider";
 import { Shell } from "@/components/frontend/Shell";
 import { FrontendBoundary } from "@/components/frontend/FrontendBoundary";
 import "./globals.css";
+import "@restaurant-deals/map/styles.css";
 
 export const metadata: Metadata = {
   title: {
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
   },
   description:
     "Food deals around Vancouver, shared by the people who find them.",
-  icons: { icon: "/icon.svg" },
+  icons: { icon: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/icon.svg` },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -38,7 +38,7 @@ export function DealImage({
   const [failed, setFailed] = useState(false);
   return deal.imageUrl && !failed ? (
     <Image
-      src={deal.imageUrl}
+      src={deal.imageUrl.startsWith("/") ? `${process.env.NEXT_PUBLIC_BASE_PATH || ""}${deal.imageUrl}` : deal.imageUrl}
       alt={deal.imageAlt ?? `${deal.restaurant} deal source`}
       fill
       sizes="(max-width: 700px) 100vw, (max-width: 1000px) 50vw, 400px"
@@ -66,7 +66,7 @@ export function DealCard({
     <article className={`deal-card ${featured ? "featured" : ""}`}>
       <Link
         className="card-image"
-        href={`/deal/${encodeURIComponent(deal.id)}`}
+        href={`/deal?id=${encodeURIComponent(deal.id)}`}
         tabIndex={-1}
         aria-hidden="true"
       >
@@ -79,7 +79,7 @@ export function DealCard({
         <TimeBadge deal={deal} now={now} />
         <div className="card-heading">
           <h2>
-            <Link href={`/deal/${encodeURIComponent(deal.id)}`}>
+            <Link href={`/deal?id=${encodeURIComponent(deal.id)}`}>
               {deal.restaurant}
             </Link>
           </h2>

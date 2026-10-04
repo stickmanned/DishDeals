@@ -2,6 +2,12 @@
 
 stormhacks project
 
+## Integrated web trial
+
+The trial integrates the four published feature modules: extraction, deal map, AI search and restaurant comparison. See [trial setup and limitations](docs/TRIAL.md). The root app uses Convex Auth (password or guest), saved submission history, review controls and reactive offers.
+
+The T-01 setup notes below describe the original scaffold. The trial guide supersedes their home-page behavior and deployment status.
+
 ## T-01 foundation: setup and run
 
 Functional scaffold only: Next.js App Router, TypeScript, Tailwind CSS v4, Convex. Polished styling and fonts belong to the frontend teammate. T-02 adds the canonical schemas and seven contract tests. Auth, extraction and maps remain later work.

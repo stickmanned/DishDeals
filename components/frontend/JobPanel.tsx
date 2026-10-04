@@ -21,7 +21,7 @@ export function JobPanel({
   duplicate: boolean;
   onNew: () => void;
 }) {
-  const raw = useQuery(workflowApi.get, { jobId: jobId as GenericId<"jobs"> });
+  const raw = useQuery(workflowApi.get, { jobId: jobId as GenericId<"workflowJobs"> });
   const retry = useMutation(workflowApi.retry);
   const { now } = useClock();
   const [busy, setBusy] = useState(false),
@@ -114,7 +114,7 @@ export function JobPanel({
               setBusy(true);
               setError("");
               try {
-                await retry({ jobId: jobId as GenericId<"jobs"> });
+                await retry({ jobId: jobId as GenericId<"workflowJobs"> });
               } catch {
                 setError(
                   "This submission couldn’t be retried. It may already be running or reviewed, or the hourly limit may have been reached.",
@@ -171,7 +171,7 @@ function ReviewCard({
     setError("");
     try {
       const result = await review({
-        dealId: offer.dealId as GenericId<"deals">,
+        dealId: offer.dealId as GenericId<"workflowDeals">,
         decision,
         ...(offer.candidates.some((c) => c.placeId === selected)
           ? { placeId: selected }
@@ -339,7 +339,7 @@ function ReviewCard({
       {offer.status === "published" && (
         <Link
           className="button secondary"
-          href={`/deal/${encodeURIComponent(offer.dealId)}`}
+          href={`/deal?id=${encodeURIComponent(offer.dealId)}`}
         >
           View published offer <Icon name="arrow" size={18} />
         </Link>

@@ -49,7 +49,7 @@ export function DealDetails({ id }: { id: string }) {
   const selected = app.votes[id];
   function vote(value: "still_on" | "expired") {
     if (!app.authenticated) {
-      router.push(`/signin?next=${encodeURIComponent(`/deal/${id}`)}`);
+      router.push(`/signin?next=${encodeURIComponent(`/deal?id=${id}`)}`);
       return;
     }
     app.votePreview(id, value);

@@ -219,7 +219,7 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
           <p className="eyebrow">PREVIEW COMPLETE</p>
           <h1>Your draft looks good.</h1>
           <p>It’s saved in this tab’s preview. No live post was created.</p>
-          <Link href={`/deal/${savedId}`} className="button primary">
+          <Link href={`/deal?id=${savedId}`} className="button primary">
             View the preview <Icon name="arrow" size={18} />
           </Link>
           <Link href="/" className="button secondary">
@@ -267,7 +267,7 @@ function PostView({ editId, jobId }: { editId?: string; jobId?: string }) {
             editing={!!ownDeal}
             onSave={finish}
             onBack={() =>
-              ownDeal ? router.push(`/deal/${ownDeal.id}`) : setStep("source")
+              ownDeal ? router.push(`/deal?id=${ownDeal.id}`) : setStep("source")
             }
           />
         </div>

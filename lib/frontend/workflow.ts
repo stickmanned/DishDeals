@@ -5,31 +5,31 @@ import { z } from "zod";
 // These names and payloads were verified against the independent ai-workflow
 // module at e3a39cc. They must never target main's canonical deployment.
 export const workflowApi = {
-  list: makeFunctionReference<"query", { limit: number }, unknown>(
-    "deals:listForMap",
+  list: makeFunctionReference<"query", { limit: number; now: number }, unknown>(
+    "workflow/deals:listForMap",
   ),
   submit: makeFunctionReference<
     "mutation",
     { inputJson: string },
-    { jobId: GenericId<"jobs">; duplicate: boolean }
-  >("jobs:submit"),
-  get: makeFunctionReference<"query", { jobId: GenericId<"jobs"> }, unknown>(
-    "jobs:get",
+    { jobId: GenericId<"workflowJobs">; duplicate: boolean }
+  >("workflow/jobs:submit"),
+  get: makeFunctionReference<"query", { jobId: GenericId<"workflowJobs"> }, unknown>(
+    "workflow/jobs:get",
   ),
   retry: makeFunctionReference<
     "mutation",
-    { jobId: GenericId<"jobs"> },
-    { jobId: GenericId<"jobs"> }
-  >("jobs:retryJob"),
+    { jobId: GenericId<"workflowJobs"> },
+    { jobId: GenericId<"workflowJobs"> }
+  >("workflow/jobs:retryJob"),
   review: makeFunctionReference<
     "mutation",
     {
-      dealId: GenericId<"deals">;
+      dealId: GenericId<"workflowDeals">;
       decision: "approve" | "reject";
       placeId?: string;
     },
-    { dealId: GenericId<"deals">; status: string }
-  >("deals:reviewDeal"),
+    { dealId: GenericId<"workflowDeals">; status: string }
+  >("workflow/deals:reviewDeal"),
 };
 
 const place = z.object({

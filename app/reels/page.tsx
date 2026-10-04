@@ -1,7 +1,6 @@
+"use client";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { ReelIntake } from "@/components/reels/ReelIntake";
-export const metadata = { title: "Private Reel saves", robots: { index: false, follow: false }, referrer: "no-referrer" };
-export default async function Page({ searchParams }: { searchParams: Promise<{ item?: string; shared?: string }> }) {
-  const p = await searchParams;
-  return <ReelIntake itemId={typeof p.item === "string" && /^[a-zA-Z0-9]{1,128}$/.test(p.item) ? p.item : undefined}
-    shared={typeof p.shared === "string" ? p.shared.slice(0, 4096) : undefined} />;
-}
+function Saved() { const params = useSearchParams(); const item = params.get("item"); return <ReelIntake itemId={item && /^[a-zA-Z0-9]{1,128}$/.test(item) ? item : undefined} shared={params.get("shared")?.slice(0,4096)} />; }
+export default function Page() { return <Suspense fallback={<p>Loading saved Reels…</p>}><Saved /></Suspense>; }

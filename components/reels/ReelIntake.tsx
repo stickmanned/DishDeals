@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ConvexReactClient, useConvexAuth, useMutation, useQuery } from "convex/react";
-import { ConvexAuthProvider, useAuthActions, useAuthToken } from "@convex-dev/auth/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAuthActions, useAuthToken } from "@convex-dev/auth/react";
 import { api } from "@/convex/_generated/api";
 import type { Id, Doc } from "@/convex/_generated/dataModel";
 import { normalizeInstagramUrl, reelDraft, reelExtraction, type ReelDraft } from "@/lib/reels/contract";
@@ -12,32 +12,31 @@ function nativeMessage(value: object) {
   (window as Window & { webkit?: { messageHandlers?: { dishdeals?: { postMessage: (v: object) => void } } } }).webkit?.messageHandlers?.dishdeals?.postMessage(value);
 }
 export function ReelIntake(props: { itemId?: string; shared?: string }) {
-  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
-  const client = useMemo(() => url ? new ConvexReactClient(url) : null, [url]);
-  useEffect(() => () => { void client?.close(); }, [client]);
-  return client ? <ConvexAuthProvider client={client}><Intake {...props} /></ConvexAuthProvider> :
-    <div className="narrow-page"><div className="page-heading"><h1>Save a Reel.</h1><p>Keep the offer. Find it when you need it.</p></div><div className="panel"><p>Private Reel saves need the DishDeals backend connection. Your link has not been submitted.</p><Link className="button secondary" href="/post">Use a screenshot or caption</Link></div></div>;
+  return <Intake {...props} />;
 }
+
 function Intake({ itemId, shared }: { itemId?: string; shared?: string }) {
   const router = useRouter(), auth = useConvexAuth(), actions = useAuthActions(), token = useAuthToken();
   const [text, setText] = useState(shared ?? ""), [days, setDays] = useState(7), [error, setError] = useState(""), [busy, setBusy] = useState(false);
+  const configuration = useQuery(api.trial.status);
   const submit = useMutation(api.reels.submit);
   const items = useQuery(api.reels.list, auth.isAuthenticated ? {} : "skip");
   const auto = useRef<string | null>(null);
   useEffect(() => { nativeMessage({ type: "session", token: token ?? null }); }, [token]);
   useEffect(() => {
-    if (!shared || !auth.isAuthenticated || auto.current === shared) return;
+    if (!shared || !auth.isAuthenticated || !configuration?.reelsConfigured || auto.current === shared) return;
     auto.current = shared;
     let normalized: string;
     try { normalized = normalizeInstagramUrl(shared); } catch { return; }
     void submit({ text: normalized }).then(result => { nativeMessage({ type: "received", sourceUrl: normalized }); router.replace(`/reels?item=${result.itemId}`); }).catch(() => setError("Your link could not be saved. Try again below."));
-  }, [auth.isAuthenticated, shared, submit, router]);
+  }, [auth.isAuthenticated, configuration?.reelsConfigured, shared, submit, router]);
   async function save(e: FormEvent) {
-    e.preventDefault(); setError(""); setBusy(true);
+    e.preventDefault(); setError(""); if (!configuration?.reelsConfigured) { setError("Reel processing is not configured. Use a screenshot or caption instead."); return; } setBusy(true);
     try { const result = await submit({ text: normalizeInstagramUrl(text), retentionDays: days }); setText(""); router.push(`/reels?item=${result.itemId}`); }
     catch (e) { setError(e instanceof Error ? e.message : "Could not save the link."); } finally { setBusy(false); }
   }
   return <div className="narrow-page reel-page"><Link className="back-link" href="/">Back to Discover</Link><div className="page-heading"><h1>{itemId ? "Your Reel save." : "Save a Reel."}</h1><p>Private to you. Ready to review when processing finishes.</p></div>
+    {configuration && !configuration.reelsConfigured && <div className="panel"><p>Reel processing is not configured yet. You can extract an offer from your own screenshot or pasted caption.</p><Link href="/post" className="button secondary">Share a screenshot or caption</Link></div>}
     {auth.isLoading ? <p role="status">Checking your session…</p> : !auth.isAuthenticated ? <ReelSignIn /> : <>
       <div className="form-actions"><button className="button secondary" onClick={() => nativeMessage({ type: "enableNotifications" })}>Enable iPhone alerts</button><button className="text-button" onClick={() => { nativeMessage({ type: "session", token: null }); void actions.signOut(); }}>Sign out</button></div>
       {itemId ? <Result key={itemId} itemId={itemId as Id<"reelItems">} /> : <form className="panel form-stack" onSubmit={save}>

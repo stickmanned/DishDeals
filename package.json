@@ -11,7 +11,8 @@
     "test": "vitest run --exclude \"scripts/**\"",
     "agents": "node scripts/agent-workflow.mjs",
     "test:workflow": "node --test scripts/agent-workflow.test.mjs",
-    "check": "npm run typecheck && npm run lint && npm run test && npm run test:workflow && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run test && npm run test:workflow && npm run build",
+    "build:pages": "node scripts/build-github-pages.mjs"
   },
   "dependencies": {
     "@convex-dev/auth": "^0.0.96",
@@ -21,7 +22,9 @@
     "next": "^16.3.8",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.5",
+    "@auth/core": "^0.41.3",
+    "@restaurant-deals/map": "file:vendor/restaurant-deals-map-0.1.0.tgz"
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",

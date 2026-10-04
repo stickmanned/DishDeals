@@ -90,6 +90,7 @@ export function Discover() {
           <span>Valid now</span>
         </label>
       </div>
+      <div className="form-actions"><Link href="/tools" className="button secondary">Explore map & AI comparison</Link></div>
       <PreviewNote />
       <section className="feed-section" aria-label="Food deals">
         <div className="section-heading">

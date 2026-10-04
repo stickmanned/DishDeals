@@ -8,13 +8,22 @@
  * @module
  */
 
-import type * as test from "../test.js";
-// Offline type extension for Reel modules/component; regenerate through authorized
-// Convex codegen before deployment. No backend sync was performed by this change.
 import type * as auth from "../auth.js";
-import type * as reels from "../reels.js";
+import type * as crons from "../crons.js";
+import type * as http from "../http.js";
 import type * as reelActions from "../reelActions.js";
 import type * as reelWorkflow from "../reelWorkflow.js";
+import type * as reels from "../reels.js";
+import type * as test from "../test.js";
+import type * as trial from "../trial.js";
+import type * as workflow_ai from "../workflow/ai.js";
+import type * as workflow_auth from "../workflow/auth.js";
+import type * as workflow_compare from "../workflow/compare.js";
+import type * as workflow_deals from "../workflow/deals.js";
+import type * as workflow_jobs from "../workflow/jobs.js";
+import type * as workflow_maintenance from "../workflow/maintenance.js";
+import type * as workflow_search from "../workflow/search.js";
+import type * as workflowTables from "../workflowTables.js";
 
 import type {
   ApiFromModules,
@@ -23,11 +32,22 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  test: typeof test;
   auth: typeof auth;
-  reels: typeof reels;
+  crons: typeof crons;
+  http: typeof http;
   reelActions: typeof reelActions;
   reelWorkflow: typeof reelWorkflow;
+  reels: typeof reels;
+  test: typeof test;
+  trial: typeof trial;
+  "workflow/ai": typeof workflow_ai;
+  "workflow/auth": typeof workflow_auth;
+  "workflow/compare": typeof workflow_compare;
+  "workflow/deals": typeof workflow_deals;
+  "workflow/jobs": typeof workflow_jobs;
+  "workflow/maintenance": typeof workflow_maintenance;
+  "workflow/search": typeof workflow_search;
+  workflowTables: typeof workflowTables;
 }>;
 
 /**
@@ -56,4 +76,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: { workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow"> };
+export declare const components: {
+  workflow: import("@convex-dev/workflow/_generated/component.js").ComponentApi<"workflow">;
+};

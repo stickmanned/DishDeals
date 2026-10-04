@@ -1834,3 +1834,19 @@ img {
   color: var(--muted);
   font-size: 14px;
 }
+
+.workflow-tools main { max-width: 1100px; margin: auto; }
+.workflow-tools section { margin: 24px 0; padding: 24px; background: var(--surface, #fff); border: 1px solid var(--border, #dedbd7); border-radius: 16px; }
+.workflow-tools header, .workflow-tools .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.workflow-tools label { display: grid; gap: 6px; margin: 12px 0; flex: 1; }
+.workflow-tools input, .workflow-tools select, .workflow-tools textarea { width: 100%; padding: 10px; border: 1px solid var(--border, #dedbd7); border-radius: 8px; }
+.workflow-tools button { padding: 10px 14px; border: 1px solid var(--border, #dedbd7); border-radius: 8px; margin: 4px; cursor: pointer; }
+.workflow-tools button.primary { background: var(--red, #c94234); color: white; }
+.workflow-tools button:disabled { opacity: .5; cursor: default; }
+.workflow-tools .check { display: flex; align-items: center; gap: 8px; }
+.workflow-tools .check input { width: auto; }
+.workflow-tools .cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(280px,100%),1fr)); gap: 16px; }
+.workflow-tools article, .workflow-tools .results { padding: 16px; border: 1px solid var(--border, #dedbd7); border-radius: 12px; margin-top: 16px; }
+.workflow-tools a { margin: 8px; text-decoration: underline; }
+.workflow-tools .chosen { outline: 2px solid var(--red, #c94234); }
+.workflow-tools [role=alert] { color: #a12424; }

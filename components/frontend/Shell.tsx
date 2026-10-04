@@ -33,6 +33,7 @@ export function Shell({ children }: { children: ReactNode }) {
             >
               Share a deal
             </Link>
+            <Link href="/tools">Map & AI</Link>
             <Link href="/reels" aria-current={path === "/reels" ? "page" : undefined}>Saved Reels</Link>
           </nav>
           <div className="header-right">

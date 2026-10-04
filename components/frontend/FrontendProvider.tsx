@@ -8,8 +8,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  ConvexProviderWithAuth,
-  ConvexReactClient,
   useConvexAuth,
   useConvexConnectionState,
   useMutation,
@@ -20,26 +18,15 @@ import { demoDeals } from "@/lib/frontend/demoDeals";
 import { workflowApi, type WorkflowSource } from "@/lib/frontend/workflow";
 import { emptyDraft, type Draft } from "@/lib/frontend/draft";
 import { Dialog } from "./Dialog";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useClock } from "./useClock";
 import { useRouter } from "next/navigation";
 
-type AuthState = {
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  fetchAccessToken: (args: {
-    forceRefreshToken: boolean;
-  }) => Promise<string | null>;
-};
 export type AuthAdapter = {
-  useAuth: () => AuthState;
   signIn?: (email: string, password: string, create: boolean) => Promise<void>;
   signOut?: () => Promise<void>;
+  signInGuest?: () => Promise<void>;
 };
-const unconfiguredAuth = () => ({
-  isLoading: false,
-  isAuthenticated: false,
-  fetchAccessToken: async () => null,
-});
-
 type LiveApi = {
   deals: DealView[] | undefined;
   error: boolean;
@@ -257,9 +244,10 @@ function Runtime({
 }
 
 function LiveRuntime(props: Omit<Parameters<typeof Runtime>[0], "live">) {
+  const { now, ready } = useClock();
   const raw = useQuery(
     workflowApi.list,
-    props.mode === "live" ? { limit: 100 } : "skip",
+    props.mode === "live" && ready ? { limit: 100, now: now.getTime() } : "skip",
   );
   const session = useConvexAuth();
   const connection = useConvexConnectionState();
@@ -281,38 +269,22 @@ function LiveRuntime(props: Omit<Parameters<typeof Runtime>[0], "live">) {
       : connection.hasEverConnected
         ? "reconnecting"
         : "connecting",
-    submit: (source) => submit({ inputJson: JSON.stringify({ source }) }),
+    submit: (source) => submit({ inputJson: JSON.stringify({ source, context: { city: "Vancouver", region: "British Columbia", countryCode: "ca", timezone: "America/Vancouver" } }) }),
   };
   return <Runtime {...props} live={live} />;
 }
 
-export function FrontendProvider({
-  children,
-  auth,
-}: {
-  children: ReactNode;
-  auth?: AuthAdapter;
-}) {
-  const url = process.env.NEXT_PUBLIC_WORKFLOW_CONVEX_URL;
-  const client = useMemo(
-    () => (url ? new ConvexReactClient(url) : null),
-    [url],
-  );
-  const [mode, setMode] = useState<"preview" | "live">(
-    url ? "live" : "preview",
-  );
-  return client ? (
-    <ConvexProviderWithAuth
-      client={client}
-      useAuth={auth?.useAuth ?? unconfiguredAuth}
-    >
-      <LiveRuntime mode={mode} setMode={setMode} auth={auth}>
-        {children}
-      </LiveRuntime>
-    </ConvexProviderWithAuth>
-  ) : (
-    <Runtime mode={mode} setMode={setMode} auth={auth} live={null}>
-      {children}
-    </Runtime>
-  );
+function AuthenticatedFrontend({ children, mode, setMode }: { children: ReactNode; mode: "preview" | "live"; setMode: FrontendState["setMode"] }) {
+  const actions = useAuthActions();
+  const auth: AuthAdapter = {
+    signIn: async (email, password, create) => { const data = new FormData(); data.set("email", email); data.set("password", password); data.set("flow", create ? "signUp" : "signIn"); await actions.signIn("password", data); },
+    signOut: actions.signOut,
+    signInGuest: async () => { await actions.signIn("anonymous"); },
+  };
+  return <LiveRuntime mode={mode} setMode={setMode} auth={auth}>{children}</LiveRuntime>;
+}
+export function FrontendProvider({ children }: { children: ReactNode }) {
+  const configured = !!process.env.NEXT_PUBLIC_CONVEX_URL;
+  const [mode, setMode] = useState<"preview" | "live">(configured ? "live" : "preview");
+  return configured ? <AuthenticatedFrontend mode={mode} setMode={setMode}>{children}</AuthenticatedFrontend> : <Runtime mode={mode} setMode={setMode} live={null}>{children}</Runtime>;
 }
