@@ -7,12 +7,14 @@ This branch integrates the existing feature modules into the root Next.js app. T
 ## Try it
 
 1. Continue as guest, or create an email/password account. Guest history belongs to the saved browser session; an email account can access its submissions across devices.
-2. Submit pasted offer text, a screenshot/flyer, or a public restaurant webpage. Supply the original publication date only when known. Instagram links are attribution only; upload the screenshot or paste the caption instead.
+2. Paste a shared link, restaurant webpage, or offer text into **Link or details**. Instagram links are accepted; include the copied caption if the post requires login. An image is optional. Supply the original publication date only when known. Unreadable links never produce an invented offer; the app asks for more details.
 3. Open your saved task to see processing, failure/retry or extracted offers. Uncertain offers remain private until you confirm a verified restaurant candidate or reject them. A missing candidate requires a clearer caption and retry. High-confidence complete offers may publish automatically.
-4. Search published offers with English recommendations, filter known CAD prices, optionally use the map center as the distance origin, and ask why to consider a particular restaurant. This searches submitted offers, not the whole internet.
+4. Search a restaurant or food question on Discover and press **Search** (or Enter). The app checks stored offers first and automatically uses Google Search grounding if nothing matches. Online findings include cited sources, query time and Google's associated search suggestions. They are an ephemeral answer to that query, not an imported catalog or confirmed community promotion. Required missing budget currency/location still prompts clarification. On `/tools/`, optionally use the map center as the distance origin and ask why to consider a published restaurant offer.
 5. Select 2–5 offers from distinct restaurants and compare value, price or taste. Taste comparisons accept review excerpts and HTTPS source URLs; supplied reviews are not independently verified. Missing evidence is reported, not invented.
 
 No fictitious restaurant offers are seeded into live tables. An empty feed needs a real source submitted before map pins or comparison become available.
+
+The current dev project's `gemini-3.5-flash-lite` requests with Google Search return HTTP 429 `RESOURCE_EXHAUSTED`; ordinary extraction and intent calls work. Google documents Search grounding as unavailable in this model's free API tier. The listed legacy `gemini-2.5-flash-lite` returns HTTP 404 because it is unavailable to new users. Search integration is deployed, but real online findings require suitable project quota/billing (or an explicitly configured supported search model). No billing was enabled by the agent. Do not claim live grounded search acceptance until a real query returns sources.
 
 ## Setup
 

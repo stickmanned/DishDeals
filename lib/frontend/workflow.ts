@@ -1,10 +1,12 @@
 import { makeFunctionReference } from "convex/server";
 import type { GenericId } from "convex/values";
 import { z } from "zod";
+import type { SearchResult } from "../workflow/search-contracts";
 
 // These names and payloads were verified against the independent ai-workflow
 // module at e3a39cc. They must never target main's canonical deployment.
 export const workflowApi = {
+  search: makeFunctionReference<"action", { inputJson: string }, SearchResult>("workflow/search:find"),
   list: makeFunctionReference<"query", { limit: number; now: number }, unknown>(
     "workflow/deals:listForMap",
   ),

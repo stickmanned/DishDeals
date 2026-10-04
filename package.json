@@ -15,16 +15,17 @@
     "build:pages": "node scripts/build-github-pages.mjs"
   },
   "dependencies": {
+    "@auth/core": "^0.41.3",
     "@convex-dev/auth": "^0.0.96",
     "@convex-dev/workflow": "^0.4.8",
     "@google/genai": "^2.27.0",
+    "@restaurant-deals/map": "file:vendor/restaurant-deals-map-0.2.0.tgz",
     "convex": "^1.46.0",
+    "dompurify": "^3.4.16",
     "next": "^16.3.8",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "zod": "^4.6.5",
-    "@auth/core": "^0.41.3",
-    "@restaurant-deals/map": "file:vendor/restaurant-deals-map-0.2.0.tgz"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",

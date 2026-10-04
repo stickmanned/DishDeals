@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
+import type { SearchResult } from "@/lib/workflow/search-contracts";
 import { filterDeals } from "@/lib/frontend/deals";
 import { useFrontend } from "./FrontendProvider";
 import { Icon } from "./Icon";
@@ -8,6 +9,7 @@ import { DealCard } from "./DealCard";
 import { PreviewNote } from "./Shell";
 import { Dialog } from "./Dialog";
 import { useClock } from "./useClock";
+import { WebFindings } from "./WebFindings";
 export function Discover() {
   const app = useFrontend();
   const { now, ready } = useClock();
@@ -15,10 +17,34 @@ export function Discover() {
   const [priceLimit, setPrice] = useState<number | null>(null);
   const [onlyNow, setOnlyNow] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState("");
+  const [searched, setSearched] = useState<{ key: string; result: SearchResult } | null>(null);
+  const request = useRef(0);
+  const searchKey = JSON.stringify([search.trim(), priceLimit, onlyNow, app.mode]);
+  const result = searched?.key === searchKey ? searched.result : null;
   const deals = useMemo(
-    () => filterDeals(app.deals, { search, priceLimit, onlyNow }, now),
-    [app.deals, search, priceLimit, onlyNow, now],
+    () => result ? app.deals.filter(d => result.recommendations.some(r => r.dealId === d.id)) :
+      filterDeals(app.deals, { search, priceLimit, onlyNow }, now),
+    [app.deals, search, priceLimit, onlyNow, now, result],
   );
+  async function find(event: FormEvent) {
+    event.preventDefault();
+    if (!search.trim() || searching) return;
+    if (app.mode !== "live" || !app.live) {
+      setSearchError("Switch to the live feed to search online."); return;
+    }
+    const id = ++request.current;
+    setSearching(true); setSearchError(""); setSearched(null);
+    try {
+      if (!app.authenticated) await app.auth?.signInGuest?.();
+      const response = await app.live.search({ inputJson: JSON.stringify({ query: search.trim(), language: "en", limit: 5,
+        ...(priceLimit !== null ? { maxPrice: priceLimit, currency: "CAD" } : {}), availableNow: onlyNow }) });
+      if (request.current === id) setSearched({ key: searchKey, result: response });
+    } catch {
+      if (request.current === id) setSearchError("Search could not finish. Check your connection and try again.");
+    } finally { if (request.current === id) setSearching(false); }
+  }
   const reset = () => {
     setSearch("");
     setPrice(null);
@@ -38,27 +64,31 @@ export function Discover() {
           <Icon name="plus" size={20} /> Post a deal
         </Link>
       </section>
-      <div className="search-row">
+      <form className="search-row" onSubmit={find}>
         <div className="search-field">
           <Icon name="search" size={22} />
           <input
             aria-label="Search deals"
-            placeholder="Restaurant, dish, area"
+            placeholder="Restaurant, dish, or a food question"
+            maxLength={1000}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           {search && (
             <button
               className="icon-button"
+              type="button"
               aria-label="Clear search"
-              onClick={() => setSearch("")}
+              onClick={() => { setSearch(""); setSearched(null); setSearchError(""); }}
             >
               <Icon name="close" size={18} />
             </button>
           )}
         </div>
+        <button className="button primary" disabled={searching || !search.trim()} type="submit">{searching ? "Searching…" : "Search"}</button>
         <button
           className="filter-button"
+          type="button"
           onClick={() => setShowFilters(true)}
           aria-label="Open filters"
         >
@@ -66,7 +96,13 @@ export function Discover() {
           <span>Filters</span>
           {onlyNow && <span className="filter-count">1</span>}
         </button>
-      </div>
+      </form>
+      <p className="search-hint muted">Search community offers first. If nothing matches, we’ll check the web.</p>
+      {searching && <p role="status" className="connection-note">Checking offers and looking online if needed…</p>}
+      {searchError && <p role="alert">{searchError}</p>}
+      {result && <div aria-live="polite" className="search-summary"><p>{result.message}</p>{result.warnings.map(w => <p key={w}>{w}</p>)}</div>}
+      {result && !result.recommendations.length && !result.webDiscovery &&
+        <a className="button secondary" href={`https://www.google.com/search?q=${encodeURIComponent(search.trim() + " restaurant offers " + (result.intent.city ?? "Vancouver"))}`} target="_blank" rel="noopener noreferrer">Open web search</a>}
       <div className="filter-row">
         <div className="price-filters" role="group" aria-label="Price filter">
           {[null, 5, 10, 15].map((v) => (
@@ -92,6 +128,7 @@ export function Discover() {
       </div>
       <div className="form-actions"><Link href="/tools" className="button secondary">Explore map & AI comparison</Link></div>
       <PreviewNote />
+      {result?.webDiscovery && <WebFindings findings={result.webDiscovery} />}
       <section className="feed-section" aria-label="Food deals">
         <div className="section-heading">
           <h2>
@@ -148,14 +185,14 @@ export function Discover() {
           <div className="empty-state panel">
             <Icon name="search" size={36} />
             <h2>
-              {app.deals.length
+              {searching ? "Looking beyond the community feed…" : result?.webDiscovery ? "No matching community offers yet." : app.deals.length
                 ? "Nothing on this menu yet."
                 : "Be the first to find a deal."}
             </h2>
             <p>
-              {app.deals.length
+              {searching ? "We’re checking the web for this search. This can take a moment." : result?.webDiscovery ? "Use the web findings above to check the restaurant and its current offers." : app.deals.length
                 ? "Try a different dish or give your budget a little room."
-                : "A screenshot or a flyer is a good place to start."}
+                : "Share a link, some details, or an optional photo."}
             </p>
             {app.deals.length ? (
               <button className="button secondary" onClick={reset}>
@@ -181,7 +218,7 @@ export function Discover() {
         </div>
         <div>
           <h2>Found something good?</h2>
-          <p>A screenshot. A campus flyer. Share the find.</p>
+          <p>A link, a few details, or a photo. Share the find.</p>
         </div>
         <Link href="/post" className="text-link">
           Pass it on <Icon name="arrow" size={18} />

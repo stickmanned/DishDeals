@@ -6,6 +6,7 @@ import { outcomeSchema } from "../../lib/workflow/contracts";
 import { searchInputSchema, type SearchRecord, type SearchResult } from "../../lib/workflow/search-contracts";
 import { searchDeals } from "../../lib/workflow/search";
 import { geminiSearch } from "../../lib/workflow/search-gemini";
+import { supplementEmptySearch } from "../../lib/workflow/web-discovery";
 
 export const catalog = internalQuery({ args: { focusDealId: v.optional(v.string()) }, handler: async (ctx, args): Promise<SearchRecord[]> => {
   const id = args.focusDealId ? ctx.db.normalizeId("workflowDeals", args.focusDealId) : null;
@@ -34,9 +35,12 @@ export const run = internalAction({ args: { inputJson: v.string(), owner: v.stri
   await ctx.runMutation(internal.workflow.search.reserve, { owner: args.owner });
   const records = await ctx.runQuery(internal.workflow.search.catalog, { focusDealId: parsed.data.focusDealId });
   const now = new Date(), key = process.env.GEMINI_API_KEY;
-  const ai = key?.trim() ? geminiSearch({ apiKey: key, model: process.env.GEMINI_SEARCH_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash",
-    deadline: Date.now() + 65000 }, now) : {};
-  return searchDeals(parsed.data, { records, now: () => now, ...ai });
+  const config = key?.trim() ? { apiKey: key, model: process.env.GEMINI_SEARCH_MODEL || process.env.GEMINI_MODEL || "gemini-3.8-flash",
+    deadline: Date.now() + 90000 } : null;
+  const ai = config ? geminiSearch(config, now) : {};
+  const result = await searchDeals(parsed.data, { records, now: () => now, ...ai });
+  return supplementEmptySearch(result, parsed.data, config ? { ...config,
+    model: process.env.GEMINI_WEB_SEARCH_MODEL || config.model } : null, now);
 } });
 export const find = action({ args: { inputJson: v.string() }, handler: async (ctx, args): Promise<SearchResult> => {
   const owner = await requireOwner(ctx);

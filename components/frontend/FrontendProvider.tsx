@@ -11,6 +11,7 @@ import {
   useConvexAuth,
   useConvexConnectionState,
   useMutation,
+  useAction,
   useQuery,
 } from "convex/react";
 import { parseWorkflowDeals, type DealView } from "@/lib/frontend/deals";
@@ -36,6 +37,7 @@ type LiveApi = {
   submit: (
     source: WorkflowSource,
   ) => ReturnType<ReturnType<typeof useMutation<typeof workflowApi.submit>>>;
+  search: ReturnType<typeof useAction<typeof workflowApi.search>>;
 };
 type Profile = { displayName: string; walletAddress: string };
 type FrontendState = {
@@ -252,6 +254,7 @@ function LiveRuntime(props: Omit<Parameters<typeof Runtime>[0], "live">) {
   const session = useConvexAuth();
   const connection = useConvexConnectionState();
   const submit = useMutation(workflowApi.submit);
+  const search = useAction(workflowApi.search);
   const parsed = useMemo(() => {
     if (raw === undefined) return { deals: undefined, error: false };
     try {
@@ -262,6 +265,7 @@ function LiveRuntime(props: Omit<Parameters<typeof Runtime>[0], "live">) {
   }, [raw]);
   const live: LiveApi = {
     ...parsed,
+    search,
     authenticated: session.isAuthenticated,
     authLoading: session.isLoading,
     connection: connection.isWebSocketConnected
