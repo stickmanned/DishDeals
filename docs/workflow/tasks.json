@@ -1582,6 +1582,76 @@
       "implementationState": "Authorized sole serialized development function sync",
       "nativeChecks": "No native source change",
       "phoneAcceptance": "Pending genuine extraction after web form release"
+    },
+    {
+      "id": "N-POSTS-BACKEND",
+      "owner": "Loom",
+      "branch": "t-10-posts-expiry-backend",
+      "worktree": "posts-expiry-backend",
+      "status": "ready",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "convex/deals.ts",
+        "convex/crons.ts",
+        "lib/dealRetention.ts",
+        "tests/backend/dealMine.test.ts",
+        "tests/backend/dealRetention.test.ts",
+        "tests/import/dealRetention.test.ts",
+        "docs/handoffs/n-posts-backend.md"
+      ],
+      "packet": "docs/tasks/N-POSTS-BACKEND.md",
+      "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",
+      "backendTarget": "local implementation only; proper-marmot-82 dev sync separately reviewed",
+      "phoneAcceptance": "pending William real iPhone",
+      "implementationState": "assigned bounded implementation"
+    },
+    {
+      "id": "N-POSTS-UI",
+      "owner": "Cinder",
+      "branch": "t-10-my-posts-section",
+      "worktree": "my-posts-section",
+      "status": "ready",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "components/deals/MyPublishedDeals.tsx",
+        "app/post/page.tsx",
+        "tests/import/myPublishedDeals.test.tsx",
+        "docs/handoffs/n-posts-ui.md"
+      ],
+      "packet": "docs/tasks/N-POSTS-UI.md",
+      "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",
+      "backendTarget": "local implementation only; proper-marmot-82 dev sync separately reviewed",
+      "phoneAcceptance": "pending William real iPhone",
+      "implementationState": "assigned bounded implementation"
+    },
+    {
+      "id": "N-INSTAGRAM-KIND",
+      "owner": "Mica",
+      "branch": "t-13-instagram-source-kind",
+      "worktree": "instagram-source-kind",
+      "status": "ready",
+      "dependencies": [
+        "T-02"
+      ],
+      "allowedPaths": [
+        "lib/reels/contract.ts",
+        "ios/Shared/ShareStore.swift",
+        "components/reels/ReelIntake.tsx",
+        "tests/native/ShareStoreChecks.swift",
+        "tests/import/postSource.test.ts",
+        "tests/import/reelPublicEntry.test.tsx",
+        "docs/handoffs/n-instagram-kind.md",
+        "lib/reels/contract.test.ts"
+      ],
+      "packet": "docs/tasks/N-INSTAGRAM-KIND.md",
+      "pinnedBaseSha": "dcdda819e97de9c371726dd7ba33585912afe7d5",
+      "backendTarget": "local implementation only; proper-marmot-82 dev sync separately reviewed",
+      "phoneAcceptance": "pending William real iPhone",
+      "implementationState": "assigned bounded implementation"
     }
   ],
   "completedDependencies": {
