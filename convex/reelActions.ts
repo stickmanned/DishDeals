@@ -36,6 +36,10 @@ export const retrieve = internalAction({ args, returns: v.boolean(), handler: as
   } catch (error) {
     if (videoId) await ctx.storage.delete(videoId);
     const known = error instanceof RetrievalError;
+    // Fixed fields only: the failure code and, for a schema mismatch, the field paths (never provider values).
+    // A gated-off or unconfigured server is an expected state, not a failure worth logging.
+    if (!known || error.code !== "CONFIGURATION")
+      console.warn(JSON.stringify({ event: "reel_retrieve_failed", code: known ? error.code : "OTHER", detail: known ? error.detail ?? null : null }));
     await ctx.runMutation(internal.reels.fail, { ...args,
       code: known ? error.code : "RETRIEVAL_FAILED",
       message: known ? error.message : "The retrieval service could not download this Reel. Retry later, attach your own recording, or edit by hand." });

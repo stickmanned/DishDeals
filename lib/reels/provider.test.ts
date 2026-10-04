@@ -23,3 +23,37 @@ test("rejects private/missing media, mismatched reels, redirects and oversized c
   const f = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json({ success: true, data: { xdt_shortcode_media: media } })).mockResolvedValueOnce(new Response("x", { headers: { "content-type": "video/mp4", "content-length": "99999999" } }));
   await expect(retrieveReel(url, "key", f)).rejects.toThrow("12 MB");
 });
+
+// The provider documents these fields as nullable, e.g. for photo posts and unavailable media.
+test.each([
+  ["video_url", { ...media, video_url: null }],
+  ["video_duration", { ...media, video_duration: null }],
+  ["taken_at_timestamp", { ...media, taken_at_timestamp: null }],
+  ["edge_media_to_caption", { ...media, edge_media_to_caption: null }],
+  ["caption text", { ...media, edge_media_to_caption: { edges: [{ node: { text: null } }] } }],
+])("treats a null %s as missing data, not a malformed response", async (_name, m) => {
+  const f = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, data: { xdt_shortcode_media: m } }));
+  const error = await retrieveReel(url, "key", f).catch(e => e);
+  expect(error).toBeInstanceOf(Error);
+  expect(error.message).not.toContain("unexpected data");
+});
+test.each([
+  { success: false, data: null }, { success: false, message: "failed" }, { success: true, data: { xdt_shortcode_media: null } },
+])("reports an unavailable post for provider failures shaped %j", async body => {
+  const f = vi.fn<typeof fetch>().mockResolvedValue(Response.json(body));
+  const error = await retrieveReel(url, "key", f).catch(e => e);
+  expect(error).toMatchObject({ code: "UNAVAILABLE" });
+  expect(error.message).not.toContain("unexpected data");
+});
+test("a photo post (no video) points the user to upload instead of a provider-data error", async () => {
+  const photo = { shortcode: "AbCdEf123", video_url: null, video_duration: null, edge_media_to_caption: { edges: [{ node: { text: "caption" } }] } };
+  const f = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, data: { xdt_shortcode_media: photo } }));
+  await expect(retrieveReel(url, "key", f)).rejects.toMatchObject({ code: "UNAVAILABLE", message: expect.stringContaining("No accessible video") });
+});
+test("a genuinely malformed response is still rejected, and reports only field paths", async () => {
+  const f = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ success: true, data: { xdt_shortcode_media: { shortcode: 42 } } }));
+  const error = await retrieveReel(url, "key", f).catch(e => e);
+  expect(error).toMatchObject({ code: "RETRIEVAL_FAILED" });
+  expect(error.detail).toContain("data.xdt_shortcode_media.shortcode");
+  expect(JSON.stringify(error)).not.toContain("42");
+});
